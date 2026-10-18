@@ -337,6 +337,12 @@ class HTTPTests(PanelCase):
         self.assertIn(revision.encode(), body)
         self.assertNotIn(b"__PANEL_REVISION__", body)
 
+    def test_a_notification_link_naming_a_computer_opens_the_page(self):
+        cookie = self.login()
+        status, _, body = self.request("GET", "/?deck=e8865d380b933f7fe1cb8ad1", headers={"Cookie": cookie})
+        self.assertEqual(status, 200)
+        self.assertIn(b"<html", body[:500].lower())
+
     def test_bad_json_unknown_actions_and_oversized_requests(self):
         cookie = self.login()
         for body in ("{", "[]", '"text"'):

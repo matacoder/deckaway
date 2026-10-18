@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.5 — 2026-10-18
+
+- **A notification about another computer opens the panel again**, not `{"error": "not found"}`. Its link names the computer (`/?deck=…`), and the page was served only at a bare `/`.
+
 ## 1.56.4 — 2026-10-17
 
 - **"Conversation" opens in place of the screen**, no longer as a window over everything: the message field, the answer keys and the microphone stay usable, so you can read an answer and reply to it, by voice too. The same button closes it.

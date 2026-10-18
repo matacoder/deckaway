@@ -2755,7 +2755,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.proxy_tty()
         if self.path == "/api/docker_tunnel":
             return self.docker_tunnel()
-        if self.path in ("/", "/index.html"):
+        # Notification links open the page as /?deck=<id>#<session>.
+        if urlsplit(self.path).path in ("/", "/index.html"):
             with open(PAGE_FILE, "rb") as f:
                 page = f.read()
             revision = hashlib.sha256(page).hexdigest().encode()
