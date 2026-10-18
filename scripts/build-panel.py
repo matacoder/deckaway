@@ -34,6 +34,7 @@ SCRIPTS = (
     "hub-cards.js",
     "hub-models.js",
     "containers.js",
+    "windows.js",
     "lan.js",
     "drop.js",
     "providers.js",

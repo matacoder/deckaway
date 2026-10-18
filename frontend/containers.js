@@ -48,7 +48,9 @@ function renderNewContainers(){
 function renderSessionContainers(){
   const session=cur(),hosts=session?containerHostsFor(agentOf(session)):[],select=$("session_containers");
   // One computer and nobody marked: both names would say the obvious.
-  $("session_where").hidden=!session||(!hosts.length&&!deckDirectory.decks.length);
+  const windows=session?.runtime==="windows";
+  $("session_where").hidden=!session||(!hosts.length&&!deckDirectory.decks.length&&!windows);
+  $("session_runtime_box").hidden=!windows;renderSessionMove();
   $("session_computer").textContent=hereName(currentDeckName(),selectedDeck,here.found,tr);
   $("session_containers_box").hidden=!hosts.length;
   if(!hosts.length||document.activeElement===select)return;

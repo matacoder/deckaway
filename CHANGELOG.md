@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.57.0 — 2026-10-18
+
+- **An agent can run in Windows itself, not only in WSL.** On a Windows computer (DeckAway in WSL) the new-session dialog asks **Where the agent runs**: Linux (WSL) or Windows. Windows starts the Windows build of Claude Code or Codex (or a PowerShell terminal) in PowerShell, in a folder inside your Windows user folder, so it can read processes, services, the registry and startup items. The screen, keys, permission questions and reconnecting from the phone work as for any session.
+- **No administrator rights.** The agent runs as the signed-in Windows user, unelevated; a step that needs more shows the Windows UAC prompt on that computer, where someone has to approve it.
+- **Move to Windows / Move to Linux (WSL)** in the session menu starts the same work in a new session on the other side. The conversation does not carry over; the new agent gets the old session's summary as its first message once it is ready, and the old session stays as it is. A Windows session is marked **Windows** under the message field.
+- **The opened keys fold with the same “…”** again, lit while open; the arrow that stood in its place in 1.56.7 did not read as a way back.
+- A session started by the panel's systemd services gets WSL's interop socket named on its command: such services have none, a known cause of `UtilBindVsockAnyPort: socket failed`.
+
 ## 1.56.7 — 2026-10-18
 
 - **The keys a phone needs most stay in sight: 1 2 3 4, ← → and ⏎.** Folded, the row now holds the four numbers, both arrows and Enter; ↑ ↓, Codex's question keys, Esc, Tab and ^C wait behind **…**. On a narrow screen the higher numbers fold first and Enter last.

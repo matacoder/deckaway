@@ -224,6 +224,7 @@ function sheet(on){
     panel.style.setProperty("--sheet-top",Math.round(anchor.bottom+4)+"px");
     panel.style.setProperty("--sheet-right",Math.max(8,Math.round(innerWidth-anchor.right))+"px");
     $("sheetCap").textContent=s?sessionTitle(s):"DeckAway";
+    renderSessionMove();ensureWindows();
     $("s_session").hidden=$("s_manage").hidden=!s;
     // A phone has no help button in the bar: it is here. Update and closed drafts appear only when there is
     // something to do; an empty group would be a stray line.
@@ -1083,13 +1084,13 @@ function pickRepo(r){
   if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=repo.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}
   renderRepos();
 }
-$("n_name").addEventListener("input",e=>delete e.target.dataset.auto);
+$("n_name").addEventListener("input",e=>{delete e.target.dataset.auto;renderNewRuntime()});
 
 let newAgent="claude";
 function pickAgent(a){
   newAgent=a;renderAgentPicker();for(const b of $("agsel").children)b.classList.toggle("on",b.dataset.a===a);
   $("n_skip_row").style.display=["shell","pi"].includes(a)?"none":"";
-  if(!["shell","pi"].includes(a))$("n_skip_flag").textContent=AGENTS[a].skip;renderSources();renderNewContainers();
+  if(!["shell","pi"].includes(a))$("n_skip_flag").textContent=AGENTS[a].skip;renderSources();renderNewContainers();renderNewRuntime();
 }
 // preset: {path, project} from a project heading; the folder is used as is while its name stays in the field.
 let newPreset=null;
@@ -1100,13 +1101,13 @@ async function openNew(preset){
   // The dialog opens at once; the list of folders only feeds the suggestions of its field.
   if(!$("dlg").open){delete $("n_containers").dataset.touched;$("dlg").showModal()}
   api("/api/projects").then(({projects})=>$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))).catch(()=>{});
-  renderNewContainers();ensureContainers();loadGithub();await refreshLMModels();renderSources();
+  renderNewContainers();ensureContainers();ensureWindows();renderNewRuntime();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");
   const project=$("n_proj").value.trim()||name,path=newPreset&&project===newPreset.project&&!$("n_git").value.trim()?newPreset.path:undefined;
   const ok=await post("/api/new",{name,path,project,git:$("n_git").value.trim(),
-    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,containers:$("n_containers_row").hidden?undefined:$("n_containers").value,source:["claude","kimi","pi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined});
+    worktree:$("n_wt").checked,branch:$("n_branch").value.trim(),skip:$("n_skip").checked,agent:newAgent,containers:$("n_containers_row").hidden?undefined:$("n_containers").value,source:["claude","kimi","pi"].includes(newAgent)&&$("n_source").value?JSON.parse($("n_source").value):undefined,...newRuntimeFields()});
   $("n_go").disabled=false;$("n_go").textContent=tr("Создать");
   if(ok){$("dlg").close();newPreset=null;for(const i of["n_name","n_proj","n_git","n_branch"])$(i).value="";$("n_wt").checked=false;$("n_adv").open=false;renderAdvanced();select(ok.name||name)}
 }

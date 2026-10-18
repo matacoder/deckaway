@@ -168,6 +168,18 @@ def voice_service():
         return _voice
 
 
+_windows, _windows_lock = None, threading.Lock()
+
+
+def windows_service():
+    global _windows
+    from integrations.windows import Windows
+    with _windows_lock:
+        if _windows is None:
+            _windows = Windows()
+        return _windows
+
+
 def action_provider_save(d):
     return {"id": provider_store().save(d), "providers": provider_store().public()}
 
@@ -505,12 +517,12 @@ def session_group(path):
 def list_sessions(preview_name=None):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
-           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}")
+           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     named = network_settings.get().get('auto_titles') is not False
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto = (line.split("\t") + [""] * 14)[:14]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime = (line.split("\t") + [""] * 15)[:15]
         title = title or (auto if named else "")  # The name its owner gave outranks the one a model keeps up to date.
         if not sname.startswith(PREFIX):
             continue
@@ -520,10 +532,11 @@ def list_sessions(preview_name=None):
         item = {
             "name": name, "title": title or name, "created": int(created or 0), "attached": int(attached or 0),
             "activity": int(activity or 0), "group": group, "agent": agent,
-            "path": path, "running": is_running(agent, cmd), "command": cmd,
+            "path": path, "running": is_running(agent, cmd, runtime), "command": cmd,
             "sid": sid or None, "skip": skip == "1",
             "docker": docker,  # Where the running agent's containers really go: "local", a computer's id, "" = started before this was kept.
             "containers": containers,  # "" = this computer's default, "local", or the id of the computer chosen for this session.
+            "runtime": runtime,  # "windows": the agent runs in Windows itself, started from WSL; "" = here.
         }
         try:
             model_source = json.loads(source or 'null')
@@ -552,6 +565,8 @@ AGENTS = {
     "shell": ("Терминал", set(), ""),
 }
 SHELLS = {"bash", "zsh", "sh", "fish", "dash"}
+# "init": how some WSL builds name a process started through interop.
+WINDOWS_PROGRAMS = {"powershell.exe", "claude.exe", "codex.exe", "init"}
 # Claude Code itself, whatever serves its model: one conversation format, one way to start and continue.
 CLAUDE_FAMILY = ("claude", "claude-kimi", "claude-provider")
 SOURCE_KINDS = ('kimi', 'lmstudio', 'provider')  # Where a session's model comes from when not the agent's own.
@@ -575,7 +590,10 @@ for _agent, _spec in cli_agents.CLI.items():
 VERSION_NAME = re.compile(r'\d+\.\d+\.\d+[\w.+-]{0,24}')
 
 
-def is_running(agent, cmd):
+def is_running(agent, cmd, runtime=''):
+    if runtime == 'windows':
+        # Through WSL the pane shows the Windows program started in it: PowerShell, the agent inside it.
+        return agent != 'shell' and cmd in WINDOWS_PROGRAMS
     if agent == "shell":
         return cmd not in SHELLS
     # Claude Code's own installer runs the binary from a file named after its version (versions/2.1.296),
@@ -804,6 +822,8 @@ def action_new(d):
 
 
 def _action_new(d, name, agent):
+    if d.get('runtime') == 'windows':
+        return new_windows_session(d, name, agent)
     path = resolve_path(d, name)
     skip = bool(d.get("skip")) and agent not in ("shell", "pi")
     sid = str(uuid.uuid4()) if agent in (*CLAUDE_FAMILY, "pi") or cli_agents.keeps_id(agent) else None
@@ -827,6 +847,62 @@ def _action_new(d, name, agent):
     if agent != 'shell':  # A terminal has no agent command to carry the choice.
         note_containers(name, choice)
     return {"name": name}
+
+
+def new_windows_session(d, name, agent, sid=None):
+    """A session whose agent runs in Windows, in a folder inside the Windows user's own."""
+    if agent not in ('claude', 'codex', 'shell') or d.get('source'):
+        raise ValueError('В Windows запускаются только Claude, Codex и терминал')
+    service = windows_service()
+    path = service.folder(d.get('windows_path'))
+    skip = bool(d.get('skip')) and agent != 'shell'
+    sid = sid or (str(uuid.uuid4()) if agent == 'claude' else None)
+    create_session(name, path, agent, skip, sid, service.command(agent, path, sid, False, skip))
+    tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_runtime', 'windows')
+    return {'name': name}
+
+
+# The first message of a session moved to the other side: the conversation itself stays where it was.
+HANDOFF = ("Context from session {old}, which ran {before}. Its conversation is not carried over; its summary:\n\n"
+           "{summary}\n\nYou now run {after}, in {folder}. Take this as context and wait for my next message.")
+WHERE = {'windows': 'in Windows (PowerShell)', 'wsl': 'in Linux (WSL)'}
+
+
+def action_session_move(d):
+    """The same work in a new session on the other side: Windows itself or WSL. Agents cannot carry a
+    conversation between the two, so the new one gets the old one's summary; the old session is left as is."""
+    name, runtime = d.get('name', ''), d.get('runtime')
+    if not session_exists(name) or runtime not in WHERE:
+        raise ValueError('нет такой сессии')
+    agent, before = opt(name, '@cc_agent') or 'claude', 'windows' if opt(name, '@cc_runtime') == 'windows' else 'wsl'
+    if agent not in ('claude', 'codex', 'shell') or before == runtime:
+        raise ValueError('Эту сессию нельзя перенести')
+    folder = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_current_path}').strip()
+    with session_creation_lock:
+        new = unique_name(name[:28] + ('-win' if runtime == 'windows' else '-wsl'),
+                          lambda value: value in creating_names or session_exists(value), 32)
+        creating_names.add(new)
+    try:
+        if runtime == 'windows':
+            new_windows_session({'windows_path': d.get('windows_path'), 'skip': opt(name, '@cc_skip') == '1'}, new, agent)
+        else:
+            if not os.path.isdir(folder):
+                raise ValueError('Папки этой сессии больше нет')
+            sid = str(uuid.uuid4()) if agent == 'claude' else None
+            create_session(new, folder, agent, opt(name, '@cc_skip') == '1', sid, agent_cmd(agent, sid, False, opt(name, '@cc_skip') == '1', new))
+    finally:
+        with session_creation_lock:
+            creating_names.discard(new)
+    summary = (session_info(name, DEFAULT_LANGUAGE).get('summary') or {}).get('text') if agent != 'shell' else ''
+    if summary:
+        where = windows_service_folder(new) if runtime == 'windows' else folder
+        schedule_service().add(new, HANDOFF.format(old=name, before=WHERE[before], summary=summary, after=WHERE[runtime], folder=where), 'idle')
+    return {'name': new, 'summary': bool(summary)}
+
+
+def windows_service_folder(name):
+    from integrations.windows import to_windows
+    return to_windows(tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_current_path}').strip()) or ''
 
 
 def action_rename(d):
@@ -854,9 +930,13 @@ def action_restart(d):
     elif new and agent in ("codex", "kimi"):
         sid = None
     source = saved_source(name)
-    cmd = with_containers(agent_cmd(agent, sid, not new, skip, name, source), opt(name, '@cc_containers'))
     target = f"={PREFIX}{name}:"
+    windows = opt(name, '@cc_runtime') == 'windows'
+    if not windows:
+        cmd = with_containers(agent_cmd(agent, sid, not new, skip, name, source), opt(name, '@cc_containers'))
     path = tmux("display-message", "-p", "-t", target, "#{pane_current_path}").strip()
+    if windows:
+        cmd = windows_service().command(agent, path, sid, not new and agent != 'shell', skip)
     shell = tmux("show-options", "-gv", "default-shell").strip() or "/bin/sh"
     stop_children(name)
     if new and agent != "shell":
@@ -872,7 +952,7 @@ def action_restart(d):
     script = "clear; " + (f"{cmd}; " if cmd else "") + "exec " + shlex.quote(shell)
     tmux("respawn-pane", "-k", "-t", target, "-c", path,
          shlex.join([shell, "-lic", script]))
-    if cmd:
+    if cmd and not windows:
         note_containers(name, opt(name, '@cc_containers'))
 
 
@@ -1469,6 +1549,8 @@ ACTIONS = {
     'lm_remove': action_lm_remove,
     "kimi_config": lambda d: {"kimi": kimi_config.save(d)}, "provider_save": action_provider_save, "provider_remove": action_provider_remove, "agent_install": action_agent_install, "agent_login": action_agent_login, "github_login": action_github_login, "new": action_new, "restart": action_restart, "kill": action_kill, "send": action_send, "upload": action_upload, "update": action_update, "discard_upload": action_discard_upload,
     "voice_status": lambda d: voice_service().status(), "voice_install": lambda d: voice_service().install(),
+    "windows_status": lambda d: {"windows": windows_service().status(again=bool(d.get("again")))},
+    "session_move": action_session_move,
     "transcribe": lambda d: {"text": voice_service().transcribe(d.get("audio"), d.get("language"), d.get("prompt"))}}
 
 
@@ -1518,8 +1600,10 @@ def transcript_path(agent, sid):
     # A miss (new session, deleted file) would otherwise walk every project directory on each 2 s scan.
     if not path and time.monotonic() - transcript_misses.get(key, -60) >= 30:
         from pathlib import Path
-        root = Path(os.path.expanduser('~/.codex/sessions' if agent == 'codex' else '~/.claude/projects'))
-        path = next(root.rglob('*' + sid + '*.jsonl'), None)
+        tail = '.codex/sessions' if agent == 'codex' else '.claude/projects'
+        # An agent running in Windows keeps its conversations in the Windows user's folder.
+        roots = [Path(os.path.expanduser('~')) / tail] + ([Path(windows_service().home()) / tail] if windows_service().home() else [])
+        path = next((found for root in roots for found in root.rglob('*' + sid + '*.jsonl')), None)
         for cache in (transcript_paths, transcript_misses):
             if len(cache) > 1000:
                 cache.clear()  # Ended sessions; the live ones are found again on the next scan.
@@ -3173,10 +3257,10 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers = (line.split("\t") + [""] * 10)[:10]
+        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime = (line.split("\t") + [""] * 11)[:11]
         agent = agent or "claude"
         try:
             source = json.loads(raw_source or "null")
@@ -3184,9 +3268,10 @@ def live_sessions():
             source = {"kind":"invalid"}
         if sname.startswith(PREFIX):
             live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1", "agent": agent,
-                                         "running": is_running(agent, cmd) if agent != "shell" else False,
+                                         "running": is_running(agent, cmd, runtime) if agent != "shell" else False,
                                          "created": int(created or 0), "source": source, "title": title or sname[len(PREFIX):],
-                                         **({"containers": containers} if containers else {})}
+                                         **({"containers": containers} if containers else {}),
+                                         **({"runtime": runtime} if runtime else {})}
     return live
 
 
@@ -3226,6 +3311,9 @@ def restore_session(name, info):
     if not os.path.isdir(path):
         print(f"restore {name}: path {path!r} is gone, skipped", flush=True)
         return
+    if info.get("runtime") == "windows":
+        windows_service().status()  # The Windows home folder, where this agent's conversation is found.
+        return restore_windows_session(name, path, info)
     sid, skip, agent = info.get("sid"), bool(info.get("skip")), info.get("agent") or "claude"
     source, choice = info.get("source"), info.get("containers") if isinstance(info.get("containers"), str) else None
     try:
@@ -3247,6 +3335,20 @@ def restore_session(name, info):
     if resume:
         note_containers(name, choice)
     print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
+
+
+def restore_windows_session(name, path, info):
+    sid, skip, agent = info.get("sid"), bool(info.get("skip")), info.get("agent") or "claude"
+    try:
+        resume = windows_service().command(agent, path, sid, agent != "shell", skip) if info.get("running") or agent == "shell" else None
+    except ValueError as error:
+        print(f"restore {name}: {error}; shell only", flush=True)
+        resume = None
+    create_session(name, path, agent, skip, sid, resume)
+    tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_runtime', 'windows')
+    if info.get('title'):
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', info['title'])
+    print(f"restored {name} ({agent} in Windows{', resumed' if resume else ', shell only'})", flush=True)
 
 
 def containers_ready():

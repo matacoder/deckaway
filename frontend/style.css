@@ -234,8 +234,13 @@ iframe[inert]{pointer-events:none}
 .question-key{display:none!important}
 body.is-codex .question-key{display:inline-flex!important;align-items:center;justify-content:center}
 .key-stop{color:var(--bad-text)}
-#b_keymore .ui-icon{display:none;width:16px;height:16px;transform:rotate(180deg)}
-.keys.expanded #b_keymore .ui-icon{display:block}.keys.expanded .more-dots{display:none}
+/* A session in Windows: its folder is a Windows one; git, GitHub, models and containers belong to WSL. */
+#n_win_row{display:none;margin-top:10px}
+.windows-run #n_win_row{display:block}
+.windows-run #n_proj_box,.windows-run #gh,.windows-run #n_adv,.windows-run #source_row,.windows-run #n_containers_row{display:none!important}
+#n_win_hint.warn{color:var(--warn)}
+/* Opened, "…" stays "…" and lights up: the same button folds the keys again. */
+.keys.expanded #b_keymore{background:var(--sel);border-color:var(--bd-strong)}
 /* A switch, not a key: the dot says whether it is on. */
 .key-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;white-space:nowrap}
 .key-toggle::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--dim)}
