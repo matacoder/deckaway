@@ -244,6 +244,23 @@ iframe[inert]{pointer-events:none}
 .key[aria-pressed="true"]{background:var(--sel);border-color:var(--bd);color:var(--fg2)} /* A toggle that is on, not a focused key. */
 .question-key{display:none!important}
 body.is-codex .question-key{display:inline-flex!important;align-items:center;justify-content:center}
+.key-stop{color:var(--bad-text)}
+#b_keymore .ui-icon{display:none;width:16px;height:16px;transform:rotate(180deg)}
+.keys.expanded #b_keymore .ui-icon{display:block}.keys.expanded .more-dots{display:none}
+/* A switch, not a key: the dot says whether it is on. */
+.key-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;white-space:nowrap}
+.key-toggle::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.keys .key-toggle[aria-pressed="true"]{background:var(--side2);color:var(--fg)}
+.key-toggle[aria-pressed="true"]::before{background:var(--acc);box-shadow:0 0 6px var(--acc)}
+/* Opened, the keys stand in three rows by purpose: answering, control, view. Two zero-height breaks end the
+   rows, so each fills the width whatever it holds (Codex's question keys, numbers hidden by a question). */
+.keys.expanded{max-width:560px;column-gap:6px;row-gap:3px}
+.keys.expanded::before,.keys.expanded::after{content:"";flex:0 0 100%;height:0}
+.keys.expanded::before{order:2}.keys.expanded::after{order:4}
+.keys.expanded>.key{order:3;flex:1 1 0;min-width:0;padding:0 4px}
+.keys.expanded>.key-answer{order:1}
+.keys.expanded>.key-view{order:5}
+.keys.expanded #b_keymore{order:6;flex:0 0 auto;width:56px}
 #b_reconnect{white-space:nowrap;font-family:inherit}
 .keyboard-hide{display:none;flex:none;height:36px;width:40px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg2);place-items:center}
 .keyboard-hide svg{width:var(--icon-lg);height:var(--icon-lg)}
@@ -899,7 +916,8 @@ body.resizing iframe{pointer-events:none}
   /* The keys that fit share the whole width; they never shrink, so fitKeys() still sees what overflows. */
   .keys:not(.expanded) .key{flex:1 0 auto}
   .key{flex:none;height:var(--tap);min-width:var(--tap);padding:0 8px;font-size:15px;border-radius:var(--r)}
-  .keys .key-primary{min-width:var(--tap)}
+  /* 42 px: the four numbers, ← → ⏎ and "…" fit a 390 px phone. */
+  .keys .key-primary{min-width:42px}
   body.message-focused .keyboard-hide{display:inline-grid}
   .keyboard-hide{height:var(--tap);width:var(--tap)}
   #question{padding:12px 12px 10px}
@@ -1184,17 +1202,17 @@ body.resizing iframe{pointer-events:none}
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
             <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
-            <button class="key key-primary" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-primary" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
-            <button class="key key-primary" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
-            <button class="key key-primary" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
-            <button class="key key-extra num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-extra num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-extra num" onclick="key('3')" aria-label="Вариант 3">3</button>
-            <button class="key key-extra" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-extra" onclick="key('Right')" aria-label="Вправо">→</button>
+            <button class="key key-primary key-answer num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-primary key-answer num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-primary key-answer num" onclick="key('3')" aria-label="Вариант 3">3</button><button class="key key-primary key-answer num" onclick="key('4')" aria-label="Вариант 4">4</button>
+            <button class="key key-primary key-answer" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-primary key-answer" onclick="key('Right')" aria-label="Вправо">→</button>
+            <button class="key key-primary key-answer" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
+            <button class="key key-primary" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши"><span class="more-dots">…</span><svg class="ui-icon"><use href="#i-chevron-down"/></svg></button>
+            <button class="key key-extra" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-extra" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
             <button class="key key-extra" onclick="key('Escape')" aria-label="Отмена (Esc)" title="Отмена (Esc)">Esc</button>
             <button class="key key-extra" onclick="key('BTab')" aria-label="Назад по полям (Shift+Tab)" title="Назад по полям (Shift+Tab)">⇧Tab</button><button class="key key-extra" onclick="key('Tab')" aria-label="Дальше по полям (Tab)" title="Дальше по полям (Tab)">Tab</button>
-            <button class="key key-extra" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
-            <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
-            <button class="key key-extra" id="b_mode" onclick="toggleMode()" aria-pressed="false" title="Живой терминал вместо экрана с текстом">Терминал</button>
-            <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
+            <button class="key key-extra key-stop" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
+            <button class="key key-view" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
+            <button class="key key-extra key-view key-toggle" id="b_mode" onclick="toggleMode()" aria-pressed="false" title="Живой терминал вместо экрана с текстом">Терминал</button>
+            <button class="key key-extra key-view key-toggle" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
@@ -1281,6 +1299,7 @@ body.resizing iframe{pointer-events:none}
     <button role="menuitem" class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
     <button role="menuitem" id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
     <button role="menuitem" id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);openQuickEditor()"><svg class="ui-icon"><use href="#i-inbox"/></svg><span>Настроить быстрые сообщения</span></button>
     <button role="menuitem" onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
   <div class="sheet-group" id="s_manage">
@@ -3597,15 +3616,13 @@ function answerByDigit(e){
 // Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
 // session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
 const later={session:null,data:null,seq:0,timer:null,failed:false,opened:null};
-const quick={saved:[],loaded:false,more:false};
+const quick={saved:[],loaded:false};
 const LATER_POLL=30000;
-// The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
-// conversation. With `shared` the "more" of the keys row opens them, so no second one is drawn. A terminal
-// gets none. Pure for tests.
-function quickChips(agent,saved,more,shared){
+// The user's own prompts only: the agent's commands for a shorter or a new conversation are buttons of the
+// session line already. A terminal gets none. Pure for tests.
+function quickChips(agent,saved){
   if(agent==="shell")return [];
-  const commands=agentCommands(agent);
-  return [...saved.map(p=>({label:p.label,text:p.text})),...(commands.length&&!shared?[{more:true}]:[]),...(more?commands:[])];
+  return saved.map(p=>({label:p.label,text:p.text}));
 }
 // Rows of the editor -> what is saved; empty rows are dropped, not reported. Pure for tests.
 function quickRows(rows){
@@ -3729,27 +3746,22 @@ async function loadQuickPrompts(){
   fitKeyRow();
 }
 function renderQuickPrompts(){
-  // One "more" on a phone: when the keys row shows its own, it opens the agent's commands too.
-  const shared=$("b_keymore").offsetParent!==null,open=shared?$("keys").classList.contains("expanded"):quick.more;
-  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,open,shared):[];
-  box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&shared;
+  // On a phone nothing is drawn without saved prompts: they are set up from the session menu there.
+  const phone=$("b_keymore").offsetParent!==null;
+  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved):[];
+  box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&phone;
   $("b_compact").hidden=!session||!compactCommand(agentOf(session));
-  const signature=JSON.stringify(prompts);
+  const signature=JSON.stringify([phone,prompts]);
   if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
   box.dataset.signature=signature;
-  const chips=prompts.map(p=>{
-    if(!p.more){const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip}
-    const more=btn("","quick-chip quick-edit",()=>{quick.more=!quick.more;renderQuickPrompts()},tr("Команды агента"));
-    more.type="button";more.setAttribute("aria-label",tr("Команды агента"));more.setAttribute("aria-expanded",String(quick.more));more.append(svgIcon("more"));
-    return more;
-  });
+  const chips=prompts.map(p=>{const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip});
+  if(phone){box.replaceChildren(...chips);return}
   const edit=btn("","quick-chip quick-edit",openQuickEditor,tr("Настроить быстрые сообщения"));
   edit.type="button";edit.setAttribute("aria-label",tr("Настроить быстрые сообщения"));edit.append(svgIcon("pencil"));
   box.replaceChildren(...chips,edit);
 }
 async function sendQuick(prompt){
   if(sending||uploading||panelUpdating||!active)return;
-  if(prompt.confirm&&!await confirmAction(tr("Отправить {0}?",[prompt.text]),{text:tr(prompt.confirm),confirm:tr("Отправить"),danger:true}))return;
   // Bound to the computer and session it was tapped on, like a typed message.
   const deck=selectedDeck,epoch=deckEpoch,name=active;
   sending=true;renderAttachments();
@@ -3762,7 +3774,7 @@ async function sendQuick(prompt){
   }catch(e){
     if(epoch===deckEpoch)sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
     else toast(tr("Не отправлено: ")+e.message);
-  }finally{sending=false;quick.more=false;renderAttachments();renderSendState();renderQuickPrompts()}
+  }finally{sending=false;renderAttachments();renderSendState();renderQuickPrompts()}
 }
 // The agent's own command for a shorter conversation, or nothing for an agent without one. Pure for tests.
 function compactCommand(agent){return agentCommands(agent).find(c=>c.compact)||null}
@@ -6488,9 +6500,10 @@ function fitKeys(keepMore){
   more.classList.remove("all-fit");
   if(box.classList.contains("expanded")||!box.clientWidth)return;
   if(!keepMore&&box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
-  // Extra keys go first, then Codex's question keys, so the answer keys (↑ ↓ ⏎) stay on the narrowest screens.
-  const primary=k=>k.classList.contains("key-primary"),question=k=>k.classList.contains("question-key");
-  const order=[keys.filter(k=>!primary(k)),keys.filter(question),keys.filter(k=>primary(k)&&!question(k))].flatMap(g=>g.reverse());
+  // Extra keys go first, then Codex's question keys, the higher numbers, ← and →, so ⏎ stays on the narrowest screens.
+  const has=name=>k=>k.classList.contains(name),primary=has("key-primary"),question=has("question-key"),num=has("num");
+  const main=keys.filter(k=>primary(k)&&!question(k)),back=list=>list.reverse();
+  const order=[back(keys.filter(k=>!primary(k))),back(keys.filter(question)),back(main.filter(num)),main.filter(k=>!num(k))].flat();
   for(const k of order){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
@@ -6500,7 +6513,7 @@ function fitKeys(keepMore){
 const QUICK_ROOM=140,QUICK_BUTTONS=88;
 function fitKeyRow(){
   const composer=$("session_composer"),session=cur();
-  const saved=Boolean(session&&quickChips(agentOf(session),quick.saved,false,true).length);
+  const saved=Boolean(session&&quickChips(agentOf(session),quick.saved).length);
   composer.style.setProperty("--quick-room",(saved?QUICK_ROOM:QUICK_BUTTONS)+"px");
   fitKeys();
   if(!$("b_keymore").classList.contains("all-fit")&&!$("keys").classList.contains("expanded")){

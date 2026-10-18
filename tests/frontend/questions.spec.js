@@ -4,9 +4,9 @@ for (const width of [320, 390]) {
   test(`Codex questions can be answered by touch at ${width}px`, async ({ app, page }) => {
     await app.open({ width });
     await page.locator('#msg').focus();
-    // While typing, the keyboard button takes room: at 320px Codex's question keys move under "…", the answer keys stay.
-    const keys = [['Вариант ниже', 'Down'], ['Вариант выше', 'Up'], ['Подтвердить выбор', 'Enter']];
-    if (width > 320) keys.unshift(['Предыдущий вопрос', 'S-Left'], ['Следующий вопрос', 'S-Right']);
+    // While typing, the keyboard button takes room: the higher numbers move under "…" first, ⏎ stays.
+    const keys = [['Вариант 1', '1'], ['Вправо', 'Right'], ['Подтвердить выбор', 'Enter']];
+    if (width > 320) keys.unshift(['Вариант 2', '2'], ['Влево', 'Left']);
     for (const [name, key] of keys) {
       const button = page.getByRole('button', { name, exact: true });
       await expect(button).toBeVisible();
@@ -21,7 +21,9 @@ for (const width of [320, 390]) {
     expect(first.y).toBe(enter.y);
     await page.getByRole('button', { name: 'Другие клавиши' }).click();
     await expect(page.getByRole('button', { name: 'Назад по полям (Shift+Tab)', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Предыдущий вопрос', exact: true })).toBeVisible();
+    for (const name of ['Предыдущий вопрос', 'Следующий вопрос', 'Вариант ниже', 'Вариант выше']) {
+      await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+    }
     await expect(page.locator('#b_wrap')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });

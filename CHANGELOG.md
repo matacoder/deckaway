@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.7 — 2026-10-18
+
+- **The keys a phone needs most stay in sight: 1 2 3 4, ← → and ⏎.** Folded, the row now holds the four numbers, both arrows and Enter; ↑ ↓, Codex's question keys, Esc, Tab and ^C wait behind **…**. On a narrow screen the higher numbers fold first and Enter last.
+- **Opened, the keys stand in three even rows by purpose**: answering, control, view. Each row fills the width whatever it holds. **Terminal** and **Wrap** look like switches with a dot that lights up when on, ^C is red, and **…** turns into a fold arrow.
+- **The agent's /compact and /new (or /clear) are no longer quick prompts.** They duplicated the buttons of the session line below the field; only your saved prompts remain. On a phone the pencil beside them is gone too: **Edit quick prompts** is in the session menu, and with nothing saved the row is not drawn.
+
 ## 1.56.6 — 2026-10-18
 
 - **The screen shows the conversation above what tmux kept.** Claude Code clears the terminal when it redraws (`ESC[3J`), and tmux then forgets everything above, sometimes all but one screen. Now what tmux lost is drawn above the terminal from the agent's own conversation file, Markdown included, without the turns still on screen; no button to press.

@@ -93,17 +93,17 @@ __PANEL_STYLE__</style></head><body>
           <div class="keys" id="keys">
             <button class="key key-primary question-key" onclick="key('S-Left')" aria-label="Предыдущий вопрос" title="Вопросы Codex: Shift+←">?←</button>
             <button class="key key-primary question-key" onclick="key('S-Right')" aria-label="Следующий вопрос" title="Вопросы Codex: Shift+→">?→</button>
-            <button class="key key-primary" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-primary" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
-            <button class="key key-primary" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
-            <button class="key key-primary" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши">…</button>
-            <button class="key key-extra num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-extra num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-extra num" onclick="key('3')" aria-label="Вариант 3">3</button>
-            <button class="key key-extra" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-extra" onclick="key('Right')" aria-label="Вправо">→</button>
+            <button class="key key-primary key-answer num" onclick="key('1')" aria-label="Вариант 1">1</button><button class="key key-primary key-answer num" onclick="key('2')" aria-label="Вариант 2">2</button><button class="key key-primary key-answer num" onclick="key('3')" aria-label="Вариант 3">3</button><button class="key key-primary key-answer num" onclick="key('4')" aria-label="Вариант 4">4</button>
+            <button class="key key-primary key-answer" onclick="key('Left')" aria-label="Влево">←</button><button class="key key-primary key-answer" onclick="key('Right')" aria-label="Вправо">→</button>
+            <button class="key key-primary key-answer" onclick="key('Enter')" aria-label="Подтвердить выбор" title="Enter — подтвердить выбранный ответ">⏎</button>
+            <button class="key key-primary" id="b_keymore" onclick="toggleKeys()" aria-expanded="false" aria-label="Другие клавиши"><span class="more-dots">…</span><svg class="ui-icon"><use href="#i-chevron-down"/></svg></button>
+            <button class="key key-extra" onclick="key('Up')" aria-label="Вариант выше">↑</button><button class="key key-extra" onclick="key('Down')" aria-label="Вариант ниже">↓</button>
             <button class="key key-extra" onclick="key('Escape')" aria-label="Отмена (Esc)" title="Отмена (Esc)">Esc</button>
             <button class="key key-extra" onclick="key('BTab')" aria-label="Назад по полям (Shift+Tab)" title="Назад по полям (Shift+Tab)">⇧Tab</button><button class="key key-extra" onclick="key('Tab')" aria-label="Дальше по полям (Tab)" title="Дальше по полям (Tab)">Tab</button>
-            <button class="key key-extra" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
-            <button class="key" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
-            <button class="key key-extra" id="b_mode" onclick="toggleMode()" aria-pressed="false" title="Живой терминал вместо экрана с текстом">Терминал</button>
-            <button class="key key-extra" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
+            <button class="key key-extra key-stop" onclick="key('C-c')" aria-label="Прервать (Ctrl+C)" title="Прервать (Ctrl+C)">^C</button>
+            <button class="key key-view" id="b_reconnect" onclick="reconnectTerminal()" hidden>Переподключить терминал</button>
+            <button class="key key-extra key-view key-toggle" id="b_mode" onclick="toggleMode()" aria-pressed="false" title="Живой терминал вместо экрана с текстом">Терминал</button>
+            <button class="key key-extra key-view key-toggle" id="b_wrap" onclick="toggleWrap()" aria-pressed="true">Перенос</button>
           </div>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
@@ -190,6 +190,7 @@ __PANEL_STYLE__</style></head><body>
     <button role="menuitem" class="agent-only" onclick="sheet(false);openConversation()"><svg class="ui-icon"><use href="#i-chat"/></svg><span>Разговор</span></button>
     <button role="menuitem" id="s_paste" onclick="sheet(false);openRichPaste()"><svg class="ui-icon"><use href="#i-image"/></svg><span>Вставить с картинками</span></button>
     <button role="menuitem" id="s_later" onclick="sheet(false);openLater()"><svg class="ui-icon"><use href="#i-clock"/></svg><span id="s_later_label">Отправить позже</span></button>
+    <button role="menuitem" class="agent-only" onclick="sheet(false);openQuickEditor()"><svg class="ui-icon"><use href="#i-inbox"/></svg><span>Настроить быстрые сообщения</span></button>
     <button role="menuitem" onclick="sheet(false);duplicateSession()"><svg class="ui-icon"><use href="#i-copy"/></svg><span>Дублировать сессию — новый разговор</span></button>
   </div>
   <div class="sheet-group" id="s_manage">

@@ -706,9 +706,10 @@ function fitKeys(keepMore){
   more.classList.remove("all-fit");
   if(box.classList.contains("expanded")||!box.clientWidth)return;
   if(!keepMore&&box.scrollWidth<=box.clientWidth){more.classList.add("all-fit");return}
-  // Extra keys go first, then Codex's question keys, so the answer keys (↑ ↓ ⏎) stay on the narrowest screens.
-  const primary=k=>k.classList.contains("key-primary"),question=k=>k.classList.contains("question-key");
-  const order=[keys.filter(k=>!primary(k)),keys.filter(question),keys.filter(k=>primary(k)&&!question(k))].flatMap(g=>g.reverse());
+  // Extra keys go first, then Codex's question keys, the higher numbers, ← and →, so ⏎ stays on the narrowest screens.
+  const has=name=>k=>k.classList.contains(name),primary=has("key-primary"),question=has("question-key"),num=has("num");
+  const main=keys.filter(k=>primary(k)&&!question(k)),back=list=>list.reverse();
+  const order=[back(keys.filter(k=>!primary(k))),back(keys.filter(question)),back(main.filter(num)),main.filter(k=>!num(k))].flat();
   for(const k of order){if(box.scrollWidth<=box.clientWidth)break;if(k.offsetParent)k.classList.add("key-overflow")}
 }
 // The quick prompts follow: they share "…" with the keys whenever the keys show it.
@@ -718,7 +719,7 @@ function fitKeys(keepMore){
 const QUICK_ROOM=140,QUICK_BUTTONS=88;
 function fitKeyRow(){
   const composer=$("session_composer"),session=cur();
-  const saved=Boolean(session&&quickChips(agentOf(session),quick.saved,false,true).length);
+  const saved=Boolean(session&&quickChips(agentOf(session),quick.saved).length);
   composer.style.setProperty("--quick-room",(saved?QUICK_ROOM:QUICK_BUTTONS)+"px");
   fitKeys();
   if(!$("b_keymore").classList.contains("all-fit")&&!$("keys").classList.contains("expanded")){

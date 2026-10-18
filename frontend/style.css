@@ -233,6 +233,23 @@ iframe[inert]{pointer-events:none}
 .key[aria-pressed="true"]{background:var(--sel);border-color:var(--bd);color:var(--fg2)} /* A toggle that is on, not a focused key. */
 .question-key{display:none!important}
 body.is-codex .question-key{display:inline-flex!important;align-items:center;justify-content:center}
+.key-stop{color:var(--bad-text)}
+#b_keymore .ui-icon{display:none;width:16px;height:16px;transform:rotate(180deg)}
+.keys.expanded #b_keymore .ui-icon{display:block}.keys.expanded .more-dots{display:none}
+/* A switch, not a key: the dot says whether it is on. */
+.key-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;white-space:nowrap}
+.key-toggle::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.keys .key-toggle[aria-pressed="true"]{background:var(--side2);color:var(--fg)}
+.key-toggle[aria-pressed="true"]::before{background:var(--acc);box-shadow:0 0 6px var(--acc)}
+/* Opened, the keys stand in three rows by purpose: answering, control, view. Two zero-height breaks end the
+   rows, so each fills the width whatever it holds (Codex's question keys, numbers hidden by a question). */
+.keys.expanded{max-width:560px;column-gap:6px;row-gap:3px}
+.keys.expanded::before,.keys.expanded::after{content:"";flex:0 0 100%;height:0}
+.keys.expanded::before{order:2}.keys.expanded::after{order:4}
+.keys.expanded>.key{order:3;flex:1 1 0;min-width:0;padding:0 4px}
+.keys.expanded>.key-answer{order:1}
+.keys.expanded>.key-view{order:5}
+.keys.expanded #b_keymore{order:6;flex:0 0 auto;width:56px}
 #b_reconnect{white-space:nowrap;font-family:inherit}
 .keyboard-hide{display:none;flex:none;height:36px;width:40px;border:1px solid var(--bd);border-radius:9px;background:var(--side2);color:var(--fg2);place-items:center}
 .keyboard-hide svg{width:var(--icon-lg);height:var(--icon-lg)}
@@ -888,7 +905,8 @@ body.resizing iframe{pointer-events:none}
   /* The keys that fit share the whole width; they never shrink, so fitKeys() still sees what overflows. */
   .keys:not(.expanded) .key{flex:1 0 auto}
   .key{flex:none;height:var(--tap);min-width:var(--tap);padding:0 8px;font-size:15px;border-radius:var(--r)}
-  .keys .key-primary{min-width:var(--tap)}
+  /* 42 px: the four numbers, ← → ⏎ and "…" fit a 390 px phone. */
+  .keys .key-primary{min-width:42px}
   body.message-focused .keyboard-hide{display:inline-grid}
   .keyboard-hide{height:var(--tap);width:var(--tap)}
   #question{padding:12px 12px 10px}

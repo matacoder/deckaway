@@ -1,15 +1,13 @@
 // Sending without typing or waiting: quick prompts (one tap), prompts held for later (a time, a free
 // session, a limit reset) and continuing by itself after a subscription limit. Bundled before app.js.
 const later={session:null,data:null,seq:0,timer:null,failed:false,opened:null};
-const quick={saved:[],loaded:false,more:false};
+const quick={saved:[],loaded:false};
 const LATER_POLL=30000;
-// The user's own prompts, then the agent's commands behind "more": they are rare and one of them drops the
-// conversation. With `shared` the "more" of the keys row opens them, so no second one is drawn. A terminal
-// gets none. Pure for tests.
-function quickChips(agent,saved,more,shared){
+// The user's own prompts only: the agent's commands for a shorter or a new conversation are buttons of the
+// session line already. A terminal gets none. Pure for tests.
+function quickChips(agent,saved){
   if(agent==="shell")return [];
-  const commands=agentCommands(agent);
-  return [...saved.map(p=>({label:p.label,text:p.text})),...(commands.length&&!shared?[{more:true}]:[]),...(more?commands:[])];
+  return saved.map(p=>({label:p.label,text:p.text}));
 }
 // Rows of the editor -> what is saved; empty rows are dropped, not reported. Pure for tests.
 function quickRows(rows){
@@ -133,27 +131,22 @@ async function loadQuickPrompts(){
   fitKeyRow();
 }
 function renderQuickPrompts(){
-  // One "more" on a phone: when the keys row shows its own, it opens the agent's commands too.
-  const shared=$("b_keymore").offsetParent!==null,open=shared?$("keys").classList.contains("expanded"):quick.more;
-  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved,open,shared):[];
-  box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&shared;
+  // On a phone nothing is drawn without saved prompts: they are set up from the session menu there.
+  const phone=$("b_keymore").offsetParent!==null;
+  const box=$("quick_prompts"),session=cur(),prompts=session?quickChips(agentOf(session),quick.saved):[];
+  box.hidden=!session||agentOf(session)==="shell"||!prompts.length&&phone;
   $("b_compact").hidden=!session||!compactCommand(agentOf(session));
-  const signature=JSON.stringify(prompts);
+  const signature=JSON.stringify([phone,prompts]);
   if(box.dataset.signature===signature)return;  // Rebuilt on every refresh otherwise: a tap in progress would be lost.
   box.dataset.signature=signature;
-  const chips=prompts.map(p=>{
-    if(!p.more){const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip}
-    const more=btn("","quick-chip quick-edit",()=>{quick.more=!quick.more;renderQuickPrompts()},tr("Команды агента"));
-    more.type="button";more.setAttribute("aria-label",tr("Команды агента"));more.setAttribute("aria-expanded",String(quick.more));more.append(svgIcon("more"));
-    return more;
-  });
+  const chips=prompts.map(p=>{const chip=btn(p.label,"quick-chip",()=>sendQuick(p),p.text);chip.type="button";return chip});
+  if(phone){box.replaceChildren(...chips);return}
   const edit=btn("","quick-chip quick-edit",openQuickEditor,tr("Настроить быстрые сообщения"));
   edit.type="button";edit.setAttribute("aria-label",tr("Настроить быстрые сообщения"));edit.append(svgIcon("pencil"));
   box.replaceChildren(...chips,edit);
 }
 async function sendQuick(prompt){
   if(sending||uploading||panelUpdating||!active)return;
-  if(prompt.confirm&&!await confirmAction(tr("Отправить {0}?",[prompt.text]),{text:tr(prompt.confirm),confirm:tr("Отправить"),danger:true}))return;
   // Bound to the computer and session it was tapped on, like a typed message.
   const deck=selectedDeck,epoch=deckEpoch,name=active;
   sending=true;renderAttachments();
@@ -166,7 +159,7 @@ async function sendQuick(prompt){
   }catch(e){
     if(epoch===deckEpoch)sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
     else toast(tr("Не отправлено: ")+e.message);
-  }finally{sending=false;quick.more=false;renderAttachments();renderSendState();renderQuickPrompts()}
+  }finally{sending=false;renderAttachments();renderSendState();renderQuickPrompts()}
 }
 // The agent's own command for a shorter conversation, or nothing for an agent without one. Pure for tests.
 function compactCommand(agent){return agentCommands(agent).find(c=>c.compact)||null}

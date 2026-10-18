@@ -34,6 +34,32 @@ test('keyboard viewport resize keeps composer visible and the hide button remove
   expect(await page.locator('main').evaluate(el => el.getBoundingClientRect().bottom)).toBe(844);
 });
 
+const keyRows = page => page.locator('#keys > .key:visible').evaluateAll(keys => {
+  const tops = new Map();
+  for (const key of keys) {
+    const box = key.getBoundingClientRect(), top = Math.round(box.top);
+    tops.set(top, [...(tops.get(top) || []), { text: key.textContent.trim(), left: box.left, right: box.right }]);
+  }
+  return [...tops].sort((a, b) => a[0] - b[0]).map(([, row]) => row.sort((a, b) => a.left - b.left));
+});
+
+test('the answer keys stay folded; opened, the keys stand in three full rows', async ({ app, page }) => {
+  await app.open({ width: 390, height: 844 });
+  const folded = await keyRows(page);
+  expect(folded.map(row => row.map(key => key.text))).toEqual([['1', '2', '3', '4', '←', '→', '⏎', '…']]);
+  await page.locator('#b_keymore').click();
+  const rows = await keyRows(page);
+  expect(rows.map(row => row.map(key => key.text))).toEqual([
+    ['1', '2', '3', '4', '←', '→', '⏎'], ['?←', '?→', '↑', '↓', 'Esc', '⇧Tab', 'Tab', '^C'], ['Терминал', 'Перенос', '…']]);
+  // The agent's commands are buttons of the session line, and without saved prompts nothing else is drawn.
+  await expect(page.locator('#quick_prompts')).toBeHidden();
+  // Every row runs from the same left edge to the same right edge.
+  for (const row of rows) {
+    expect(Math.abs(row[0].left - rows[0][0].left)).toBeLessThan(1);
+    expect(Math.abs(row.at(-1).right - rows[0].at(-1).right)).toBeLessThan(1);
+  }
+});
+
 test('message input disables correction, capitalization and spelling suggestions', async ({ app, page }) => {
   await app.open();
   for (const [attribute, value] of Object.entries({ autocomplete: 'off', autocorrect: 'off', autocapitalize: 'none', spellcheck: 'false' })) {

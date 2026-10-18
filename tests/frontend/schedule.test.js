@@ -2,26 +2,13 @@ Object.assign(global,require('../../frontend/agents'));
 const {quickChips,quickRows,laterWhen,defaultLaterTime,laterCount}=require('../../frontend/schedule');
 const t=text=>'['+text+']';
 
-test('saved prompts come first; the agent commands wait behind "more"; a terminal gets none',()=>{
+test('quick prompts are the saved ones only; a terminal gets none',()=>{
  const saved=[{label:'Tests',text:'run the tests'}];
- const labels=(agent,list,more,shared)=>quickChips(agent,list,more,shared).map(p=>p.more?'…':p.label);
- expect(labels('claude',saved,false)).toEqual(['Tests','…']);
- expect(labels('claude',saved,true)).toEqual(['Tests','…','/compact','/clear']);
- expect(labels('claude-kimi',[],true)).toEqual(['…','/compact','/clear']);
- expect(labels('codex',[],true)).toEqual(['…','/compact','/new']);
- expect(labels('pi',saved,true)).toEqual(['Tests']);
- expect(quickChips('shell',saved,true)).toEqual([]);
- // The keys row already has a "more": the commands follow it and no second one is drawn.
- expect(labels('claude',saved,false,true)).toEqual(['Tests']);
- expect(quickChips('claude',[],false,true)).toEqual([]);
- expect(quickChips('claude',[],true,true).map(p=>p.label)).toEqual(['/compact','/clear']);
-});
-
-test('only commands that drop the conversation ask before sending',()=>{
- const commands=agent=>quickChips(agent,[],true).filter(p=>!p.more);
- const byText=Object.fromEntries(commands('claude').concat(commands('codex')).map(p=>[p.text,Boolean(p.confirm)]));
- expect(byText).toEqual({'/compact':false,'/clear':true,'/new':true});
- expect(quickChips('claude',[{label:'x',text:'/clear',confirm:'injected'}],false)[0].confirm).toBeUndefined();
+ expect(quickChips('claude',saved)).toEqual(saved);
+ expect(quickChips('codex',[])).toEqual([]);
+ expect(quickChips('shell',saved)).toEqual([]);
+ // Nothing but a label and a text is taken from the saved file.
+ expect(quickChips('claude',[{label:'x',text:'/clear',confirm:'injected'}])[0].confirm).toBeUndefined();
 });
 
 test('empty editor rows are dropped and labels are trimmed',()=>{
@@ -57,7 +44,7 @@ test('the compact button exists only for an agent that has the command',()=>{
 });
 
 test('Qwen Code compacts with its own command',()=>{
-  const {compactCommand,quickChips}=require('../../frontend/schedule');
+  const {compactCommand}=require('../../frontend/schedule');
   expect(compactCommand('qwen').text).toBe('/compress');
-  expect(quickChips('qwen',[],true,true).map(p=>p.label)).toEqual(['/compress','/clear']);
+  expect(agentCommands('qwen').map(p=>p.label)).toEqual(['/compress','/clear']);
 });
