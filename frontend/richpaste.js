@@ -48,10 +48,19 @@ function takeRichPaste(event){
   },0);
 }
 // A paste by the menu (a phone, a right click) goes straight into the field and brings no pictures: when its
-// text says there were some, the dialog with an editable block is one tap away.
+// text says there were some, the dialog with an editable block is one tap away. A picture that came with the
+// text (a photo copied from Telegram with its caption) is left out on purpose, since copied table cells bring
+// a picture of themselves too; it is offered instead of being lost.
 function offerRichPaste(event){
   const data=event.clipboardData;
-  if(event.target!==$("msg")||!data?.getData||Array.from(data.files||[]).length)return;
+  if(event.target!==$("msg")||!data?.getData)return;
+  const images=Array.from(data.files||[]).filter(file=>file.type.startsWith("image/"));
+  if(images.length){
+    const html=data.getData("text/html")||"";
+    if(!/<table/i.test(html)&&!pastedPictures(data).length)toast(tr("Вместе с текстом скопирована картинка"),true,{label:tr("Приложить"),run:()=>uploadImages(images)});
+    return;
+  }
+  if(Array.from(data.files||[]).length)return;
   if(mentionsPictures(data.getData("text/plain")))toast(tr("Картинки из этой вставки не попали в поле"),true,{label:tr("Вставить с картинками"),run:openRichPaste});
 }
 function openRichPaste(){

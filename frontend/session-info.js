@@ -65,12 +65,13 @@ function talkText(turn){
   if(turn.role==="user")return el("div","talk-text",turn.text);
   const md=renderMarkdown(turn.text||"");md.className="talk-text md talk-md";return md;
 }
+function talkTurn(turn){return el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),talkText(turn))}
 function renderConversation(data,failed){
   const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
   if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
   const turns=data.supported?data.turns||[]:[];
   if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
-  box.replaceChildren(...turns.map(turn=>el("div","talk-turn"+(turn.role==="user"?" mine":""),el("div","talk-who",tr(turn.role==="user"?"Вы":"Агент")),talkText(turn))));
+  box.replaceChildren(...turns.map(talkTurn));
   if(stick)box.scrollTop=box.scrollHeight;
 }
 // Drawn in place of the screen, not as a dialog: the message field and the microphone stay usable, so an

@@ -888,6 +888,8 @@
     "Текст добавляется в конец поля сообщения, к тому, что там уже есть; отправляете его вы. Запись распознаёт whisper.cpp на вашем компьютере и никуда больше не уходит.": "The text is added at the end of the message field, after what is already there; you send it. whisper.cpp on your own computer recognises the recording, and it goes nowhere else.",
     "Компьютеры · ": "Computers · ",
     "Распознаёт: {0}": "Recognised on: {0}",
-    "Показать весь разговор": "Pokaż całą rozmowę"
+    "Раньше — из файла разговора; ниже — терминал": "Wcześniej, z pliku rozmowy; niżej terminal",
+    "Вместе с текстом скопирована картинка": "Razem z tekstem skopiowano obraz",
+    "Приложить": "Dołącz"
   }
 }

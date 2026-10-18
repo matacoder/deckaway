@@ -134,12 +134,44 @@ function screenMore(){
   p.scrollTop=p.scrollHeight-below;
 }
 // While older output is read, new lines are added below and none is dropped above, so the text stays put.
-// tmux forgets what was above when the agent clears the screen (ESC[3J on a full redraw); the agent's own
-// file still holds the whole conversation, so the top of the screen points there.
+// tmux forgets what was above when the agent clears the screen (ESC[3J on a full redraw, often several times
+// an answer); the agent's own file still holds the conversation, so what tmux lost is drawn above what it kept.
+const screenHistory={key:null,node:null,at:0,loading:false};
+const SCREEN_HISTORY_MS=20000;
 function screenEarlier(p,name){
-  if(screenView.cut||!p.querySelector(".ln")||p.querySelector(".screen-earlier")||active!==name||sessionInfo.session!==sessionInfoKey()||!sessionInfo.data?.supported)return;
-  const b=el("button","screen-earlier",tr("Показать весь разговор"));b.type="button";b.onclick=openConversation;
-  p.prepend(b);
+  if(screenView.cut||!p.querySelector(".ln")||active!==name||sessionInfo.session!==sessionInfoKey()||!sessionInfo.data?.supported)return;
+  const key=sessionInfoKey();
+  if(screenHistory.key===key&&screenHistory.node&&p.firstChild!==screenHistory.node)p.prepend(screenHistory.node);
+  if(!screenHistory.loading&&(screenHistory.key!==key||Date.now()-screenHistory.at>SCREEN_HISTORY_MS))loadScreenHistory(key);
+}
+async function loadScreenHistory(key){
+  // Asked at most once a while, also after a failure: the screen is drawn again on every change.
+  if(screenHistory.key!==key){screenHistory.node?.remove();screenHistory.node=null}
+  Object.assign(screenHistory,{key,at:Date.now(),loading:true});
+  try{
+    const data=await api("/api/conversation?name="+encodeURIComponent(active));
+    if(key!==sessionInfoKey())return;
+    const p=$("pre"),stick=atBottom(p),below=p.scrollHeight-p.scrollTop;
+    screenHistory.node?.remove();
+    screenHistory.node=historyNode(data,p.textContent);
+    if(!screenHistory.node||screenView.cut)return;
+    p.prepend(screenHistory.node);p.scrollTop=stick?p.scrollHeight:p.scrollHeight-below;
+  }catch(e){}finally{screenHistory.loading=false}
+}
+// Text as the terminal shows it: no Markdown marks, one space for any run of spaces and line breaks.
+const plainWords=text=>String(text||"").replace(/[*_#`>|\[\]()~\-\u2500-\u257f•●⏺]+/g," ").replace(/\s+/g," ").trim();
+// The turns before the first one the screen still shows; the screen keeps that one and the rest. Pure for tests.
+function turnsAboveScreen(turns,screen){
+  const shown=plainWords(screen);
+  const first=turns.findIndex(turn=>{const head=plainWords(turn.text).slice(0,40);return head.length>=12&&shown.includes(head)});
+  return first<0?turns:turns.slice(0,first);
+}
+function historyNode(data,screen){
+  const turns=turnsAboveScreen(data?.supported?data.turns||[]:[],screen);
+  if(!turns.length)return null;
+  const box=el("div","screen-history");
+  box.append(...turns.map(talkTurn),el("div","screen-history-end",tr("Раньше — из файла разговора; ниже — терминал")));
+  return box;
 }
 function screenLines(raw,name,reading){
   const lines=ansiLines(raw,Infinity);

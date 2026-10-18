@@ -210,7 +210,8 @@ iframe[inert]{pointer-events:none}
 .viewer-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px calc(var(--sab) + 12px);color:var(--viewer-fg);font-size:12.5px}
 .viewer-bar span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
 .viewer-bar a{flex:none;color:#fff;text-decoration:none;padding:8px 12px;border-radius:8px;background:#ffffff1a}
-#pre .screen-earlier{display:block;margin:4px 0 12px;padding:6px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2);color:var(--acc-text);font:13px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;white-space:normal;cursor:pointer}
+#pre .screen-history{white-space:normal;word-break:normal;font:14px/1.5 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--fg2);padding:4px 0 0}
+#pre .screen-history-end{margin:4px 0 14px;padding-top:8px;border-top:1px dashed var(--bd);color:var(--mut);font-size:12px}
 #pre .preview-empty{color:var(--mut);white-space:normal;padding:16px 0}
 #jump{position:absolute;right:14px;bottom:12px;display:none;align-items:center;gap:6px;height:36px;padding:0 14px 0 10px;border-radius:18px;background:var(--sel);border:1px solid var(--bd);color:var(--fg2);font-size:12.5px;box-shadow:0 6px 20px #0008}
 #jump.on{display:inline-flex}

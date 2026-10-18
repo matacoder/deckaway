@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.56.6 — 2026-10-18
+
+- **The screen shows the conversation above what tmux kept.** Claude Code clears the terminal when it redraws (`ESC[3J`), and tmux then forgets everything above, sometimes all but one screen. Now what tmux lost is drawn above the terminal from the agent's own conversation file, Markdown included, without the turns still on screen; no button to press.
+- **A photo copied together with its text is offered when pasted on a phone.** A paste by the menu put only the text into the field and dropped the picture without a word (the rule that keeps a picture of copied table cells out). Now a notice offers **Attach**; copied tables still bring only their text.
+
 ## 1.56.5 — 2026-10-18
 
 - **A notification about another computer opens the panel again**, not `{"error": "not found"}`. Its link names the computer (`/?deck=…`), and the page was served only at a bare `/`.

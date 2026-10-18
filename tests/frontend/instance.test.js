@@ -1339,23 +1339,27 @@ test('the screen draws the newest lines and more of them when scrolled to the to
   }finally{window.close()}
 });
 
-test('a screen tmux has forgotten the top of points to the conversation',async()=>{
+test('what tmux forgot is drawn above the screen from the conversation, without what the screen still shows',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
-  const window=boot({...routesFor(state),'/api/session_info':()=>({supported:true}),'/api/conversation':()=>({supported:true,turns:[]})});
+  const turns=[{role:'user',text:'Пройди доску и проверь задачи'},{role:'assistant',text:'## Нужен один ответ\n\n**#1735.** Кнопка «Сохранить» в записи.'},
+    {role:'user',text:'Только состав услуг, пожалуйста'},{role:'assistant',text:'Готово: автосохранение снято у состава услуг.'}];
+  const window=boot({...routesFor(state),'/api/session_info':()=>({supported:true}),'/api/conversation':()=>({supported:true,turns})});
   try{
   await settle();await settle();
   const doc=window.document,draw=text=>window.eval(`updateScreen({name:'alpha',preview:${JSON.stringify(text)}},true)`);
   window.eval("activate('alpha')");await settle();await settle();
-  draw('only the last answer');
-  const link=doc.querySelector('#pre .screen-earlier');
-  expect(link.textContent).toBe('Показать весь разговор');
-  link.click();await settle();await settle();
-  expect(doc.getElementById('talk_view').hidden).toBe(false);
-  // The message field stays usable beside it.
-  expect(doc.getElementById('talk_view').contains(doc.getElementById('msg'))).toBe(false);
-  // While older lines are still to be drawn, there is no link yet.
+  // Claude's screen: the last question and the answer, wrapped and marked its own way.
+  draw('> Только состав услуг,\n  пожалуйста\n\n⏺ Готово: автосохранение снято у\n  состава услуг.\n\n> ');
+  await settle();await settle();
+  const history=doc.querySelector('#pre .screen-history');
+  expect([...history.querySelectorAll('.talk-who')].map(n=>n.textContent)).toEqual(['Вы','Агент']);
+  expect(history.querySelector('.talk-md h2').textContent).toBe('Нужен один ответ');
+  // It stays above the terminal lines when the screen is drawn again.
+  draw('> Только состав услуг,\n  пожалуйста\n\n⏺ Готово: автосохранение снято у\n  состава услуг.\n\n> ok');
+  expect(doc.getElementById('pre').firstChild).toBe(history);
+  // While tmux still has older lines to draw, nothing is added.
   draw(Array.from({length:300},(_,i)=>'line '+i).join('\n'));
-  expect(doc.querySelector('#pre .screen-earlier')).toBeNull();
+  expect(doc.querySelector('#pre .screen-history')).toBeNull();
   }finally{window.close()}
 });
 
@@ -1382,5 +1386,29 @@ test('a redraw of the screen keeps the thumbnails already drawn; a failed one is
   window.eval('missingImages.clear()');
   draw('done\n/tmp/shots/two.png\nBrewed for 5s');
   expect(doc.querySelectorAll('#pre .img-strip img').length).toBe(1);
+  }finally{window.close()}
+});
+
+test('a photo copied with its caption is offered, not lost, when pasted by the menu',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state),null,w=>w.localStorage.setItem('cc.active','alpha'));
+  try{
+  await settle();await settle();
+  const doc=window.document,photo=new window.File(['x'],'photo.jpg',{type:'image/jpeg'}),sent=[];
+  window.uploadImages=files=>sent.push(...files);
+  const paste=(types,files)=>{
+    const event=new window.Event('paste',{bubbles:true,cancelable:true});
+    event.clipboardData={files,types:Object.keys(types),getData:type=>types[type]||''};
+    doc.getElementById('msg').dispatchEvent(event);
+  };
+  paste({'text/plain':'Look at this'},[photo]);
+  const action=[...doc.querySelectorAll('button')].find(b=>b.textContent==='Приложить');
+  expect(action).toBeTruthy();
+  action.click();
+  expect(sent).toEqual([photo]);
+  // Copied table cells bring a picture of themselves: that one is never offered.
+  doc.querySelectorAll('button').forEach(b=>{if(b.textContent==='Приложить')b.remove()});
+  paste({'text/plain':'A1','text/html':'<table><tr><td>A1</td></tr></table>'},[photo]);
+  expect([...doc.querySelectorAll('button')].some(b=>b.textContent==='Приложить')).toBe(false);
   }finally{window.close()}
 });
