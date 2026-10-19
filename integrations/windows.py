@@ -29,9 +29,10 @@ WINDOWS = re.compile(r'([A-Za-z]):([\\/][^\x00-\x1f<>"|?*]*)?\Z')
 SID = re.compile(r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z')
 LOOK_AGAIN = 60
 # The PATH of a process started through WSL is the one Windows had when WSL started: an agent installed
-# since then would not be found. Read again from the registry, as a new PowerShell window would.
+# since then would not be found. Read again from the registry, as a new PowerShell window would, with
+# PowerShell's and System32's own folders: Codex updates itself by calling powershell.exe by name.
 FRESH_PATH = ("$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + "
-              "[Environment]::GetEnvironmentVariable('Path','User')")
+              "[Environment]::GetEnvironmentVariable('Path','User') + ';' + $PSHOME + ';' + [Environment]::SystemDirectory")
 # Applications only: an npm-installed agent also leaves a .ps1, which the default execution policy refuses.
 PROBE = (FRESH_PATH + "; $found = @(foreach ($n in 'claude','codex') { if (Get-Command $n -CommandType Application "
          "-ErrorAction SilentlyContinue) { $n } }); [Console]::OutputEncoding = [Text.Encoding]::UTF8; "

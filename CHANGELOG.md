@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.58.2 — 2026-10-19
+
+- **Codex in Windows can update itself.** Its update calls `powershell.exe` by name, and the PATH a Windows session reads from the registry did not always hold PowerShell's folder (“could not find update command `powershell.exe` on PATH”); PowerShell's and System32's folders are now added to it.
+
 ## 1.58.1 — 2026-10-19
 
 - **Codex in Windows keeps its conversation.** Codex there runs no DeckAway hook, so its conversation id is now read from the file Codex writes in the Windows user's folder (same folder, started since the session or its last restart). The session gets its context bar, summary, questions and **Restart — continue conversation** back; until that file is found, continuing resumes the folder's latest Codex conversation instead of failing with “Codex conversation id is not saved”.

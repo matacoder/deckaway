@@ -41,6 +41,7 @@ class WindowsTests(unittest.TestCase):
         self.assertTrue(new.endswith(f"& $agent '--session-id' '{SID}'"))
         self.assertIn('-CommandType Application', new)  # Never an npm .ps1 the execution policy refuses.
         self.assertIn("GetEnvironmentVariable('Path','User')", new)
+        self.assertIn("$PSHOME + ';' + [Environment]::SystemDirectory", new)  # Codex updates through powershell.exe.
         self.assertTrue(script('claude', 'C:\\x', SID, resume=True, skip=True).endswith(
             f"& $agent '--resume' '{SID}' '--dangerously-skip-permissions'"))
         self.assertTrue(script('codex', 'C:\\x').endswith("& $agent '--no-daemon' '--no-alt-screen'"))
