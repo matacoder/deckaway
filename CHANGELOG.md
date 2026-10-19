@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.58.1 — 2026-10-19
+
+- **Codex in Windows keeps its conversation.** Codex there runs no DeckAway hook, so its conversation id is now read from the file Codex writes in the Windows user's folder (same folder, started since the session or its last restart). The session gets its context bar, summary, questions and **Restart — continue conversation** back; until that file is found, continuing resumes the folder's latest Codex conversation instead of failing with “Codex conversation id is not saved”.
+- **Codex in Windows starts as administrator too.** It now runs without its background server (`--no-daemon`, as in WSL): an elevated Codex refused to start one and stopped at once.
+
 ## 1.58.0 — 2026-10-19
 
 - **Windows agents can run as administrator.** Run the Windows installer with `$env:AGENT_DECK_WINDOWS_ADMIN = '1'`: its keep-alive task then starts WSL with the highest rights, and agents in Windows sessions, the PowerShell terminal included, run elevated without a UAC prompt, so they can change services, scheduled tasks and `HKLM`. Without the option nothing changes; running the installer again for an update keeps whichever was chosen.

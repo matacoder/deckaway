@@ -900,6 +900,29 @@ def action_session_move(d):
     return {'name': new, 'summary': bool(summary)}
 
 
+_windows_looks, _windows_looks_lock = {}, threading.Lock()
+
+
+def windows_codex_sid(name, agent, sid):
+    """Codex in Windows runs no DeckAway hook: its conversation id is read from the file it writes, in the
+    session's folder since the session (or its last restart with a new conversation) began."""
+    if sid or agent != 'codex' or opt(name, '@cc_runtime') != 'windows':
+        return sid
+    with _windows_looks_lock:
+        if time.monotonic() - _windows_looks.get(name, -60) < 15:
+            return sid
+        _windows_looks[name] = time.monotonic()
+    from integrations.windows import codex_conversation
+    since = opt(name, '@cc_since') or tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{session_created}').strip()
+    try:
+        found = codex_conversation(windows_service().home(), windows_service_folder(name), float(since or 0) - 5)
+    except (OSError, ValueError):
+        return sid
+    if found:
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_sid', found)
+    return found or sid
+
+
 def windows_service_folder(name):
     from integrations.windows import to_windows
     return to_windows(tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_current_path}').strip()) or ''
@@ -932,6 +955,8 @@ def action_restart(d):
     source = saved_source(name)
     target = f"={PREFIX}{name}:"
     windows = opt(name, '@cc_runtime') == 'windows'
+    if windows and not new:
+        sid = windows_codex_sid(name, agent, sid)
     if not windows:
         cmd = with_containers(agent_cmd(agent, sid, not new, skip, name, source), opt(name, '@cc_containers'))
     path = tmux("display-message", "-p", "-t", target, "#{pane_current_path}").strip()
@@ -944,6 +969,8 @@ def action_restart(d):
             tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
         else:
             tmux("set-option", "-t", f"={PREFIX}{name}:", "-u", "@cc_sid")
+        if windows:
+            tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_since", str(int(time.time())))
     # A killed TUI can leave mouse reporting and queued input in the old PTY.
     # Respawning resets tmux's terminal modes and runs the command directly,
     # so mouse reports cannot become part of the agent's shell command.
@@ -2252,7 +2279,7 @@ def session_info(name, language, fresh=False):
     """How full the open conversation is and its summary; parsed again only when the file changed."""
     from integrations.session_info import HEAD, context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
-    sid = opt(name, "@cc_sid")
+    sid = windows_codex_sid(name, agent, opt(name, "@cc_sid"))
     if agent not in (*CLAUDE_FAMILY, "codex") or not valid_sid(sid):
         return {"supported": False}
     kind = "codex" if agent == "codex" else "claude"

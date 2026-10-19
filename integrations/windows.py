@@ -7,6 +7,7 @@ user, with the rights of the WSL instance that started them: unelevated by defau
 the installer was run with AGENT_DECK_WINDOWS_ADMIN=1 (its keep-alive task then runs with the highest rights).
 """
 import base64
+import calendar
 import glob
 import json
 import os
@@ -113,13 +114,45 @@ def script(agent, folder, sid=None, resume=False, skip=False):
     if agent == 'claude':
         args = ['--resume' if resume else '--session-id', sid] if sid else []
     else:
-        if resume and not sid:
-            raise ValueError('ID разговора Codex не сохранён: продолжите его в терминале через codex resume')
-        args = ['--no-alt-screen', *(['resume', sid] if resume else [])]
+        # No hook reports a Windows Codex conversation; until its file is found, the folder's latest one.
+        # As in WSL, without the background server: an elevated Codex refuses to start one.
+        args = ['--no-daemon', '--no-alt-screen', *((['resume', sid] if sid else ['resume', '--last']) if resume else [])]
     args += [flag] if skip else []
     lines += [f'$agent = (Get-Command {program} -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source',
               '& $agent ' + ' '.join(quote(a) for a in args)]
     return '; '.join(lines)
+
+
+CODEX_META = re.compile(r'"timestamp":\s*"([^"]+)".*?"type":\s*"session_meta".*?"id":\s*"([0-9a-f-]{36})"'
+                        r'.*?"cwd":\s*"((?:[^"\\]|\\.)*)"')
+
+
+def codex_conversation(home, folder, since, days=3):
+    """The id of the newest Codex conversation started in a Windows folder since a moment (epoch seconds).
+    Codex in Windows runs no DeckAway hook, so its conversation is found by the file it writes."""
+    if not home or not folder:
+        return None
+    want, found = folder.rstrip('\\').lower(), []
+    for day in sorted(glob.glob(os.path.join(home, '.codex', 'sessions', '*', '*', '*')))[-days:]:
+        for path in glob.glob(os.path.join(day, 'rollout-*.jsonl')):
+            meta = codex_meta(path)
+            if meta and meta[2].rstrip('\\').lower() == want and meta[0] >= since:
+                found.append(meta)
+    return max(found)[1] if found else None
+
+
+def codex_meta(path):
+    """(started, id, cwd) from the first record of a conversation file; that record can be long."""
+    try:
+        with open(path, encoding='utf-8', errors='replace') as stream:
+            head = stream.read(65536)
+        match = CODEX_META.search(head.split('\n', 1)[0])
+        if not match or not SID.match(match.group(2)):
+            return None
+        started = calendar.timegm(time.strptime(match.group(1)[:19], '%Y-%m-%dT%H:%M:%S'))
+        return started, match.group(2), json.loads('"' + match.group(3) + '"')
+    except (OSError, ValueError):
+        return None
 
 
 def encoded(text):

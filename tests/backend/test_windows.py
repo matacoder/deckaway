@@ -1,4 +1,8 @@
 import base64
+import calendar
+import json
+from pathlib import Path
+import tempfile
 import subprocess
 from types import SimpleNamespace
 import unittest
@@ -39,11 +43,10 @@ class WindowsTests(unittest.TestCase):
         self.assertIn("GetEnvironmentVariable('Path','User')", new)
         self.assertTrue(script('claude', 'C:\\x', SID, resume=True, skip=True).endswith(
             f"& $agent '--resume' '{SID}' '--dangerously-skip-permissions'"))
-        self.assertTrue(script('codex', 'C:\\x').endswith("& $agent '--no-alt-screen'"))
+        self.assertTrue(script('codex', 'C:\\x').endswith("& $agent '--no-daemon' '--no-alt-screen'"))
         self.assertTrue(script('codex', 'C:\\x', SID, resume=True).endswith(f"'--no-alt-screen' 'resume' '{SID}'"))
         self.assertNotIn('$agent', script('shell', 'C:\\x'))
-        with self.assertRaises(ValueError):
-            script('codex', 'C:\\x', resume=True)
+        self.assertTrue(script('codex', 'C:\\x', resume=True).endswith("'--no-alt-screen' 'resume' '--last'"))
         with self.assertRaises(ValueError):
             script('kimi', 'C:\\x')
         with self.assertRaises(ValueError):
@@ -128,6 +131,22 @@ class WindowsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'WSL interop'):
             service.folder('C:\\Users\\me\\win11')
 
+    def test_a_windows_codex_conversation_is_found_by_its_folder_and_start(self):
+        with tempfile.TemporaryDirectory() as home:
+            def rollout(day, stamp, sid, cwd):
+                folder = Path(home, '.codex/sessions', day)
+                folder.mkdir(parents=True, exist_ok=True)
+                meta = {'timestamp': stamp, 'type': 'session_meta', 'payload': {'session_id': sid, 'id': sid, 'cwd': cwd,
+                                                                                 'base_instructions': 'x' * 30000}}
+                (folder / f'rollout-{sid}.jsonl').write_text(json.dumps(meta) + '\n{"type":"event"}\n')
+            other = '01a12ebb-0000-7000-8000-000000000001'
+            rollout('2026/10/18', '2026-10-18T10:00:00.100Z', SID, 'C:\\Users\\me\\win11')
+            rollout('2026/10/19', '2026-10-19T09:00:00.000Z', other, 'C:\\Users\\me\\elsewhere')
+            since = calendar.timegm((2026, 10, 18, 9, 0, 0))
+            self.assertEqual(windows.codex_conversation(home, 'c:\\users\\me\\WIN11\\', since), SID)
+            self.assertIsNone(windows.codex_conversation(home, 'C:\\Users\\me\\win11', since + 7200))
+            self.assertIsNone(windows.codex_conversation(None, 'C:\\Users\\me\\win11', since))
+
     def test_encoding_is_what_powershell_reads(self):
         self.assertEqual(base64.b64decode(encoded('Get-Date; ü')).decode('utf-16-le'), 'Get-Date; ü')
 
@@ -175,6 +194,21 @@ class PanelWindowsTests(PanelCase):
         self.panel.tmux.assert_any_call('set-option', '-t', '=cc-win:', '@cc_runtime', 'windows')
         self.panel.tmux.assert_any_call('set-option', '-t', '=cc-win:', '@cc_title', 'Audit')
         service.status.assert_called_once_with()
+
+    def test_a_windows_codex_session_learns_its_conversation_from_the_file(self):
+        service = self.windows()
+        service.home.return_value = '/mnt/c/Users/me'
+        options = {'@cc_runtime': 'windows', '@cc_since': '1790000000'}
+        self.panel.opt = Mock(side_effect=lambda name, key: options.get(key, ''))
+        self.panel.tmux = Mock(return_value='/mnt/c/Users/me/win11\n')
+        with patch('integrations.windows.codex_conversation', return_value=SID) as find:
+            self.assertEqual(self.panel.windows_codex_sid('cx', 'codex', ''), SID)
+            self.assertEqual(self.panel.windows_codex_sid('cx', 'codex', ''), '')  # Looked again only after a while.
+        find.assert_called_once_with('/mnt/c/Users/me', 'C:\\Users\\me\\win11', 1789999995.0)
+        self.panel.tmux.assert_any_call('set-option', '-t', '=cc-cx:', '@cc_sid', SID)
+        self.assertEqual(self.panel.windows_codex_sid('cy', 'claude', ''), '')
+        options['@cc_runtime'] = ''
+        self.assertEqual(self.panel.windows_codex_sid('cz', 'codex', ''), '')
 
     def test_moving_to_windows_makes_a_new_session_with_the_summary(self):
         self.windows()
