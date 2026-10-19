@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.58.0 — 2026-10-19
+
+- **Windows agents can run as administrator.** Run the Windows installer with `$env:AGENT_DECK_WINDOWS_ADMIN = '1'`: its keep-alive task then starts WSL with the highest rights, and agents in Windows sessions, the PowerShell terminal included, run elevated without a UAC prompt, so they can change services, scheduled tasks and `HKLM`. Without the option nothing changes; running the installer again for an update keeps whichever was chosen.
+- When several WSL windows are open, Windows sessions are started through the elevated one if there is one, and the new-session dialog says whether the agent runs as administrator.
+
 ## 1.57.0 — 2026-10-18
 
 - **An agent can run in Windows itself, not only in WSL.** On a Windows computer (DeckAway in WSL) the new-session dialog asks **Where the agent runs**: Linux (WSL) or Windows. Windows starts the Windows build of Claude Code or Codex (or a PowerShell terminal) in PowerShell, in a folder inside your Windows user folder, so it can read processes, services, the registry and startup items. The screen, keys, permission questions and reconnecting from the phone work as for any session.

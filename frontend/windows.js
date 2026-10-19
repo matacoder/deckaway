@@ -30,7 +30,7 @@ function renderNewRuntime(){
   const agents=(status.agents||[]).map(a=>AGENTS[a]?.label||a).join(", ");
   $("n_win_hint").textContent=!win?"":!status.ready?tr("Windows-программы не запускаются с этого компьютера: {0}",[status.error||""])
     :!WINDOWS_AGENTS.includes(newAgent)?tr("В Windows запускаются Claude, Codex и терминал")
-    :tr("PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
+    :tr(status.admin?"PowerShell {0}. Установлены в Windows: {1}. Агент работает от имени администратора.":"PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
   $("n_win_hint").classList.toggle("warn",win&&(!status.ready||!WINDOWS_AGENTS.includes(newAgent)));
 }
 // What createSession adds to its request.

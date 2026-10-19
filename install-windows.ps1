@@ -4,6 +4,7 @@
 #   irm https://raw.githubusercontent.com/matacoder/deckaway/main/install-windows.ps1 | iex
 # Options are environment variables set before the same command, e.g.:
 #   $env:AGENT_DECK_LANGUAGE = 'ru'
+#   $env:AGENT_DECK_WINDOWS_ADMIN = '1'   # agents in Windows sessions run as administrator, without asking
 # Rerunning the command updates an existing installation; settings and sessions are kept.
 #
 # Compatible with Windows PowerShell 5.1 (the Windows 11 default). Errors are thrown, never `exit`:
@@ -15,6 +16,7 @@ $AgentDeck = @{
     Distro     = if ($env:AGENT_DECK_DISTRO) { $env:AGENT_DECK_DISTRO } else { 'Ubuntu-24.04' }
     Port       = if ($env:AGENT_DECK_PORT) { [int]$env:AGENT_DECK_PORT } else { 8790 }
     WithDocker = $env:AGENT_DECK_WITH_DOCKER -eq '1'
+    WindowsAdmin = $env:AGENT_DECK_WINDOWS_ADMIN -eq '1'
     GetSh      = 'https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh'
     MinBuild   = 22621   # mirrored WSL networking needs Windows 11 22H2
     TaskName   = 'Agent Deck'
@@ -211,6 +213,14 @@ function Set-Firewall($Options) {
     }
 }
 
+function Get-KeepAliveRunLevel($Options, $Existing) {
+    # Windows programs started from WSL get the rights of this task's wsl.exe. Elevated only on request,
+    # and kept so when the installer is run again for an update without the option.
+    if ($Options.WindowsAdmin) { return 'Highest' }
+    if ($Existing -and "$($Existing.Principal.RunLevel)" -eq 'Highest') { return 'Highest' }
+    return 'Limited'
+}
+
 function Register-KeepAlive($Options) {
     # WSL stops an idle distribution; a hidden process started at sign-in keeps the panel running.
     $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
@@ -219,7 +229,8 @@ function Register-KeepAlive($Options) {
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
         -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive `
+        -RunLevel (Get-KeepAliveRunLevel $Options (Get-ScheduledTask -TaskName $Options.TaskName -ErrorAction SilentlyContinue))
     Register-ScheduledTask -TaskName $Options.TaskName -Action $action -Trigger $trigger -Settings $settings `
         -Principal $principal -Description 'Keeps the Agent Deck WSL distribution running while you are signed in.' -Force | Out-Null
     Start-ScheduledTask -TaskName $Options.TaskName

@@ -1385,7 +1385,7 @@ body.resizing iframe{pointer-events:none}
 <button type="button" class="quick-add" onclick="addQuickRow()">Добавить</button>
 </div><div class="acts"><button type="button" onclick="$('quick_dlg').close()">Отмена</button><button class="pri" id="quick_save">Сохранить</button></div></form></dialog>
 <dialog id="rename_dlg"><form class="dlg" onsubmit="event.preventDefault();saveSessionTitle()"><div class="dlg-body"><h3>Переименовать сессию</h3><label for="session_title">Название</label><input type="text" id="session_title" required maxlength="100"></div><div class="acts"><button type="button" onclick="$('rename_dlg').close()">Отмена</button><button class="pri" id="rename_save">Сохранить</button></div></form></dialog>
-<dialog id="move_dlg"><form class="dlg" onsubmit="event.preventDefault();moveSession(this.closest('dialog').dataset.session,'windows',$('move_path').value.trim())"><div class="dlg-body"><h3>Перенести в Windows</h3><p class="hint">Агент начнёт новый разговор в Windows, в PowerShell, без прав администратора. История не переносится: он получит краткое резюме этой сессии. Эта сессия останется как есть.</p><label for="move_path">Папка в Windows</label><input type="text" id="move_path" required autocapitalize="off" autocorrect="off" spellcheck="false"></div><div class="acts"><button type="button" onclick="$('move_dlg').close()">Отмена</button><button class="pri">Перенести</button></div></form></dialog>
+<dialog id="move_dlg"><form class="dlg" onsubmit="event.preventDefault();moveSession(this.closest('dialog').dataset.session,'windows',$('move_path').value.trim())"><div class="dlg-body"><h3>Перенести в Windows</h3><p class="hint">Агент начнёт новый разговор в Windows, в PowerShell. История не переносится: он получит краткое резюме этой сессии. Эта сессия останется как есть.</p><label for="move_path">Папка в Windows</label><input type="text" id="move_path" required autocapitalize="off" autocorrect="off" spellcheck="false"></div><div class="acts"><button type="button" onclick="$('move_dlg').close()">Отмена</button><button class="pri">Перенести</button></div></form></dialog>
 <dialog id="settings_dlg"><div class="dlg settings-hub">
   <div class="hub-heading"><h3 tabindex="-1" autofocus id="hub_title">Настройки</h3><button type="button" onclick="closeSettings()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
   <nav class="hub-nav" aria-label="Разделы настроек" role="tablist">
@@ -4947,7 +4947,7 @@ function renderNewRuntime(){
   const agents=(status.agents||[]).map(a=>AGENTS[a]?.label||a).join(", ");
   $("n_win_hint").textContent=!win?"":!status.ready?tr("Windows-программы не запускаются с этого компьютера: {0}",[status.error||""])
     :!WINDOWS_AGENTS.includes(newAgent)?tr("В Windows запускаются Claude, Codex и терминал")
-    :tr("PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
+    :tr(status.admin?"PowerShell {0}. Установлены в Windows: {1}. Агент работает от имени администратора.":"PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
   $("n_win_hint").classList.toggle("warn",win&&(!status.ready||!WINDOWS_AGENTS.includes(newAgent)));
 }
 // What createSession adds to its request.

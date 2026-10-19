@@ -3,8 +3,8 @@
 Such a session's pane still belongs to tmux in WSL, so the screen, keys, permission questions and reconnecting
 work as for any other; what runs in it is powershell.exe through WSL interop, and in it the Windows build of
 the agent, in a folder on a Windows drive. Windows programs started this way run as the signed-in Windows
-user and are never elevated (the installer starts WSL unelevated): a step that needs administrator rights
-shows the UAC prompt on that computer's screen, where a person has to approve it.
+user, with the rights of the WSL instance that started them: unelevated by default, as administrator when
+the installer was run with AGENT_DECK_WINDOWS_ADMIN=1 (its keep-alive task then runs with the highest rights).
 """
 import base64
 import glob
@@ -34,7 +34,9 @@ FRESH_PATH = ("$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine
 # Applications only: an npm-installed agent also leaves a .ps1, which the default execution policy refuses.
 PROBE = (FRESH_PATH + "; $found = @(foreach ($n in 'claude','codex') { if (Get-Command $n -CommandType Application "
          "-ErrorAction SilentlyContinue) { $n } }); [Console]::OutputEncoding = [Text.Encoding]::UTF8; "
-         "@{version = $PSVersionTable.PSVersion.ToString(); home = $env:USERPROFILE; agents = $found} | "
+         "$admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("
+         "[Security.Principal.WindowsBuiltInRole]::Administrator); "
+         "@{version = $PSVersionTable.PSVersion.ToString(); home = $env:USERPROFILE; agents = $found; admin = $admin} | "
          "ConvertTo-Json -Compress")
 
 
@@ -56,8 +58,16 @@ def interop(environ=None, sockets=None):
     current = environ.get('WSL_INTEROP', '')
     if current and os.path.exists(current):
         return {}
-    found = sorted(glob.glob('/run/WSL/*_interop') if sockets is None else sockets, key=socket_age)
+    found = candidates(environ, sockets)
     return {'WSL_INTEROP': found[0]} if found else {}
+
+
+def candidates(environ=None, sockets=None):
+    """Interop sockets, newest first: one per running wsl.exe, each starting Windows programs with its rights."""
+    environ = os.environ if environ is None else environ
+    found = sorted(glob.glob('/run/WSL/*_interop') if sockets is None else sockets, key=socket_age)
+    current = environ.get('WSL_INTEROP', '')
+    return ([current] if current and os.path.exists(current) else []) + [s for s in found if s != current][:3]
 
 
 def socket_age(path):
@@ -122,28 +132,40 @@ class Windows:
         self.run, self.clock, self.wsl, self.find = run, clock, wsl, find
         self.lock = threading.Lock()
         self.found = None  # (when, status)
+        self.socket = None  # The interop socket agents are started through: an elevated one when there is one.
 
     def program(self):
         return self.find() if self.wsl() else None
 
     def status(self, again=False):
-        """Whether Windows programs can be started from here, PowerShell's version, the Windows home folder
-        and the agents installed there; looked up at most once a minute."""
+        """Whether Windows programs can be started from here, PowerShell's version, the Windows home folder,
+        the agents installed there and whether they run as administrator; looked up at most once a minute."""
         with self.lock:
             if self.found and not again and self.clock() - self.found[0] < LOOK_AGAIN:
                 return dict(self.found[1])
-        status = self.probe()
+        status, socket = self.probe()
         with self.lock:
-            self.found = (self.clock(), status)
+            self.found, self.socket = (self.clock(), status), socket
         return dict(status)
 
     def probe(self):
         program = self.program()
         if not program:
-            return {'available': False}
+            return {'available': False}, None
+        first = None
+        for socket in candidates() or [None]:
+            status = self.ask(program, socket)
+            if status.get('admin'):
+                return status, socket
+            if first is None or (status.get('ready') and not first[0].get('ready')):
+                first = (status, socket)
+        return first
+
+    def ask(self, program, socket):
+        env = {**os.environ, **({'WSL_INTEROP': socket} if socket else {})}
         try:
             done = self.run([program, '-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded(PROBE)],
-                            input='', capture_output=True, text=True, timeout=30, env={**os.environ, **interop()})
+                            input='', capture_output=True, text=True, timeout=30, env=env)
             data = json.loads(done.stdout.strip().splitlines()[-1]) if done.returncode == 0 and done.stdout.strip() else None
         except (OSError, ValueError, IndexError, subprocess.SubprocessError) as error:
             return {'available': True, 'ready': False, 'error': f'{type(error).__name__} while starting PowerShell'}
@@ -154,7 +176,7 @@ class Windows:
         agents = data.get('agents') or []
         home = to_linux(data['home']) if isinstance(data.get('home'), str) and WINDOWS.match(data['home']) else None
         return {'available': True, 'ready': True, 'version': str(data.get('version') or ''), 'home': home,
-                'windows_home': data.get('home') if home else None,
+                'windows_home': data.get('home') if home else None, 'admin': data.get('admin') is True,
                 'agents': [a for a in (agents if isinstance(agents, list) else [agents]) if a in AGENTS]}
 
     def home(self):
@@ -184,6 +206,8 @@ class Windows:
         if not windows:
             raise ValueError('Папка сессии не на диске Windows')
         ps = script(agent, windows, sid, resume, skip)
-        env = ''.join(f'{key}={shlex.quote(value)} ' for key, value in interop().items())
+        with self.lock:
+            socket = self.socket if self.socket and os.path.exists(self.socket) else None
+        env = ''.join(f'{key}={shlex.quote(value)} ' for key, value in ({'WSL_INTEROP': socket} if socket else interop()).items())
         keep = ' -NoExit' if agent == 'shell' else ''
         return f'{env}{shlex.quote(program)} -NoLogo{keep} -EncodedCommand {encoded(ps)}'

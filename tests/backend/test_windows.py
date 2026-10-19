@@ -68,13 +68,16 @@ class WindowsTests(unittest.TestCase):
             self.assertEqual(interop({}, ['/run/WSL/1_interop', '/run/WSL/9_interop']), {'WSL_INTEROP': '/run/WSL/9_interop'})
         with patch.object(windows.os.path, 'exists', return_value=True):
             self.assertEqual(interop({'WSL_INTEROP': '/run/WSL/3_interop'}, ['/run/WSL/9_interop']), {})
+        with patch.object(windows.os.path, 'exists', return_value=True), patch.object(windows, 'socket_age', return_value=0):
+            self.assertEqual(windows.candidates({'WSL_INTEROP': '/run/WSL/3_interop'}, ['/run/WSL/9_interop', '/run/WSL/3_interop']),
+                             ['/run/WSL/3_interop', '/run/WSL/9_interop'])
 
     def test_status_names_powershell_home_and_agents_and_is_kept_a_minute(self):
         run, now = probe('{"version":"5.1.22621.4391","home":"C:\\\\Users\\\\me","agents":["claude","notepad"]}\n'), [0]
         service = Windows(run=run, clock=lambda: now[0], wsl=lambda: True, find=lambda: 'powershell.exe')
         status = service.status()
         self.assertEqual(status, {'available': True, 'ready': True, 'version': '5.1.22621.4391', 'home': '/mnt/c/Users/me',
-                                  'windows_home': 'C:\\Users\\me', 'agents': ['claude']})
+                                  'windows_home': 'C:\\Users\\me', 'admin': False, 'agents': ['claude']})
         self.assertEqual(run.call_args.kwargs['input'], '')
         self.assertIn('-EncodedCommand', run.call_args.args[0])
         now[0] = 30
@@ -84,6 +87,22 @@ class WindowsTests(unittest.TestCase):
         now[0] = 61
         service.status()
         self.assertEqual(run.call_count, 2)
+
+    def test_agents_start_through_the_elevated_wsl_when_one_runs(self):
+        answers = {'/run/WSL/9_interop': 'false', '/run/WSL/2_interop': 'true'}
+
+        def run(args, env, **kwargs):
+            admin = answers[env['WSL_INTEROP']]
+            return SimpleNamespace(returncode=0, stderr='', stdout='{"version":"5.1","home":"C:\\\\Users\\\\me","admin":' + admin + '}')
+        service = Windows(run=run, wsl=lambda: True, find=lambda: 'powershell.exe')
+        with patch.object(windows, 'candidates', return_value=list(answers)):
+            self.assertTrue(service.status()['admin'])
+        with patch.object(windows.os.path, 'exists', return_value=True):
+            self.assertTrue(service.command('shell', '/mnt/c/Users/me').startswith('WSL_INTEROP=/run/WSL/2_interop '))
+        answers['/run/WSL/2_interop'] = 'false'
+        with patch.object(windows, 'candidates', return_value=list(answers)):
+            self.assertFalse(service.status(again=True)['admin'])
+        self.assertEqual(service.socket, '/run/WSL/9_interop')  # Unelevated, the newest is as good as any.
 
     def test_a_failure_is_named_without_its_text(self):
         def status(run):

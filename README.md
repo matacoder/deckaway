@@ -59,7 +59,7 @@ The installer prints the address, login and password. Then:
 2. Sign in to your agents in **Settings → Agents**.
 3. On a phone, add the page to the Home Screen.
 
-On Windows DeckAway runs in WSL, and an agent can also run in Windows itself: choose **Windows** in a new session (or **Move to Windows** in the session menu) to start the Windows build of Claude Code or Codex in PowerShell, in a folder of your Windows user, without administrator rights.
+On Windows DeckAway runs in WSL, and an agent can also run in Windows itself: choose **Windows** in a new session (or **Move to Windows** in the session menu) to start the Windows build of Claude Code or Codex in PowerShell, in a folder of your Windows user, without administrator rights. To have them run as administrator (no UAC prompt, full access to services, scheduled tasks and `HKLM`), run the installer with `$env:AGENT_DECK_WINDOWS_ADMIN = '1'` set first.
 
 Your own domain with HTTPS, a Russian interface from the first launch, memory limits and the other options:
 [Installing and updating](docs/install.md).

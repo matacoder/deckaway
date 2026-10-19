@@ -31,6 +31,14 @@ test('a new session can run its agent in Windows, in a folder of the Windows use
   await expect.poll(() => app.newSessions.at(-1)).toMatchObject({ name: 'audit', agent: 'claude', runtime: 'windows', windows_path: 'C:\\Users\\me\\audit' });
 });
 
+test('a computer whose WSL runs elevated says the agent runs as administrator', async ({ app, page }) => {
+  await windowsComputer(page, { ...READY, admin: true });
+  await app.open();
+  await page.evaluate(() => openNew());
+  await page.locator('#n_runtime [data-runtime="windows"]').click();
+  await expect(page.locator('#n_win_hint')).toContainText('от имени администратора');
+});
+
 test('a computer without Windows offers no choice and sends none', async ({ app, page }) => {
   await windowsComputer(page, { available: false });
   await app.open();
