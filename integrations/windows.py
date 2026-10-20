@@ -33,9 +33,11 @@ LOOK_AGAIN = 60
 # PowerShell's and System32's own folders: Codex updates itself by calling powershell.exe by name.
 FRESH_PATH = ("$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + "
               "[Environment]::GetEnvironmentVariable('Path','User') + ';' + $PSHOME + ';' + [Environment]::SystemDirectory")
-# Applications only: an npm-installed agent also leaves a .ps1, which the default execution policy refuses.
+# Programs Windows can start by themselves: npm also leaves a .ps1, which the default execution policy refuses,
+# and an extensionless shell script, which PowerShell lists as an application but Windows only offers to open.
+RUNNABLE = "Where-Object { $_.Extension -in '.exe','.cmd','.bat' }"
 PROBE = (FRESH_PATH + "; $found = @(foreach ($n in 'claude','codex') { if (Get-Command $n -CommandType Application "
-         "-ErrorAction SilentlyContinue) { $n } }); [Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+         "-ErrorAction SilentlyContinue | " + RUNNABLE + ") { $n } }); [Console]::OutputEncoding = [Text.Encoding]::UTF8; "
          "$admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("
          "[Security.Principal.WindowsBuiltInRole]::Administrator); "
          "@{version = $PSVersionTable.PSVersion.ToString(); home = $env:USERPROFILE; agents = $found; admin = $admin} | "
@@ -119,7 +121,8 @@ def script(agent, folder, sid=None, resume=False, skip=False):
         # As in WSL, without the background server: an elevated Codex refuses to start one.
         args = ['--no-daemon', '--no-alt-screen', *((['resume', sid] if sid else ['resume', '--last']) if resume else [])]
     args += [flag] if skip else []
-    lines += [f'$agent = (Get-Command {program} -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source',
+    lines += [f'$agent = (Get-Command {program} -CommandType Application -ErrorAction Stop | {RUNNABLE} | Select-Object -First 1).Source',
+              f"if (-not $agent) {{ throw '{program} is not installed in Windows as a program (.exe or .cmd)' }}",
               '& $agent ' + ' '.join(quote(a) for a in args)]
     return '; '.join(lines)
 

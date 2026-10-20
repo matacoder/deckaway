@@ -40,6 +40,8 @@ class WindowsTests(unittest.TestCase):
         self.assertIn("Set-Location -LiteralPath 'C:\\Users\\me\\it''s'", new)
         self.assertTrue(new.endswith(f"& $agent '--session-id' '{SID}'"))
         self.assertIn('-CommandType Application', new)  # Never an npm .ps1 the execution policy refuses.
+        self.assertIn("$_.Extension -in '.exe','.cmd','.bat'", new)  # Nor npm's extensionless script Windows cannot run.
+        self.assertIn("$_.Extension -in '.exe','.cmd','.bat'", windows.PROBE)
         self.assertIn("GetEnvironmentVariable('Path','User')", new)
         self.assertIn("$PSHOME + ';' + [Environment]::SystemDirectory", new)  # Codex updates through powershell.exe.
         self.assertTrue(script('claude', 'C:\\x', SID, resume=True, skip=True).endswith(

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.58.4 — 2026-10-20
+
+- **Claude installed in Windows with npm starts again.** npm leaves an extensionless `claude` script next to `claude.cmd`; PowerShell lists it as a program, the session started it, and Windows only asked which app should open “claude”. Only `.exe`, `.cmd` and `.bat` are started now, and a missing one is named in the session.
+
 ## 1.58.3 — 2026-10-20
 
 - **A Claude session in Windows can be created again when a Claude account or model was picked for WSL.** That choice is hidden for Windows but was still sent, and the computer refused with “only Claude, Codex and the terminal run in Windows”.
