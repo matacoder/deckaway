@@ -27,8 +27,12 @@ test('a new session can run its agent in Windows, in a folder of the Windows use
   await expect(page.locator('#n_winpath')).toHaveAttribute('placeholder', 'C:\\Users\\me\\audit');
   await expect(page.locator('#n_win_hint')).toContainText('PowerShell 5.1.22621');
   await expect(page.locator('#n_win_hint')).toContainText('без прав администратора');
+  // A Claude account or model left picked for WSL is hidden here and not sent.
+  await page.evaluate(() => { const s = $('n_source'); s.add(new Option('GLM', '{"kind":"provider","provider":"glm"}')); s.value = s.options[s.options.length - 1].value; });
   await page.locator('#n_go').click();
   await expect.poll(() => app.newSessions.at(-1)).toMatchObject({ name: 'audit', agent: 'claude', runtime: 'windows', windows_path: 'C:\\Users\\me\\audit' });
+  expect(app.newSessions.at(-1).source).toBeUndefined();
+  expect(app.newSessions.at(-1).containers).toBeUndefined();
 });
 
 test('a computer whose WSL runs elevated says the agent runs as administrator', async ({ app, page }) => {

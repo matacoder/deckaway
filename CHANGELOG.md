@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.58.3 — 2026-10-20
+
+- **A Claude session in Windows can be created again when a Claude account or model was picked for WSL.** That choice is hidden for Windows but was still sent, and the computer refused with “only Claude, Codex and the terminal run in Windows”.
+
 ## 1.58.2 — 2026-10-19
 
 - **Codex in Windows can update itself.** Its update calls `powershell.exe` by name, and the PATH a Windows session reads from the registry did not always hold PowerShell's folder (“could not find update command `powershell.exe` on PATH”); PowerShell's and System32's folders are now added to it.

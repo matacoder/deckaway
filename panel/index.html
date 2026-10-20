@@ -4950,10 +4950,11 @@ function renderNewRuntime(){
     :tr(status.admin?"PowerShell {0}. Установлены в Windows: {1}. Агент работает от имени администратора.":"PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
   $("n_win_hint").classList.toggle("warn",win&&(!status.ready||!WINDOWS_AGENTS.includes(newAgent)));
 }
-// What createSession adds to its request.
+// What createSession adds to its request. The account or model and the containers picked for WSL are hidden
+// for Windows and must not be sent with it: the computer refuses a Windows session with a source.
 function newRuntimeFields(){
   if(!windowsOffered()||newRuntime!=="windows")return {};
-  return {runtime:"windows",windows_path:$("n_winpath").value.trim()||windowsFolder($("n_name").value.trim())};
+  return {runtime:"windows",windows_path:$("n_winpath").value.trim()||windowsFolder($("n_name").value.trim()),source:undefined,containers:undefined};
 }
 function renderSessionMove(){
   const s=cur(),item=$("s_move");
