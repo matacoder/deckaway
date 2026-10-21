@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.61.1 — 2026-10-21
+
+- **Claude Code installed in Windows by its own installer is found.** That installer puts `claude.exe` in `%USERPROFILE%\.local\bin` and only asks to add the folder to PATH; a Windows session without it there stopped with “claude is not installed in Windows as a program”. The folder is now searched too.
+
 ## 1.61.0 — 2026-10-21
 
 - **Paste** among the keys under **…** (beside **Terminal** and **Wrap**) opens **Paste with pictures** in one tap: a message copied from Telegram on a phone lands there with its pictures, which a paste by the system menu into the message field cannot bring.

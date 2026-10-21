@@ -30,9 +30,11 @@ SID = re.compile(r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z')
 LOOK_AGAIN = 60
 # The PATH of a process started through WSL is the one Windows had when WSL started: an agent installed
 # since then would not be found. Read again from the registry, as a new PowerShell window would, with
-# PowerShell's and System32's own folders: Codex updates itself by calling powershell.exe by name.
+# PowerShell's and System32's own folders: Codex updates itself by calling powershell.exe by name. Claude Code's
+# own installer puts claude.exe in ~\.local\bin and only asks the user to add it to PATH.
 FRESH_PATH = ("$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + "
-              "[Environment]::GetEnvironmentVariable('Path','User') + ';' + $PSHOME + ';' + [Environment]::SystemDirectory")
+              "[Environment]::GetEnvironmentVariable('Path','User') + ';' + $PSHOME + ';' + [Environment]::SystemDirectory"
+              " + ';' + $env:USERPROFILE + '\\.local\\bin'")
 # Programs Windows can start by themselves: npm also leaves a .ps1, which the default execution policy refuses,
 # and an extensionless shell script, which PowerShell lists as an application but Windows only offers to open.
 RUNNABLE = "Where-Object { $_.Extension -in '.exe','.cmd','.bat' }"

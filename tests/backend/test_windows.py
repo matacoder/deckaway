@@ -45,6 +45,7 @@ class WindowsTests(unittest.TestCase):
         self.assertIn("$_.Extension -in '.exe','.cmd','.bat'", windows.PROBE)
         self.assertIn("GetEnvironmentVariable('Path','User')", new)
         self.assertIn("$PSHOME + ';' + [Environment]::SystemDirectory", new)  # Codex updates through powershell.exe.
+        self.assertIn("$env:USERPROFILE + '\\.local\\bin'", new)  # Where Claude Code's installer puts claude.exe.
         self.assertTrue(script('claude', 'C:\\x', SID, resume=True, skip=True).endswith(
             f"& $agent '--resume' '{SID}' '--dangerously-skip-permissions'"))
         self.assertTrue(script('codex', 'C:\\x').endswith("& $agent '--no-daemon' '--no-alt-screen'"))
