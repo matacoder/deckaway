@@ -772,6 +772,21 @@ body.resizing iframe{pointer-events:none}
 .files-view .fl{display:flex}
 .files-view .ln{flex:none;width:40px;padding:0 8px;text-align:right;color:var(--dim);-webkit-user-select:none;user-select:none}
 .files-view .code{flex:1;min-width:0;padding-right:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg2)}
+/* Review: while commenting, a tap on a block or line opens a note under it; commented ones are marked. */
+.reviewing [data-line]{cursor:pointer;border-radius:6px}
+.reviewing.md>[data-line]:not(ul,ol){padding-left:8px;padding-right:8px;margin-left:-8px;margin-right:-8px}
+.review-acts{padding-bottom:0}.review-acts .review-send{flex:1}
+.reviewing [data-line]:hover{background:var(--bd-soft)}
+.reviewing [data-line] [data-line]:hover{background:none}
+.reviewed{box-shadow:inset 3px 0 0 var(--acc);background:var(--acc-soft)}
+.review-note,.review-edit{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px;padding:8px 10px;border:1px solid var(--bd-strong);border-radius:10px;background:var(--side2);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+.review-edit{cursor:auto}
+.review-lines{font-size:12px;color:var(--dim)}
+.review-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
+.review-area{width:100%;box-sizing:border-box;min-height:72px;resize:vertical;font-size:16px}
+.review-edit .acts{margin:0;padding:0}
+.review-hint{margin:0 0 8px;padding:6px 10px;font-size:13px;color:var(--dim)}
+.review-toggle[aria-pressed=true]{background:var(--sel);border-color:var(--bd-strong)}
 .files-path .git-font button{min-width:36px;padding:6px 8px;border-radius:var(--r-sm);color:var(--mut);font-weight:600}
 .acts a.btn{display:inline-flex;align-items:center;min-height:42px;padding:10px 16px;border-radius:9px;background:var(--side2);color:var(--fg);text-decoration:none}
 .acts a.btn.pri{background:var(--acc-strong);color:#fff;font-weight:600}
@@ -2746,12 +2761,19 @@ async function loadFolder(path){
   renderFiles();
 }
 const PREVIEW_FILE=/\.(png|jpe?g|gif|webp|pdf)$/i;
-async function openFile(path){
-  const seq=++files.seq,preview=PREVIEW_FILE.test(path);
+// session: a path from that session's screen, which may be relative to where its agent works.
+async function openFile(path,session){
+  const seq=++files.seq,preview=PREVIEW_FILE.test(path),from=session?"&name="+encodeURIComponent(session):"";
   try{
-    const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path),null,false,{timeout:60000});
+    const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path)+from,null,false,{timeout:60000});
     if(seq!==files.seq)return;
     files.file=preview?{path:data.path,preview:previewBlob(data)}:{...data,saved:data.content,isNew:false,rendered:isMarkdown(data.path)};
+    // Opened from the screen before any folder was listed: its own folder, without closing the file.
+    if(!files.listing){
+      const listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(data.path.replace(/\/[^/]*$/,"")),null,false,{timeout:60000});
+      if(seq!==files.seq)return;
+      files.listing=listing;
+    }
   }catch(e){
     if(seq!==files.seq||e.message===STALE)return;
     // Not text and not a picture or PDF (an archive, a spreadsheet): it can still be downloaded.
@@ -2854,16 +2876,19 @@ function renderReader(box,head,file){
   else view.style.setProperty("--ln",Math.max(2,String(file.content.split("\n").length).length));
   if(!file.rendered)file.content.split("\n").forEach((line,i,lines)=>{
     if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
-    view.append(el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" ")));
+    const row=el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" "));
+    row.dataset.line=row.dataset.end=i+1;view.append(row);
   });
   if(isMarkdown(file.path))head.append(fileButton(file.rendered?tr("Текст"):tr("Просмотр"),"files-up",()=>{file.rendered=!file.rendered;renderFiles()}));
   const copy=fileButton(tr("Копировать"),"",()=>{
     const selected=String(getSelection()||"");
     copyText(selected&&view.contains(getSelection().anchorNode)?selected:file.content);
   });
-  const change=fileButton(tr("Изменить"),"pri",()=>{file.editing=true;renderFiles()});
+  const change=fileButton(tr("Изменить"),"",()=>{file.editing=true;renderFiles()});
   const download=fileButton(tr("Скачать"),"",()=>downloadFile(null,file.path));
-  box.append(head,view,el("div","acts",copy,download,change));
+  const acts=el("div","acts",copy,download,change);
+  box.append(head,view,acts);
+  reviewReader(view,head,acts,file);
 }
 // Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
 function renderPreview(box,head,file){
@@ -2881,11 +2906,19 @@ function fileMatches(text,taken=[]){
   return [...text.matchAll(FILE_PATH_RE)].map(m=>({index:m.index,file:m[0]}))
     .filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a));
 }
+// A Markdown file opens in the file viewer instead, where it is read rendered and can be commented on.
 function fileLink(session,path,runs,from,to){
-  const link=el("a","file-link");link.href="#";link.title=tr("Скачать файл {0}",[path.split("/").pop()]);
+  const read=isMarkdown(path),link=el("a","file-link");link.href="#";
+  link.title=tr(read?"Открыть файл {0}":"Скачать файл {0}",[path.split("/").pop()]);
   appendStyledRange(link,runs,from,to);
-  link.onclick=event=>{event.preventDefault();downloadFile(session,path)};
+  link.onclick=event=>{event.preventDefault();read&&session===active?openScreenFile(path):downloadFile(session,path)};
   return link;
+}
+async function openScreenFile(path){
+  if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  dropPreview();files.file=null;
+  openProject("files");
+  await openFile(path,active);
 }
 // Fetched first, so a missing or too large file is a message here, not an error page in its place.
 // A large file takes a while with nothing to see: a note says it started, and more taps do not start it again.
@@ -2923,6 +2956,97 @@ async function copyText(text){
 }
 
 if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatches};
+// Comments on lines of a file open in the file viewer, sent to the session's agent as one review message.
+// Tapping a paragraph (or a line in text view) while commenting opens a note for its source lines. Notes are
+// kept in this browser per computer and file until sent, like a draft. Bundled before app.js.
+const review={path:null,notes:[],on:false,send:null,toggle:null};
+const reviewKey=path=>"cc.review."+(selectedDeck||"")+":"+path;
+function loadReview(path){
+  if(review.path===path)return;
+  let notes=[];
+  try{notes=JSON.parse(localStore.getItem(reviewKey(path))||"[]")}catch(e){}
+  review.path=path;
+  review.notes=Array.isArray(notes)?notes.filter(n=>n&&n.from>0&&n.to>=n.from&&typeof n.text==="string"&&n.text.trim()):[];
+  review.on=review.notes.length>0;
+}
+function storeReview(){
+  try{review.notes.length?localStore.setItem(reviewKey(review.path),JSON.stringify(review.notes)):localStore.removeItem(reviewKey(review.path))}catch(e){}
+}
+// The message for the agent: each note with its lines quoted from the file as it is now. Pure for tests.
+function reviewPrompt(path,notes,lines){
+  const quote=(from,to)=>{const text=lines.slice(from-1,to).join(" ").replace(/\s+/g," ").trim();return text.length>160?text.slice(0,159)+"…":text};
+  const items=[...notes].sort((a,b)=>a.from-b.from||a.to-b.to).map(n=>
+    (n.from===n.to?"Line "+n.from:"Lines "+n.from+"-"+n.to)+': "'+quote(n.from,n.to)+'"\n'+n.text.trim());
+  return "Review of "+path+": my comments on its lines as the file is now. Address each one.\n\n"+items.join("\n\n");
+}
+const lineSpan=(from,to)=>from===to?tr("Строка {0}",[from]):tr("Строки {0}–{1}",[from,to]);
+// Called by the reader once its view is drawn: the toggle in the head, the send button, the notes in place.
+function reviewReader(view,head,acts,file){
+  loadReview(file.path);
+  review.toggle=fileButton(tr("Комментарии"),"files-up review-toggle",()=>{review.on=!review.on;drawNotes(view,file)},"chat");
+  head.append(review.toggle);
+  // A row of its own: beside copy, download and edit it would not fit a phone.
+  review.send=fileButton("","pri review-send",()=>sendReview(view,file));
+  acts.before(el("div","acts review-acts",review.send));
+  view.addEventListener("click",event=>{
+    if(!review.on||event.target.closest("a,.review-note,.review-edit"))return;
+    const selection=getSelection();
+    if(selection&&!selection.isCollapsed)return;  // Selecting text to copy is not a request for a note.
+    const target=event.target.closest("[data-line]");
+    if(target&&view.contains(target))editNote(view,file,target);
+  });
+  drawNotes(view,file);
+}
+function drawNotes(view,file){
+  view.classList.toggle("reviewing",review.on);
+  view.querySelectorAll(".review-note,.review-edit,.review-hint").forEach(node=>node.remove());
+  view.querySelectorAll(".reviewed").forEach(node=>node.classList.remove("reviewed"));
+  for(const target of view.querySelectorAll("[data-line]")){
+    const from=Number(target.dataset.line),note=review.notes.find(n=>n.from===from&&n.to===Number(target.dataset.end));
+    if(!note)continue;
+    target.classList.add("reviewed");
+    const box=el("div","review-note",el("span","review-lines",lineSpan(note.from,note.to)),el("span","review-text",note.text));
+    box.onclick=()=>editNote(view,file,target);
+    target.after(box);
+  }
+  if(review.on&&!review.notes.length)view.prepend(el("p","review-hint",tr("Нажмите на абзац или строку, чтобы оставить комментарий")));
+  review.send.parentNode.hidden=!review.notes.length;
+  review.send.textContent=tr("Отправить ревью ({0})",[review.notes.length]);
+  review.toggle.setAttribute("aria-pressed",String(review.on));
+}
+function editNote(view,file,target){
+  drawNotes(view,file);
+  const from=Number(target.dataset.line),to=Number(target.dataset.end);
+  const note=review.notes.find(n=>n.from===from&&n.to===to);
+  target.nextElementSibling?.classList.contains("review-note")&&target.nextElementSibling.remove();
+  const area=el("textarea","review-area");area.value=note?.text||"";area.rows=3;
+  area.setAttribute("aria-label",tr("Комментарий: {0}",[lineSpan(from,to)]));
+  const done=text=>{
+    review.notes=review.notes.filter(n=>n!==note);
+    if(text.trim())review.notes.push({from,to,text:text.trim()});
+    storeReview();drawNotes(view,file);
+  };
+  const buttons=el("div","acts",
+    ...(note?[fileButton(tr("Удалить"),"",()=>done(""))]:[]),
+    fileButton(tr("Отмена"),"",()=>drawNotes(view,file)),
+    fileButton(tr("Сохранить"),"pri",()=>done(area.value)));
+  target.after(el("div","review-edit",el("span","review-lines",lineSpan(from,to)),area,buttons));
+  area.focus({preventScroll:true});
+}
+// Into the message field and sent like a typed message: the same send state, and the text stays there as a
+// draft if it cannot be sent.
+async function sendReview(view,file){
+  if(!review.notes.length)return;
+  if(files.session!==active){toast(tr("Откройте сессию этого файла"));return}
+  const text=reviewPrompt(file.path,review.notes,file.content.replace(/\r\n?/g,"\n").split("\n")),field=$("msg");
+  field.value=field.value.trim()?field.value.replace(/\s+$/,"")+"\n\n"+text:text;
+  field.dispatchEvent(new Event("input"));  // Kept as this session's draft, as typed text is.
+  review.notes=[];storeReview();review.on=false;drawNotes(view,file);
+  if(projectDrawer()||isMobile())closeProject();
+  await send();
+}
+
+if(typeof module!=="undefined")module.exports={reviewPrompt};
 // Every picture the open session showed, kept by the panel after it left the screen: a grid of square
 // thumbnails, newest first, opening in the full-screen viewer. Reloaded while the tab is open and visible.
 // key: computer and session, as in sessionInfoKey(): the same name on another computer has other pictures.
@@ -4040,32 +4164,36 @@ function mdTable(doc,lines){
   table.append(body);const wrap=mdNode(doc,"div",table);wrap.className="md-table";return wrap;
 }
 const MD_BREAK=/^(#{1,6}\s|```|~~~|>|\s*([-*+]|\d+[.)])\s|\s*([-*_]\s*){3,}$)/;
-function renderMarkdown(text,doc=document){
+// Each block (and list item) names the source lines it came from, 1-based, in data-line and data-end: a
+// comment left on it in the file viewer says which lines it is about. base: lines above a quoted part.
+function renderMarkdown(text,doc=document,base=0){
   const root=doc.createElement("div"),lines=text.replace(/\r\n?/g,"\n").split("\n");
   root.className="md";
-  for(let i=0;i<lines.length;){
-    const line=lines[i];
+  let start=0,i=0;
+  const add=node=>{node.dataset.line=base+start+1;node.dataset.end=base+Math.max(start+1,i);root.append(node)};
+  while(i<lines.length){
+    const line=lines[i];start=i;
     if(!line.trim()){i++;continue}
     const fence=line.match(/^\s*(```|~~~)/);
     if(fence){
       const code=[];i++;
       while(i<lines.length&&!lines[i].trim().startsWith(fence[1]))code.push(lines[i++]);
-      i++;root.append(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
+      i++;add(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
     }
     // One greedy group, trimmed afterwards: a lazy group between optional spaces backtracks for seconds
     // on a long run of spaces.
     const heading=line.match(/^(#{1,6})\s+(.*)$/);
-    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2].trimEnd().replace(/(^|\s)#+$/,"").trimEnd())));i++;continue}
-    if(/^\s*([-*_]\s*){3,}$/.test(line)){root.append(doc.createElement("hr"));i++;continue}
+    if(heading){i++;add(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2].trimEnd().replace(/(^|\s)#+$/,"").trimEnd())));continue}
+    if(/^\s*([-*_]\s*){3,}$/.test(line)){i++;add(doc.createElement("hr"));continue}
     if(line.includes("|")&&/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i+1]||"")){
       const rows=[line,lines[i+1]];i+=2;
       while(i<lines.length&&lines[i].includes("|")&&lines[i].trim())rows.push(lines[i++]);
-      root.append(mdTable(doc,rows));continue;
+      add(mdTable(doc,rows));continue;
     }
     if(line.startsWith(">")){
       const quote=[];
       while(i<lines.length&&lines[i].startsWith(">"))quote.push(lines[i++].replace(/^>\s?/,""));
-      root.append(mdNode(doc,"blockquote",...renderMarkdown(quote.join("\n"),doc).childNodes));continue;
+      add(mdNode(doc,"blockquote",...renderMarkdown(quote.join("\n"),doc,base+start).childNodes));continue;
     }
     const item=line.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
     if(item){
@@ -4075,15 +4203,15 @@ function renderMarkdown(text,doc=document){
         if(next){
           const task=next[2].match(/^\[([ xX])\]\s+(.*)$/),li=mdNode(doc,"li",...mdInline(doc,task?task[2]:next[2]));
           if(task)li.prepend(task[1]===" "?"☐ ":"☑ ");
-          list.append(li);i++;
-        }else if(lines[i].trim()&&/^\s{2,}/.test(lines[i])&&list.lastChild){list.lastChild.append(" ",...mdInline(doc,lines[i].trim()));i++}
+          li.dataset.line=li.dataset.end=base+i+1;list.append(li);i++;
+        }else if(lines[i].trim()&&/^\s{2,}/.test(lines[i])&&list.lastChild){list.lastChild.append(" ",...mdInline(doc,lines[i].trim()));list.lastChild.dataset.end=base+i+1;i++}
         else break;
       }
-      root.append(list);continue;
+      add(list);continue;
     }
     const para=[line.trim()];i++;
     while(i<lines.length&&lines[i].trim()&&!MD_BREAK.test(lines[i]))para.push(lines[i++].trim());
-    root.append(mdNode(doc,"p",...mdInline(doc,para.join(" "))));
+    add(mdNode(doc,"p",...mdInline(doc,para.join(" "))));
   }
   return root;
 }

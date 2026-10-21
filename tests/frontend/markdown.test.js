@@ -34,3 +34,9 @@ test('a heading with a long run of spaces renders at once and keeps its text',()
   expect(root.querySelector('h1').textContent).toBe('Title'+' '.repeat(20000)+'end');
   expect(renderMarkdown('## C# notes').querySelector('h2').textContent).toBe('C# notes');
 });
+
+test('every block and list item names the source lines it came from',()=>{
+  const root=renderMarkdown(['# T','','para one','still','','- a','  more','- b','','> q1','> q2','','```','x','```'].join('\n'));
+  expect([...root.querySelectorAll('[data-line]')].map(n=>[n.tagName,n.dataset.line,n.dataset.end])).toEqual([
+    ['H1','1','1'],['P','3','4'],['UL','6','8'],['LI','6','7'],['LI','8','8'],['BLOCKQUOTE','10','11'],['P','10','11'],['PRE','13','15']]);
+});

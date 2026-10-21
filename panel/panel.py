@@ -2172,7 +2172,7 @@ def files_payload(query):
 
 def file_payload(query):
     from integrations import files
-    return file_errors(lambda: files.read_text(os.path.expanduser("~"), query.get("path", [""])[0]))
+    return file_errors(lambda: files.read_text(os.path.expanduser("~"), screen_path(query)))
 
 
 def file_preview_payload(query):
@@ -2181,14 +2181,18 @@ def file_preview_payload(query):
 
 
 def download_file(query):
-    """A path from the session screen may be relative to where its agent works."""
     from integrations import files
+    return file_errors(lambda: files.read_download(os.path.expanduser("~"), screen_path(query)))
+
+
+def screen_path(query):
+    """A path from the session screen may be relative to where its agent works."""
     name, path = query.get("name", [""])[0], query.get("path", [""])[0]
     if name and isinstance(path, str) and path and not path.startswith(("/", "~")):
         session_folder(name)  # Checks the session exists.
         cwd = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{pane_current_path}", check=False).strip()
         path = os.path.join(cwd or os.path.expanduser("~"), path)
-    return file_errors(lambda: files.read_download(os.path.expanduser("~"), path))
+    return path
 
 
 def scrollback_payload(query):

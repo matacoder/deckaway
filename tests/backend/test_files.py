@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from support import ROOT, PanelCase
 sys.path.insert(0, str(ROOT))
@@ -121,3 +121,14 @@ class PanelFileTests(PanelCase):
     def test_any_other_file_system_error_is_a_clear_message(self):
         with self.assertRaisesRegex(ValueError, 'недоступны'):
             self.panel.files_payload({'path': [self.panel.os.path.expanduser('~') + '/' + 'x' * 300]})
+
+    def test_a_file_named_on_a_session_screen_is_read_from_where_its_agent_works(self):
+        home = self.panel.os.path.expanduser('~')
+        Path(home, 'projects/demo/plans').mkdir(parents=True)
+        Path(home, 'projects/demo/plans/db.md').write_text('# Plan\n')
+        self.panel.session_folder = Mock(return_value=home + '/projects/demo')
+        self.panel.tmux = Mock(return_value=home + '/projects/demo\n')
+        data = self.panel.file_payload({'name': ['demo'], 'path': ['plans/db.md']})
+        self.assertEqual((data['path'], data['content']), (str(Path(home, 'projects/demo/plans/db.md').resolve()), '# Plan\n'))
+        with self.assertRaisesRegex(ValueError, 'только внутри домашней папки'):
+            self.panel.file_payload({'name': ['demo'], 'path': ['../../../etc/passwd']})

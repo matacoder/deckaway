@@ -761,6 +761,21 @@ body.resizing iframe{pointer-events:none}
 .files-view .fl{display:flex}
 .files-view .ln{flex:none;width:40px;padding:0 8px;text-align:right;color:var(--dim);-webkit-user-select:none;user-select:none}
 .files-view .code{flex:1;min-width:0;padding-right:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg2)}
+/* Review: while commenting, a tap on a block or line opens a note under it; commented ones are marked. */
+.reviewing [data-line]{cursor:pointer;border-radius:6px}
+.reviewing.md>[data-line]:not(ul,ol){padding-left:8px;padding-right:8px;margin-left:-8px;margin-right:-8px}
+.review-acts{padding-bottom:0}.review-acts .review-send{flex:1}
+.reviewing [data-line]:hover{background:var(--bd-soft)}
+.reviewing [data-line] [data-line]:hover{background:none}
+.reviewed{box-shadow:inset 3px 0 0 var(--acc);background:var(--acc-soft)}
+.review-note,.review-edit{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px;padding:8px 10px;border:1px solid var(--bd-strong);border-radius:10px;background:var(--side2);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+.review-edit{cursor:auto}
+.review-lines{font-size:12px;color:var(--dim)}
+.review-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
+.review-area{width:100%;box-sizing:border-box;min-height:72px;resize:vertical;font-size:16px}
+.review-edit .acts{margin:0;padding:0}
+.review-hint{margin:0 0 8px;padding:6px 10px;font-size:13px;color:var(--dim)}
+.review-toggle[aria-pressed=true]{background:var(--sel);border-color:var(--bd-strong)}
 .files-path .git-font button{min-width:36px;padding:6px 8px;border-radius:var(--r-sm);color:var(--mut);font-weight:600}
 .acts a.btn{display:inline-flex;align-items:center;min-height:42px;padding:10px 16px;border-radius:9px;background:var(--side2);color:var(--fg);text-decoration:none}
 .acts a.btn.pri{background:var(--acc-strong);color:#fff;font-weight:600}

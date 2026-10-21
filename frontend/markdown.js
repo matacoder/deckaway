@@ -31,32 +31,36 @@ function mdTable(doc,lines){
   table.append(body);const wrap=mdNode(doc,"div",table);wrap.className="md-table";return wrap;
 }
 const MD_BREAK=/^(#{1,6}\s|```|~~~|>|\s*([-*+]|\d+[.)])\s|\s*([-*_]\s*){3,}$)/;
-function renderMarkdown(text,doc=document){
+// Each block (and list item) names the source lines it came from, 1-based, in data-line and data-end: a
+// comment left on it in the file viewer says which lines it is about. base: lines above a quoted part.
+function renderMarkdown(text,doc=document,base=0){
   const root=doc.createElement("div"),lines=text.replace(/\r\n?/g,"\n").split("\n");
   root.className="md";
-  for(let i=0;i<lines.length;){
-    const line=lines[i];
+  let start=0,i=0;
+  const add=node=>{node.dataset.line=base+start+1;node.dataset.end=base+Math.max(start+1,i);root.append(node)};
+  while(i<lines.length){
+    const line=lines[i];start=i;
     if(!line.trim()){i++;continue}
     const fence=line.match(/^\s*(```|~~~)/);
     if(fence){
       const code=[];i++;
       while(i<lines.length&&!lines[i].trim().startsWith(fence[1]))code.push(lines[i++]);
-      i++;root.append(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
+      i++;add(mdNode(doc,"pre",mdNode(doc,"code",code.join("\n"))));continue;
     }
     // One greedy group, trimmed afterwards: a lazy group between optional spaces backtracks for seconds
     // on a long run of spaces.
     const heading=line.match(/^(#{1,6})\s+(.*)$/);
-    if(heading){root.append(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2].trimEnd().replace(/(^|\s)#+$/,"").trimEnd())));i++;continue}
-    if(/^\s*([-*_]\s*){3,}$/.test(line)){root.append(doc.createElement("hr"));i++;continue}
+    if(heading){i++;add(mdNode(doc,"h"+heading[1].length,...mdInline(doc,heading[2].trimEnd().replace(/(^|\s)#+$/,"").trimEnd())));continue}
+    if(/^\s*([-*_]\s*){3,}$/.test(line)){i++;add(doc.createElement("hr"));continue}
     if(line.includes("|")&&/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(lines[i+1]||"")){
       const rows=[line,lines[i+1]];i+=2;
       while(i<lines.length&&lines[i].includes("|")&&lines[i].trim())rows.push(lines[i++]);
-      root.append(mdTable(doc,rows));continue;
+      add(mdTable(doc,rows));continue;
     }
     if(line.startsWith(">")){
       const quote=[];
       while(i<lines.length&&lines[i].startsWith(">"))quote.push(lines[i++].replace(/^>\s?/,""));
-      root.append(mdNode(doc,"blockquote",...renderMarkdown(quote.join("\n"),doc).childNodes));continue;
+      add(mdNode(doc,"blockquote",...renderMarkdown(quote.join("\n"),doc,base+start).childNodes));continue;
     }
     const item=line.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
     if(item){
@@ -66,15 +70,15 @@ function renderMarkdown(text,doc=document){
         if(next){
           const task=next[2].match(/^\[([ xX])\]\s+(.*)$/),li=mdNode(doc,"li",...mdInline(doc,task?task[2]:next[2]));
           if(task)li.prepend(task[1]===" "?"☐ ":"☑ ");
-          list.append(li);i++;
-        }else if(lines[i].trim()&&/^\s{2,}/.test(lines[i])&&list.lastChild){list.lastChild.append(" ",...mdInline(doc,lines[i].trim()));i++}
+          li.dataset.line=li.dataset.end=base+i+1;list.append(li);i++;
+        }else if(lines[i].trim()&&/^\s{2,}/.test(lines[i])&&list.lastChild){list.lastChild.append(" ",...mdInline(doc,lines[i].trim()));list.lastChild.dataset.end=base+i+1;i++}
         else break;
       }
-      root.append(list);continue;
+      add(list);continue;
     }
     const para=[line.trim()];i++;
     while(i<lines.length&&lines[i].trim()&&!MD_BREAK.test(lines[i]))para.push(lines[i++].trim());
-    root.append(mdNode(doc,"p",...mdInline(doc,para.join(" "))));
+    add(mdNode(doc,"p",...mdInline(doc,para.join(" "))));
   }
   return root;
 }

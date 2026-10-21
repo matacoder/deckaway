@@ -41,12 +41,19 @@ async function loadFolder(path){
   renderFiles();
 }
 const PREVIEW_FILE=/\.(png|jpe?g|gif|webp|pdf)$/i;
-async function openFile(path){
-  const seq=++files.seq,preview=PREVIEW_FILE.test(path);
+// session: a path from that session's screen, which may be relative to where its agent works.
+async function openFile(path,session){
+  const seq=++files.seq,preview=PREVIEW_FILE.test(path),from=session?"&name="+encodeURIComponent(session):"";
   try{
-    const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path),null,false,{timeout:60000});
+    const data=await api((preview?"/api/file_preview?path=":"/api/file?path=")+encodeURIComponent(path)+from,null,false,{timeout:60000});
     if(seq!==files.seq)return;
     files.file=preview?{path:data.path,preview:previewBlob(data)}:{...data,saved:data.content,isNew:false,rendered:isMarkdown(data.path)};
+    // Opened from the screen before any folder was listed: its own folder, without closing the file.
+    if(!files.listing){
+      const listing=await api("/api/files?name="+encodeURIComponent(files.session)+"&path="+encodeURIComponent(data.path.replace(/\/[^/]*$/,"")),null,false,{timeout:60000});
+      if(seq!==files.seq)return;
+      files.listing=listing;
+    }
   }catch(e){
     if(seq!==files.seq||e.message===STALE)return;
     // Not text and not a picture or PDF (an archive, a spreadsheet): it can still be downloaded.
@@ -149,16 +156,19 @@ function renderReader(box,head,file){
   else view.style.setProperty("--ln",Math.max(2,String(file.content.split("\n").length).length));
   if(!file.rendered)file.content.split("\n").forEach((line,i,lines)=>{
     if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
-    view.append(el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" ")));
+    const row=el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" "));
+    row.dataset.line=row.dataset.end=i+1;view.append(row);
   });
   if(isMarkdown(file.path))head.append(fileButton(file.rendered?tr("Текст"):tr("Просмотр"),"files-up",()=>{file.rendered=!file.rendered;renderFiles()}));
   const copy=fileButton(tr("Копировать"),"",()=>{
     const selected=String(getSelection()||"");
     copyText(selected&&view.contains(getSelection().anchorNode)?selected:file.content);
   });
-  const change=fileButton(tr("Изменить"),"pri",()=>{file.editing=true;renderFiles()});
+  const change=fileButton(tr("Изменить"),"",()=>{file.editing=true;renderFiles()});
   const download=fileButton(tr("Скачать"),"",()=>downloadFile(null,file.path));
-  box.append(head,view,el("div","acts",copy,download,change));
+  const acts=el("div","acts",copy,download,change);
+  box.append(head,view,acts);
+  reviewReader(view,head,acts,file);
 }
 // Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
 function renderPreview(box,head,file){
@@ -176,11 +186,19 @@ function fileMatches(text,taken=[]){
   return [...text.matchAll(FILE_PATH_RE)].map(m=>({index:m.index,file:m[0]}))
     .filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a));
 }
+// A Markdown file opens in the file viewer instead, where it is read rendered and can be commented on.
 function fileLink(session,path,runs,from,to){
-  const link=el("a","file-link");link.href="#";link.title=tr("Скачать файл {0}",[path.split("/").pop()]);
+  const read=isMarkdown(path),link=el("a","file-link");link.href="#";
+  link.title=tr(read?"Открыть файл {0}":"Скачать файл {0}",[path.split("/").pop()]);
   appendStyledRange(link,runs,from,to);
-  link.onclick=event=>{event.preventDefault();downloadFile(session,path)};
+  link.onclick=event=>{event.preventDefault();read&&session===active?openScreenFile(path):downloadFile(session,path)};
   return link;
+}
+async function openScreenFile(path){
+  if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;
+  dropPreview();files.file=null;
+  openProject("files");
+  await openFile(path,active);
 }
 // Fetched first, so a missing or too large file is a message here, not an error page in its place.
 // A large file takes a while with nothing to see: a note says it started, and more taps do not start it again.

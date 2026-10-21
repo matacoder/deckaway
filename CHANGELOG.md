@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.60.0 — 2026-10-21
+
+- **Review a Markdown file and send the review to the agent.** A `.md` path an agent prints (“Plan written to plans/db.md”) now opens the file in the file viewer, rendered, instead of downloading it. **Comments** there turns on commenting: tap a paragraph, a list item or (in text view) a line, write what you think of it, and the block is marked with your note under it. **Send review (N)** puts one message in the field and sends it to the session: the file's path and, for each note, its line numbers, the quoted lines and your comment. Notes are kept in this browser until sent, like a draft.
+
 ## 1.59.0 — 2026-10-21
 
 - **Claude Code always starts with its classic renderer in DeckAway sessions.** Its fullscreen renderer (offered by Claude Code itself, `/tui fullscreen`, and on by default on some computers) draws on the terminal's alternate screen, where tmux keeps no scrollback: the page showed one screen and nothing above it. Sessions now start with `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1`, in WSL, on macOS and in Windows; a running session switches at its next restart. Switching with `/tui fullscreen` inside a session still works for that session.
