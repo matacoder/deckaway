@@ -50,7 +50,7 @@ test('the answer keys stay folded; opened, the keys stand in three full rows', a
   await page.locator('#b_keymore').click();
   const rows = await keyRows(page);
   expect(rows.map(row => row.map(key => key.text))).toEqual([
-    ['1', '2', '3', '4', '←', '→', '⏎'], ['?←', '?→', '↑', '↓', 'Esc', '⇧Tab', 'Tab', '^C'], ['Терминал', 'Перенос', '…']]);
+    ['1', '2', '3', '4', '←', '→', '⏎'], ['?←', '?→', '↑', '↓', 'Esc', '⇧Tab', 'Tab', '^C'], ['Вставка', 'Терминал', 'Перенос', '…']]);
   // The agent's commands are buttons of the session line, and without saved prompts nothing else is drawn.
   await expect(page.locator('#quick_prompts')).toBeHidden();
   // Every row runs from the same left edge to the same right edge.
@@ -58,6 +58,14 @@ test('the answer keys stay folded; opened, the keys stand in three full rows', a
     expect(Math.abs(row[0].left - rows[0][0].left)).toBeLessThan(1);
     expect(Math.abs(row.at(-1).right - rows[0].at(-1).right)).toBeLessThan(1);
   }
+});
+
+test('Paste among the other keys opens the block that takes pictures with the text', async ({ app, page }) => {
+  await app.open({ width: 390, height: 844 });
+  await page.locator('#b_keymore').click();
+  await page.locator('#b_paste').click();
+  await expect(page.locator('#paste_dlg')).toBeVisible();
+  await expect(page.locator('#paste_box')).toBeVisible();
 });
 
 test('message input disables correction, capitalization and spelling suggestions', async ({ app, page }) => {

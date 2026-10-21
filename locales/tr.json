@@ -847,6 +847,7 @@
     "Обновить страницу": "Reload the page",
     "Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся": "The interface was updated and this page is still the previous version. Drafts are kept",
     "Вставить с картинками": "Paste with pictures",
+    "Вставка": "Yapıştır",
     "Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.": "Paste the copied messages here: the text goes into the message field and the pictures are attached.",
     "Картинки из этой вставки не попали в поле": "The pictures of this paste did not reach the field",
     "Разговор": "Conversation",

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.61.0 — 2026-10-21
+
+- **Paste** among the keys under **…** (beside **Terminal** and **Wrap**) opens **Paste with pictures** in one tap: a message copied from Telegram on a phone lands there with its pictures, which a paste by the system menu into the message field cannot bring.
+
 ## 1.60.0 — 2026-10-21
 
 - **Review a Markdown file and send the review to the agent.** A `.md` path an agent prints (“Plan written to plans/db.md”) now opens the file in the file viewer, rendered, instead of downloading it. **Comments** there turns on commenting: tap a paragraph, a list item or (in text view) a line, write what you think of it, and the block is marked with your note under it. **Send review (N)** puts one message in the field and sends it to the session: the file's path and, for each note, its line numbers, the quoted lines and your comment. Notes are kept in this browser until sent, like a draft.
