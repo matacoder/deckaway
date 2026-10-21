@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.59.0 — 2026-10-21
+
+- **Claude Code always starts with its classic renderer in DeckAway sessions.** Its fullscreen renderer (offered by Claude Code itself, `/tui fullscreen`, and on by default on some computers) draws on the terminal's alternate screen, where tmux keeps no scrollback: the page showed one screen and nothing above it. Sessions now start with `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1`, in WSL, on macOS and in Windows; a running session switches at its next restart. Switching with `/tui fullscreen` inside a session still works for that session.
+
 ## 1.58.4 — 2026-10-20
 
 - **Claude installed in Windows with npm starts again.** npm leaves an extensionless `claude` script next to `claude.cmd`; PowerShell lists it as a program, the session started it, and Windows only asked which app should open “claude”. Only `.exe`, `.cmd` and `.bat` are started now, and a missing one is named in the session.

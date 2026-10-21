@@ -33,6 +33,12 @@ class ScrollbackTests(unittest.TestCase):
 
 
 class PanelScrollbackTests(PanelCase):
+    def test_claude_starts_with_the_classic_renderer_whose_scrollback_tmux_keeps(self):
+        sid = '11111111-1111-4111-8111-111111111111'
+        self.assertTrue(self.panel.agent_cmd('claude', sid).startswith('CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude --session-id '))
+        with patch.object(self.panel, 'transcript_exists', return_value=True):
+            self.assertTrue(self.panel.agent_cmd('claude', sid, True).startswith('CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 claude --resume '))
+
     def test_search_reads_the_whole_scrollback_of_a_real_session_only(self):
         with self.assertRaisesRegex(ValueError, 'сессия не найдена'):
             self.panel.scrollback_payload({'name': ['../x'], 'q': ['a']})

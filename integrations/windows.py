@@ -115,6 +115,8 @@ def script(agent, folder, sid=None, resume=False, skip=False):
     if sid is not None and not SID.match(str(sid)):
         raise ValueError('Invalid conversation ID')
     if agent == 'claude':
+        # The classic renderer, as in WSL: tmux keeps no scrollback of the fullscreen one.
+        lines.append("$env:CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN = '1'")
         args = ['--resume' if resume else '--session-id', sid] if sid else []
     else:
         # No hook reports a Windows Codex conversation; until its file is found, the folder's latest one.

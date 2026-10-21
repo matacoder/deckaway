@@ -655,11 +655,17 @@ def agent_cmd(agent, sid=None, resume=False, skip=False, name=None, source=None)
         if resume and not valid_sid(sid):
             raise ValueError("ID разговора Codex не сохранён. Возобновите нужный разговор через codex resume; автоматический выбор последнего отключён.")
         return f"codex --no-daemon --no-alt-screen resume {shlex.quote(sid)}{flag}" if resume else f"codex --no-daemon --no-alt-screen{flag}"
+    # The classic renderer: the fullscreen one Claude Code offers (and starts with on some computers) draws on
+    # the alternate screen, where tmux keeps no scrollback and the page has nothing to show above it.
+    claude = CLASSIC + (launcher or "claude")
     if resume:
         if transcript_exists(sid):
-            return (launcher or "claude") + f" --resume {sid}{flag}"
+            return claude + f" --resume {sid}{flag}"
         raise ValueError("Транскрипт этого разговора Claude не найден. Выберите разговор вручную или запустите новый.")
-    return (launcher or "claude") + f" --session-id {sid}{flag}" + (f" -n {name}" if name else "")
+    return claude + f" --session-id {sid}{flag}" + (f" -n {name}" if name else "")
+
+
+CLASSIC = "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1 "
 
 
 def containers_choice(raw):

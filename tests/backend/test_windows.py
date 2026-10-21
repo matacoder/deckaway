@@ -38,6 +38,7 @@ class WindowsTests(unittest.TestCase):
     def test_the_agent_starts_in_the_folder_with_its_own_flags(self):
         new = script('claude', 'C:\\Users\\me\\it\'s', SID)
         self.assertIn("Set-Location -LiteralPath 'C:\\Users\\me\\it''s'", new)
+        self.assertIn("$env:CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN = '1'", new)
         self.assertTrue(new.endswith(f"& $agent '--session-id' '{SID}'"))
         self.assertIn('-CommandType Application', new)  # Never an npm .ps1 the execution policy refuses.
         self.assertIn("$_.Extension -in '.exe','.cmd','.bat'", new)  # Nor npm's extensionless script Windows cannot run.
