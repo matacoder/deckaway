@@ -574,6 +574,20 @@ class WebQuestionTests(PanelCase):
                 self.assertIsNone(self.panel.session_question(name))
             exists.assert_not_called()
 
+    def test_a_form_of_several_questions_offers_the_one_on_screen(self):
+        first = self.question(request_id='tool-1:0', title='Prizes?', progress='Question 1/2')
+        second = self.question(request_id='tool-1:1', title='End of year?', progress='Question 2/2')
+        # Claude's form shows tabs, not "Question n/m", once the first answer moved it on.
+        shown = self.question(title='← ☒ Prizes ☐ End of year ✔ Submit →\nEnd of year?', options=('Yes', 'No', 'Type something.'))
+        with patch.object(self.panel, 'session_exists', return_value=True), \
+             patch.object(self.panel, 'pending_questions', return_value=[first, second]), \
+             patch.object(self.panel, 'current_question', return_value=shown):
+            self.assertIs(self.panel.session_question('demo'), second)
+        with patch.object(self.panel, 'session_exists', return_value=True), \
+             patch.object(self.panel, 'pending_questions', return_value=[first, second]), \
+             patch.object(self.panel, 'current_question', return_value=None):
+            self.assertIs(self.panel.session_question('demo'), first)
+
     def test_answer_requires_the_shown_question_and_an_integer_index(self):
         question = self.question()
         with patch.object(self.panel, 'session_question', return_value=question), \

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.61.2 — 2026-10-22
+
+- **A Claude Code form of several questions moves on to the next one.** Claude writes the answers only at Submit, so the card under the screen kept offering the first question after it was answered. The card now offers the question the form shows.
+
 ## 1.61.1 — 2026-10-21
 
 - **Claude Code installed in Windows by its own installer is found.** That installer puts `claude.exe` in `%USERPROFILE%\.local\bin` and only asks to add the folder to PATH; a Windows session without it there stopped with “claude is not installed in Windows as a program”. The folder is now searched too.
