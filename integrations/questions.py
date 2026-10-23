@@ -37,10 +37,23 @@ FOOTER = re.compile(r"(?:enter|return|⏎)\s+(?:to\s+)?(?:submit(?: (?:answer|al
                     r"|^esc to cancel\b", re.I)
 SOLID = re.compile(r"^[─━═╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
 RULE = re.compile(r"^[─━═╌┄╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
+# The last tab of Claude Code's form of several questions names no keys under its options.
+READY = re.compile(r"^Ready to submit your answers\?$", re.I)
 
 
 class QuestionNotReady(ValueError):
     retryable = True
+
+
+def submit_end(lines):
+    """Where the options under "Ready to submit your answers?" end, or None without that question."""
+    ready = [i for i, line in enumerate(lines) if READY.match(line)]
+    if not ready:
+        return None
+    first = end = next((i for i in range(ready[-1] + 1, len(lines)) if lines[i]), len(lines))
+    while end < len(lines) and OPTION.match(lines[end]):
+        end += 1
+    return end if end > first else None
 
 
 def parse_question(session, agent, instance, screen):
@@ -49,9 +62,9 @@ def parse_question(session, agent, instance, screen):
     screen = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", screen)
     lines = [line.strip().strip("│┃").strip() for line in screen.splitlines()[-120:]]
     footers = [i for i, line in enumerate(lines) if FOOTER.search(line)]
-    if not footers:
+    end = footers[-1] if footers else submit_end(lines)
+    if end is None:
         return None
-    end = footers[-1]
     # A historical picker above a new composer must never receive an answer.
     if any(re.match(r"^[›❯>]\s+\S", line) and not OPTION.match(line) for line in lines[end + 1:]):
         return None
@@ -60,7 +73,7 @@ def parse_question(session, agent, instance, screen):
     start = max(0, end - 60)
     headers = [i for i in range(start, end) if re.match(r"^Question \d+/\d+", lines[i])]
     queued = [i for i in range(start, end) if 'Queued follow-up inputs' in lines[i]]
-    async_form = bool(queued and re.search(r'shift\+\s*→\s+main prompt', lines[end], re.I))
+    async_form = bool(queued and end < len(lines) and re.search(r'shift\+\s*→\s+main prompt', lines[end], re.I))
     progress = ""
     if headers:
         start = headers[-1] + 1

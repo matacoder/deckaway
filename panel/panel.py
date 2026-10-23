@@ -1715,9 +1715,9 @@ def session_question(name):
         pending = pending_questions(name)
         if len(pending) > 1:
             # A form of several questions is answered only at Submit: the conversation file lists them all
-            # as pending until then, so the one on screen is the one to answer.
+            # as pending until then, so the one on screen is the one to answer, its Submit tab included.
             current = current_question(name)
-            return next((q for q in pending if matches_screen(q, current)), pending[0])
+            return next((q for q in pending if matches_screen(q, current)), current or pending[0])
         return pending[0] if pending else current_question(name)
 
 

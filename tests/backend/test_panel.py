@@ -587,6 +587,12 @@ class WebQuestionTests(PanelCase):
              patch.object(self.panel, 'pending_questions', return_value=[first, second]), \
              patch.object(self.panel, 'current_question', return_value=None):
             self.assertIs(self.panel.session_question('demo'), first)
+        # The Submit tab is none of them: the screen's own question is offered.
+        submit = self.question(title='Ready to submit your answers?', options=('Submit answers', 'Cancel'))
+        with patch.object(self.panel, 'session_exists', return_value=True), \
+             patch.object(self.panel, 'pending_questions', return_value=[first, second]), \
+             patch.object(self.panel, 'current_question', return_value=submit):
+            self.assertIs(self.panel.session_question('demo'), submit)
 
     def test_answer_requires_the_shown_question_and_an_integer_index(self):
         question = self.question()

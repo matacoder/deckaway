@@ -70,6 +70,16 @@ enter submit   ctrl+] skip   shift+→ main prompt
         # Generic settings menu without a question is not a notification.
         self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen.replace('Choose', 'Model:')))
 
+    def test_claude_form_submit_tab_names_no_keys_and_is_still_a_question(self):
+        screen = ('────────\n←  ☒ Landing  ☒ Button  ✔ Submit  →\n\nReview your answers\n\n● Which page?\n  → Landing\n\n'
+                  'Ready to submit your answers?\n\n❯ 1. Submit answers\n  2. Cancel\n──────── demo-1\n')
+        parsed = parse_question('demo', 'claude', '%1:123', screen)
+        self.assertEqual((parsed.options, parsed.selected), (('Submit answers', 'Cancel'), 0))
+        self.assertTrue(parsed.title.endswith('Ready to submit your answers?'))
+        # Without its question the same menu is ordinary output, and a new prompt below makes it history.
+        self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen.replace('Ready to submit your answers?', '')))
+        self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen + '❯ next command\n'))
+
     def test_claude_permission_dialog_without_an_enter_hint_carries_its_command(self):
         # Captured from Claude Code 2.1.299: the footer names no Enter key and dashed rules frame the command.
         screen = ('● Bash(date > stamp.txt && echo done)\n  ⎿  Waiting…\n' + '─' * 60 + '\n Bash command\n'

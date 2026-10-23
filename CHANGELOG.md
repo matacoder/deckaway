@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.61.4 — 2026-10-23
+
+- **The Submit step of a Claude Code form of several questions gets its buttons.** That last tab (“Ready to submit your answers?”) names no keys under its options, so it was not taken for a question and the card kept offering the first question. The card now offers **Submit answers** and **Cancel**.
+
 ## 1.61.3 — 2026-10-23
 
 - **Opened keys fill the width of a wide window.** The three rows under **…** stopped at 560 px and left an empty gap beside them.
