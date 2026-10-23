@@ -246,9 +246,10 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .key-toggle::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--dim)}
 .keys .key-toggle[aria-pressed="true"]{background:var(--side2);color:var(--fg)}
 .key-toggle[aria-pressed="true"]::before{background:var(--acc);box-shadow:0 0 6px var(--acc)}
-/* Opened, the keys stand in three rows by purpose: answering, control, view. Two zero-height breaks end the
+/* Opened, the keys stand in three rows by purpose: answering, control, view, across the composer's width on
+   any screen (narrower rows left a gap at the right of a wide one). Two zero-height breaks end the
    rows, so each fills the width whatever it holds (Codex's question keys, numbers hidden by a question). */
-.keys.expanded{max-width:560px;column-gap:6px;row-gap:3px}
+.keys.expanded{column-gap:6px;row-gap:3px}
 .keys.expanded::before,.keys.expanded::after{content:"";flex:0 0 100%;height:0}
 .keys.expanded::before{order:2}.keys.expanded::after{order:4}
 .keys.expanded>.key{order:3;flex:1 1 0;min-width:0;padding:0 4px}

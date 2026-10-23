@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.61.3 — 2026-10-23
+
+- **Opened keys fill the width of a wide window.** The three rows under **…** stopped at 560 px and left an empty gap beside them.
+
 ## 1.61.2 — 2026-10-22
 
 - **A Claude Code form of several questions moves on to the next one.** Claude writes the answers only at Submit, so the card under the screen kept offering the first question after it was answered. The card now offers the question the form shows.
