@@ -315,6 +315,15 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer>[hidden]{display:none}
 }
 .quick-chip{flex:none;max-width:220px;height:32px;padding:0 12px;border:1px solid var(--bd);border-radius:16px;background:var(--side2);color:var(--fg);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Paths and commands of the last answer: one scrolling row, each chip opens what can be done with it. */
+.answer-refs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.answer-refs::-webkit-scrollbar{display:none}
+.answer-refs[hidden]{display:none}
+.ref-chip{flex:none;display:inline-flex;align-items:center;gap:6px;max-width:240px;height:32px;padding:0 12px;border:1px solid var(--bd);border-radius:16px;background:var(--side2);color:var(--fg);font:12.5px var(--mono)}
+.ref-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref-chip svg{flex:none;width:14px;height:14px;color:var(--dim)}
+.ref-value{margin:0 0 12px;padding:10px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);font:13px/1.45 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;user-select:text;-webkit-user-select:text}
+.ref-actions{flex-wrap:wrap}
 @media (hover:hover){.quick-chip:hover{border-color:var(--bd-strong);background:var(--sel)}}
 .quick-chip:active{transform:scale(.97)}
 .quick-edit{display:grid;place-items:center;width:32px;padding:0;color:var(--mut)}
@@ -978,6 +987,7 @@ body.resizing iframe{pointer-events:none}
   .chk,.dlg label.chk{font-size:15px}
   .dlg textarea,.later-when input[type=datetime-local]{font-size:16px}
   .quick-chip{height:36px;font-size:14px;border-radius:18px}.quick-edit{width:36px}
+  .ref-chip{height:36px;font-size:13.5px;border-radius:18px}
   .later-remove{width:var(--tap);height:var(--tap)}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}

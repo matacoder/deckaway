@@ -109,6 +109,7 @@ __PANEL_STYLE__</style></head><body>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
           </div>
+          <div id="answer_refs" class="answer-refs" role="group" aria-label="Пути и команды из ответа" hidden></div>
           <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
@@ -247,6 +248,8 @@ __PANEL_STYLE__</style></head><body>
   <div class="acts"><button type="button" onclick="$('dlg').close()">Отмена</button><button class="pri" id="n_go">Создать</button></div>
 </form></dialog>
 
+<dialog id="ref_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="ref_title"></h3><pre id="ref_value" class="ref-value"></pre>
+<div class="acts ref-actions" id="ref_actions"></div><div class="acts"><button type="submit">Закрыть</button></div></div></form></dialog>
 <div id="paste_catch" contenteditable="true" aria-hidden="true" tabindex="-1"></div>
 <dialog id="paste_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3>Вставить с картинками</h3>
 <p class="hint">Вставьте сюда скопированные сообщения: текст попадёт в поле сообщения, картинки приложатся.</p>

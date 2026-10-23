@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.62.0 — 2026-10-23
+
+- **Paths and commands of the agent's answer, whole, with a tap.** A long path or a `! command` the terminal wraps across lines could be neither tapped nor copied. The panel now reads them from the conversation file, where nothing is wrapped, and shows the last answer's files, folders and commands as chips under the screen. A chip shows the full text and offers **Copy**; a file is downloaded (Markdown opens in the viewer), a folder opens in the file browser, and a command can **Run in a new terminal**: a terminal session of its own in the session's folder, where the command is typed and run. A file name with spaces ("…/Коэффициенты 1,22 и 1,55 сверка.pdf") is taken up to its extension.
+
 ## 1.61.4 — 2026-10-23
 
 - **The Submit step of a Claude Code form of several questions gets its buttons.** That last tab (“Ready to submit your answers?”) names no keys under its options, so it was not taken for a question and the card kept offering the first question. The card now offers **Submit answers** and **Cancel**.

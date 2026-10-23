@@ -139,6 +139,7 @@ function screenMore(){
 const screenHistory={key:null,node:null,at:0,loading:false};
 const SCREEN_HISTORY_MS=20000;
 function screenEarlier(p,name){
+  if(refs.key&&refs.key!==sessionInfoKey())clearRefs();
   if(screenView.cut||!p.querySelector(".ln")||active!==name||sessionInfo.session!==sessionInfoKey()||!sessionInfo.data?.supported)return;
   const key=sessionInfoKey();
   if(screenHistory.key===key&&screenHistory.node&&p.firstChild!==screenHistory.node)p.prepend(screenHistory.node);
@@ -151,6 +152,7 @@ async function loadScreenHistory(key){
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
     if(key!==sessionInfoKey())return;
+    showRefs(key,data?.supported?data.turns:[]);
     const p=$("pre"),stick=atBottom(p),below=p.scrollHeight-p.scrollTop;
     screenHistory.node?.remove();
     screenHistory.node=historyNode(data,p.textContent);

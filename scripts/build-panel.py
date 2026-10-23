@@ -21,6 +21,7 @@ SCRIPTS = (
     "gestures.js",
     "files.js",
     "review.js",
+    "refs.js",
     "gallery.js",
     "git.js",
     "session-info.js",
