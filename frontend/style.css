@@ -128,6 +128,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 /* The same left and right edge as the limits above it. */
 .side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;align-content:center;min-height:var(--meta-height,0px);gap:6px 8px;padding:6px 14px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
 #ver{min-width:0;font:11px var(--mono);color:var(--dim);text-align:right}
+.ver-link{color:inherit;text-decoration:none}
+@media (hover:hover){.ver-link:hover{color:var(--fg2);text-decoration:underline}}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc-text);text-align:right;overflow-wrap:anywhere;font:inherit}
 .side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
 @media (hover:hover){.side-foot>button:hover{background:var(--sel)}}

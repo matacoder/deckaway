@@ -139,6 +139,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 /* The same left and right edge as the limits above it. */
 .side-foot{display:grid;grid-template-columns:1fr auto;align-items:center;align-content:center;min-height:var(--meta-height,0px);gap:6px 8px;padding:6px 14px;border-top:1px solid var(--bd);color:var(--mut);font-size:11px}
 #ver{min-width:0;font:11px var(--mono);color:var(--dim);text-align:right}
+.ver-link{color:inherit;text-decoration:none}
+@media (hover:hover){.ver-link:hover{color:var(--fg2);text-decoration:underline}}
 #ver button{display:block;max-width:100%;margin-top:3px;color:var(--acc-text);text-align:right;overflow-wrap:anywhere;font:inherit}
 .side-foot>button{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:9px;background:var(--side2);color:var(--fg);font-size:12px;text-align:left;white-space:normal}
 @media (hover:hover){.side-foot>button:hover{background:var(--sel)}}
@@ -4808,7 +4810,7 @@ function versionState(v){
 function renderVersion(v){
   panelVersion=v;keepShown(deckLocalStorage,selectedDeck,"version",{version:v.version});const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
   panelUpdating=UPDATE_PHASES.has(job.phase);
-  box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
+  box.replaceChildren(versionLink(v.version));box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
   const blocked=Boolean(state.run===startPanelUpdate&&!v.can_update);
   const how=v.container?tr("Контейнер: обновите образ и пересоздайте контейнер: {0}",[v.update_command||"docker compose up -d --build"]):tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
   mobile.style.display="none";
@@ -5682,7 +5684,13 @@ function showRemembered(){
   ghLogin=shown(deckLocalStorage,"github")?.login||null;
   pendingMetrics();
   const version=shown(deckLocalStorage,"version")?.version;
-  $("ver").replaceChildren(typeof version==="string"?"v"+version:el("span","sk-line ver-skeleton"));
+  $("ver").replaceChildren(typeof version==="string"?versionLink(version):el("span","sk-line ver-skeleton"));
+}
+// The version leads to the project's repository, in a new tab: release notes and issues are there.
+function versionLink(version){
+  const link=el("a","ver-link","v"+version);
+  link.href="https://github.com/matacoder/deckaway";link.target="_blank";link.rel="noopener";
+  return link;
 }
 // The switcher and the other computers' lists, so the session list does not move down when they arrive.
 function showRememberedDecks(){

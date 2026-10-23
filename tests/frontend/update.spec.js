@@ -8,6 +8,8 @@ function newRelease(app) {
 test('latest installed version has no update action', async ({ app, page }) => {
   await app.open();
   await expect(page.locator('#ver')).toContainText('v0.1.0');
+  await expect(page.locator('#ver a')).toHaveAttribute('href', 'https://github.com/matacoder/deckaway');
+  await expect(page.locator('#ver a')).toHaveAttribute('target', '_blank');
   await expect(page.locator('#b_update')).toHaveCount(0);
   await page.evaluate(() => sheet(true));
   await expect(page.locator('#s_update')).toBeHidden();

@@ -172,7 +172,7 @@ function versionState(v){
 function renderVersion(v){
   panelVersion=v;keepShown(deckLocalStorage,selectedDeck,"version",{version:v.version});const job=v.job||{},state=versionState(v),box=$("ver"),mobile=$("s_update");
   panelUpdating=UPDATE_PHASES.has(job.phase);
-  box.replaceChildren("v"+v.version);box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
+  box.replaceChildren(versionLink(v.version));box.title=v.latest?tr("последний релиз: v{0}",[v.latest]):"";
   const blocked=Boolean(state.run===startPanelUpdate&&!v.can_update);
   const how=v.container?tr("Контейнер: обновите образ и пересоздайте контейнер: {0}",[v.update_command||"docker compose up -d --build"]):tr("Разработка: обновляйте чекаут через git. Кнопка доступна после установки панели.");
   mobile.style.display="none";

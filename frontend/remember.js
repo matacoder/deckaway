@@ -158,7 +158,13 @@ function showRemembered(){
   ghLogin=shown(deckLocalStorage,"github")?.login||null;
   pendingMetrics();
   const version=shown(deckLocalStorage,"version")?.version;
-  $("ver").replaceChildren(typeof version==="string"?"v"+version:el("span","sk-line ver-skeleton"));
+  $("ver").replaceChildren(typeof version==="string"?versionLink(version):el("span","sk-line ver-skeleton"));
+}
+// The version leads to the project's repository, in a new tab: release notes and issues are there.
+function versionLink(version){
+  const link=el("a","ver-link","v"+version);
+  link.href="https://github.com/matacoder/deckaway";link.target="_blank";link.rel="noopener";
+  return link;
 }
 // The switcher and the other computers' lists, so the session list does not move down when they arrive.
 function showRememberedDecks(){
