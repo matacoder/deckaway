@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.64.0
+
+- A light theme: warm cream paper, white cards, a coral accent, rounder corners and a rounded font where the device has one. Settings → General → Appearance: dark (as before), light, or the same as the system. Chosen per browser, drawn from the first paint, the sign-in page included.
+- On the light theme agent output stays readable: greys are mirrored (white text and dark boxes become dark text on pale ones), light colours are darkened.
+- Every colour, shadow, radius and font of the panel is now a token, so a theme only sets tokens.
+
 ## 1.63.1
 
 - Claude Code's suggested next step is found when its input box is focused: the cursor drawn over the first letter and other colour codes no longer hide the button.

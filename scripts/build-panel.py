@@ -18,6 +18,7 @@ SCRIPTS = (
     "fleet.js",
     "inbox.js",
     "screen.js",
+    "theme.js",
     "gestures.js",
     "files.js",
     "review.js",
@@ -74,6 +75,8 @@ def main():
         if page.count(marker) != 1:
             raise SystemExit(f"Expected one {marker} in the panel template")
         content = (source / name).read_text()
+        if name == "style.css":
+            content += (source / "themes.css").read_text()
         if name == "app.js":
             content = "".join((source / part).read_text() for part in SCRIPTS) + content
         page = page.replace(marker, content)

@@ -22,12 +22,23 @@ let panelOrigins=[location.origin];
 const resolvePanelLink=u=>panelLinkTarget(u,{browserOrigin:location.origin,panelOrigins,identity:selectedDeck});
 const cleanUrl=u=>u.replace(/[.,;)\]]+$/,"");
 const ANSI_PALETTE=["#2e3436","#cc0000","#4e9a06","#c4a000","#3465a4","#75507b","#06989a","#d3d7cf","#555753","#ef2929","#8ae234","#fce94f","#729fcf","#ad7fa8","#34e2e2","#eeeeec"];
+// Agents colour their output for a dark terminal. On a light theme a grey keeps its contrast mirrored (light
+// grey text and a dark grey box become dark text on a pale box) and a light colour is darkened to stay readable.
+const screenTone={light:false};
+function screenRgb(rgb,light=screenTone.light){
+  if(!light)return `rgb(${rgb.join(",")})`;
+  const [r,g,b]=rgb,high=Math.max(r,g,b),low=Math.min(r,g,b);
+  if(high-low<40)return `rgb(${rgb.map(v=>Math.round(255-v*0.92)).join(",")})`;
+  const luma=(0.299*r+0.587*g+0.114*b)/255,scale=luma>0.45?0.45/luma:1;
+  return `rgb(${rgb.map(v=>Math.round(v*scale)).join(",")})`;
+}
+const hexRgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 function ansiColor(n){
   if(!Number.isInteger(n)||n<0||n>255)return null;
-  if(n<16)return ANSI_PALETTE[n];
-  if(n>=232){const v=8+(n-232)*10;return `rgb(${v},${v},${v})`}
+  if(n<16)return screenRgb(hexRgb(ANSI_PALETTE[n]));
+  if(n>=232){const v=8+(n-232)*10;return screenRgb([v,v,v])}
   n-=16;const level=v=>v===0?0:55+40*v;
-  return `rgb(${level(Math.floor(n/36))},${level(Math.floor(n/6)%6)},${level(n%6)})`;
+  return screenRgb([level(Math.floor(n/36)),level(Math.floor(n/6)%6),level(n%6)]);
 }
 function ansiLines(text,depth=SCREEN_LINES){
   let style={},line=[],lines=[];
@@ -67,7 +78,7 @@ function ansiLines(text,depth=SCREEN_LINES){
       else if(c===38||c===48){
         const key=c===38?"fg":"bg",mode=codes[++i];let color=null;
         if(mode===5)color=ansiColor(codes[++i]);
-        else if(mode===2){const rgb=codes.slice(i+1,i+4);i+=3;if(rgb.length===3&&rgb.every(v=>Number.isInteger(v)&&v>=0&&v<=255))color=`rgb(${rgb.join(",")})`}
+        else if(mode===2){const rgb=codes.slice(i+1,i+4);i+=3;if(rgb.length===3&&rgb.every(v=>Number.isInteger(v)&&v>=0&&v<=255))color=screenRgb(rgb)}
         if(color)style[key]=color;
       }
     }

@@ -1,0 +1,22 @@
+/* ---------- themes ---------- */
+/* A theme only sets the tokens of style.css. Light is a warm, homely look: cream paper, white cards, a coral
+   accent, rounder corners, a rounded font where the device has one and softer shadows. Text keeps WCAG AA. */
+:root[data-theme=light]{
+  --scheme:light;--scrollbar:#d3c8ba;
+  --bg:#fbf7f1;--side:#fffdf9;--side2:#f4ede3;--sel:#efe4d6;--bd:#e9dfd2;--bd-soft:#5a3c1e14;
+  --fg:#3b332c;--fg2:#231d18;--mut:#6a5f55;--dim:#6f645a;
+  --acc:#e0694a;--acc-strong:#c4512f;--acc-text:#ad4426;--acc-soft:#e0694a1f;--link:#ad4426;--on-acc:#fff;
+  --acc-line:#e0694a66;--acc-hover:#e0694a2e;--acc-wash:#e0694a24;--bad-wash:#d43d2f1a;
+  --ok:#23794a;--warn:#8a5f00;--bad:#d43d2f;--bad-text:#b42a1e;--heavy:#d9800b;
+  --orange:#c75a32;--teal:#1f8583;--violet:#6c51c9;--sky:#2f6fc4;--lime:#4a8a24;--telegram:#1f86c2;--telegram-soft:#2a9ed91c;
+  --hover-tint:#5a3c1e0d;--card-tint:#fffdf9;--nav-tint:#f7f1e8;--hl:#5a3c1e1a;
+  --overlay:rgba(60,40,20,.3);
+  --shadow-sm:0 4px 14px rgba(90,60,30,.12);--shadow-md:0 10px 28px rgba(90,60,30,.14);--shadow-lg:0 16px 44px rgba(90,60,30,.16);
+  --shadow-xl:0 24px 70px rgba(90,60,30,.18);--shadow-side:0 0 30px rgba(90,60,30,.18);
+  --sans:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Nunito","Segoe UI",system-ui,sans-serif;
+  --r-sm:10px;--r-xs:11px;--r-btn:12px;--r:14px;--r-md:16px;--r-lg:18px;--r-xl:22px;
+  --bd-strong:#ddd1c2;--bd-hover:#cfc1b0;--ctl:#e7ddd0;--ctl-bd:#d3c6b6;--danger-bg:#c8362a;--knob:#fff;
+  --toast-bad-bg:#fdecea;--toast-bad-fg:#8a2318;--toast-bad-bd:#f1c3bc;--toast-ok-bg:#e8f5ec;--toast-ok-fg:#1d5e33;--toast-ok-bd:#bfe0c9;
+  --toast-info-bg:#fdf3e7;--toast-info-fg:#6b4210;--toast-info-bd:#efd6b4;
+  --sub-strong:#5a5047;
+}

@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#252526">
 <link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
 <title>DeckAway</title>
+<script id="theme_boot">/* Before the styles: a light page must not flash dark. theme.js keeps the same rule; the id keeps render_html
+   from taking this for the page script. */
+try{const t=localStorage.getItem("cc.theme");document.documentElement.dataset.theme=t==="light"||t==="system"&&matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}catch(e){}</script>
 <style>
 __PANEL_STYLE__</style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -420,6 +423,7 @@ __PANEL_STYLE__</style></head><body>
     <section id="hub_general" role="tabpanel" aria-labelledby="tab_general" hidden>
       <header class="hub-section-head"><h3>Общие</h3><p>Язык, папка проектов, версия и обновления.</p></header>
       <div class="hub-card"><h4>Этот браузер</h4><label for="ui_language">Язык интерфейса</label><select id="ui_language" onchange="saveLanguage()"></select><p class="hint">Сообщения и вывод агентов не переводятся.</p>
+        <label for="ui_theme">Оформление</label><select id="ui_theme" onchange="saveTheme()"></select>
         <label class="toggle"><span>Автокоррекция в поле сообщения</span><input type="checkbox" role="switch" id="autocorrect_enabled" onchange="saveAutocorrect()"></label><p class="hint">Выключена по умолчанию: iOS заменяет -- и кавычки, а агенту нужны точные символы.</p>
         <label for="code_font">Размер шрифта кода</label><select id="code_font" onchange="setCodeFont(+this.value)"></select><p class="hint">Диффы, коммиты и файлы в правой панели.</p>
         <label for="context_heavy">Контекст разросся (жёлтый), тысяч токенов</label><input type="number" id="context_heavy" min="1" max="2000" step="5" inputmode="numeric" onchange="saveContextLimits()">

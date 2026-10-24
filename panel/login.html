@@ -7,19 +7,25 @@
 <meta name="theme-color" content="#1e1e1e">
 <link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
 <title>DeckAway · вход</title>
+<script id="theme_boot">/* The panel's theme (frontend/theme.js), chosen in this browser, applies to this page too. */
+try{const t=localStorage.getItem("cc.theme");document.documentElement.dataset.theme=t==="light"||t==="system"&&matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}catch(e){}</script>
 <style>
+:root{color-scheme:dark;--bg:#1e1e1e;--fg:#d4d4d4;--fg2:#ececec;--mut:#8a8a8e;--bd:#38383d;--field:#252526;--acc:#0a84ff;--acc-strong:#0a84ff;--bad:#ff6b61;--shadow:rgba(0,0,0,.4);--r:10px;
+  --sans:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+:root[data-theme=light]{color-scheme:light;--bg:#fbf7f1;--fg:#3b332c;--fg2:#231d18;--mut:#6a5f55;--bd:#e9dfd2;--field:#fffdf9;--acc:#e0694a;--acc-strong:#c4512f;--bad:#b42a1e;--shadow:rgba(90,60,30,.16);--r:14px;
+  --sans:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Nunito","Segoe UI",system-ui,sans-serif}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#1e1e1e;color:#d4d4d4;font:15px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:15px/1.4 var(--sans)}
 body{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px 16px;padding-top:max(24px,env(safe-area-inset-top))}
 .box{width:100%;max-width:340px}
-.logo{width:64px;height:64px;border-radius:15px;display:block;margin:0 auto 18px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-h1{font-size:20px;font-weight:600;text-align:center;margin:0 0 24px;color:#ececec}
-label{display:block;font-size:13px;color:#8a8a8e;margin:0 0 6px}
-input{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:10px;border:1px solid #38383d;background:#252526;color:#ececec;outline:none;margin-bottom:14px;-webkit-appearance:none}
-input:focus{border-color:#0a84ff}
-button{width:100%;font:inherit;font-size:16px;font-weight:600;padding:13px;border:0;border-radius:10px;background:#0a84ff;color:#fff;margin-top:6px;cursor:pointer}
+.logo{width:64px;height:64px;border-radius:15px;display:block;margin:0 auto 18px;box-shadow:0 8px 24px var(--shadow)}
+h1{font-size:20px;font-weight:600;text-align:center;margin:0 0 24px;color:var(--fg2)}
+label{display:block;font-size:13px;color:var(--mut);margin:0 0 6px}
+input{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:var(--r);border:1px solid var(--bd);background:var(--field);color:var(--fg2);outline:none;margin-bottom:14px;-webkit-appearance:none}
+input:focus{border-color:var(--acc)}
+button{width:100%;font:inherit;font-size:16px;font-weight:600;padding:13px;border:0;border-radius:var(--r);background:var(--acc-strong);color:#fff;margin-top:6px;cursor:pointer}
 button:active{opacity:.85}
-.err{min-height:20px;color:#ff6b61;font-size:13px;text-align:center;margin-bottom:10px}
+.err{min-height:20px;color:var(--bad);font-size:13px;text-align:center;margin-bottom:10px}
 </style></head><body>
 <form class="box" method="post" action="/login">
   <img class="logo" src="/icon-180.png" alt="">
