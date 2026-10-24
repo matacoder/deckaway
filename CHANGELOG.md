@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.65.0
+
+- A folder the agent prints on the screen (`/Users/me/reports/run-2026-10-24/`, `~/dev/`, `./out/`) is a link: a tap opens it in the file browser, like `open` on a Mac. Only a path with a slash at its end, so `and/or/` and web links stay text.
+
 ## 1.64.1
 
 - On a wide window the pencil of the quick prompts is back beside the keys: Claude's suggestion and the chips of the last answer sit below that row instead of pushing it to a line of its own.

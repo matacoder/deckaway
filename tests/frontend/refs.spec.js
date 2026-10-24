@@ -37,3 +37,11 @@ test('paths and commands of the last answer are chips that copy, open and run th
   await expect.poll(() => app.sends.at(-1)).toMatchObject({ name: 'demo-run', text: 'npm run shots -- --all' });
   await expect(page.locator('#title b')).toContainText('demo-run');
 });
+
+test('a folder printed on the screen opens in the file browser on a tap, like open on a Mac', async ({ app, page }) => {
+  const listed = await conversation(page);
+  app.sessions = [session('demo', { agent: 'claude', path: '/home/test/projects/demo', preview: 'Отчёты: /home/test/projects/demo/reports/tts-compare-2026-10-24/ готовы' })];
+  await app.open({ width: 390, height: 844 });
+  await page.locator('#pre a.file-link', { hasText: 'tts-compare-2026-10-24/' }).click();
+  await expect.poll(() => listed.at(-1)).toBe('/home/test/projects/demo/reports/tts-compare-2026-10-24');
+});

@@ -182,16 +182,24 @@ function renderPreview(box,head,file){
 // Paths to any file that agents print ("/home/me/plan.pdf", "docs/notes.md"): a tap downloads it.
 // A folder in the path keeps ordinary words ("v1.2", "e.g.") from turning into links.
 const FILE_PATH_RE=/(?<![\w/.~@+-])(?:~\/|\/|\.\.?\/)?(?:[\w.@+-]+\/)+[\w.@+-]*\w\.[A-Za-z0-9]{1,10}(?![\w-]|\.\w)/g;
+// A folder only with a slash at its end and a start that is no word ("/Users/me/reports/", "~/dev/", "./out/"),
+// so "and/or/" or the middle of a path stay text; a tap opens it in the file browser, like `open` on a Mac.
+const FOLDER_PATH_RE=/(?<![\w/.~@+:-])(?:~\/|\/|\.\.?\/)(?:[\w.@+-]+\/)*(?![\w.@+\/-])/g;
 function fileMatches(text,taken=[]){
-  return [...text.matchAll(FILE_PATH_RE)].map(m=>({index:m.index,file:m[0]}))
-    .filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a));
+  const files=[...text.matchAll(FILE_PATH_RE)].map(m=>({index:m.index,file:m[0]}));
+  const folders=[...text.matchAll(FOLDER_PATH_RE)].filter(m=>m[0].replace(/^(~|\.\.?)?\//,"").length).map(m=>({index:m.index,file:m[0],folder:true}));
+  return [...files,...folders].filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a)).sort((x,y)=>x.index-y.index);
 }
 // A Markdown file opens in the file viewer instead, where it is read rendered and can be commented on.
-function fileLink(session,path,runs,from,to){
+function fileLink(session,path,runs,from,to,folder=false){
   const read=isMarkdown(path),link=el("a","file-link");link.href="#";
-  link.title=tr(read?"Открыть файл {0}":"Скачать файл {0}",[path.split("/").pop()]);
+  link.title=folder?tr("Открыть папку")+" "+path:tr(read?"Открыть файл {0}":"Скачать файл {0}",[path.split("/").pop()]);
   appendStyledRange(link,runs,from,to);
-  link.onclick=event=>{event.preventDefault();read&&session===active?openScreenFile(path):downloadFile(session,path)};
+  link.onclick=event=>{
+    event.preventDefault();
+    if(folder){if(session===active)openRefFolder(path);return}
+    read&&session===active?openScreenFile(path):downloadFile(session,path);
+  };
   return link;
 }
 async function openScreenFile(path){

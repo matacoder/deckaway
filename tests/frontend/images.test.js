@@ -39,3 +39,10 @@ test('any file path with a folder becomes a download link; plain words and web l
  const url=text.indexOf('https');
  expect(fileMatches(text,[[url,text.length]]).map(m=>m.file)).toEqual(['/home/dev/suzdal/suzdal_plan.pdf','src/app.py','~/notes/a.md','../x/y.tar.gz']);
 });
+
+test('a folder path ending in a slash is a link of its own; "and/or/", a lone "~/" and a URL are not',()=>{
+ const {fileMatches}=require('../../frontend/files');
+ const text='Отчёт: /Users/denis/dev/med/reports/tts-compare-2026-10-24/ и ~/dev/, файл /tmp/x/a.txt, and/or/ ~/ https://x.test/a/b/';
+ const url=text.indexOf('https');
+ expect(fileMatches(text,[[url,text.length]]).map(m=>(m.folder?'dir ':'')+m.file)).toEqual(['dir /Users/denis/dev/med/reports/tts-compare-2026-10-24/','dir ~/dev/','/tmp/x/a.txt']);
+});

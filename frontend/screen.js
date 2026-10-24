@@ -235,7 +235,7 @@ function updateScreen(s,force){
         if(m.url){
           const a=document.createElement("a");a.href=resolvePanelLink(m.url);a.target="_blank";a.rel="noopener";
           appendStyledRange(a,runs,m.index,m.index+m.url.length);d.append(a);i=m.index+m.url.length;
-        }else if(m.file){d.append(fileLink(s.name,m.file,runs,m.index,m.index+m.file.length));i=m.index+m.file.length}
+        }else if(m.file){d.append(fileLink(s.name,m.file,runs,m.index,m.index+m.file.length,m.folder));i=m.index+m.file.length}
         else{d.append(imageLink(s.name,m.path,runs,m.index,m.index+m.path.length));i=m.index+m.path.length}
       }
       appendStyledRange(d,runs,i,line.length);p.append(d);
