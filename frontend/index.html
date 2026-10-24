@@ -112,9 +112,9 @@ __PANEL_STYLE__</style></head><body>
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
           </div>
+          <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <button type="button" id="suggest_chip" class="suggest-chip" onclick="sendSuggestion()" aria-label="Отправить подсказку Claude" hidden><svg class="ui-icon"><use href="#i-chat"/></svg><span id="suggest_text"></span><svg class="ui-icon"><use href="#i-arrow-up"/></svg></button>
           <div id="answer_refs" class="answer-refs" role="group" aria-label="Пути и команды из ответа" hidden></div>
-          <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
           <input type="file" id="image_files" multiple hidden>
           <button type="button" id="voice_state" class="voice-state" onclick="openVoice()" hidden><i aria-hidden="true"></i><span></span></button>

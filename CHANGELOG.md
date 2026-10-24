@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.64.1
+
+- On a wide window the pencil of the quick prompts is back beside the keys: Claude's suggestion and the chips of the last answer sit below that row instead of pushing it to a line of its own.
+
 ## 1.64.0
 
 - A light theme: warm cream paper, white cards, a coral accent, rounder corners and a rounded font where the device has one. Settings → General → Appearance: dark (as before), light, or the same as the system. Chosen per browser, drawn from the first paint, the sign-in page included.
