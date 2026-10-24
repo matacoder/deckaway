@@ -9,3 +9,9 @@ test('the dim text after an empty prompt is the suggestion; typed text and the b
   expect(promptSuggestion(box('\x1b[39m❯ '))).toBe('');
   expect(promptSuggestion(undefined)).toBe('');
 });
+
+test('a focused box with its cursor over the first letter and other colour codes still shows the suggestion',()=>{
+  expect(promptSuggestion(box('\x1b[38;5;246m❯\u00a0\x1b[39m\x1b[7mо\x1b[27m\x1b[2mбнови M5 до 1.63.0\x1b[22m\x1b[39m   '))).toBe('обнови M5 до 1.63.0');
+  expect(promptSuggestion(box('\x1b[39m❯\u00a0\x1b[2;38;5;246mpush\x1b[0m \x1b[2mit\x1b[0m'))).toBe('push it');
+  expect(promptSuggestion(box('\x1b[39m❯\u00a0\x1b[7mc\x1b[27mommit'))).toBe('');
+});
