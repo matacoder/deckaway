@@ -278,7 +278,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .q-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
 .q-head .q-progress{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
 .q-title{display:block;width:100%;text-align:left;color:var(--fg2);font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
-.q-title.open{display:block;-webkit-line-clamp:unset;max-height:40vh;overflow:auto}
+.q-title{cursor:pointer}
+/* Opened, a long command scrolls in its own box, so the answers below stay on a phone's screen. */
+.q-title.open{display:block;-webkit-line-clamp:unset;max-height:min(40vh,calc(var(--app-h) * .32));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .q-options{display:grid;gap:6px;margin-top:10px}
 .q-opt{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2);color:var(--fg2);text-align:left;line-height:1.35}
 @media (hover:hover){.q-opt:hover:not(:disabled){border-color:var(--bd-strong);background:var(--sel)}}

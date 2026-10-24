@@ -292,7 +292,9 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 .q-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
 .q-head .q-progress{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
 .q-title{display:block;width:100%;text-align:left;color:var(--fg2);font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
-.q-title.open{display:block;-webkit-line-clamp:unset;max-height:40vh;overflow:auto}
+.q-title{cursor:pointer}
+/* Opened, a long command scrolls in its own box, so the answers below stay on a phone's screen. */
+.q-title.open{display:block;-webkit-line-clamp:unset;max-height:min(40vh,calc(var(--app-h) * .32));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .q-options{display:grid;gap:6px;margin-top:10px}
 .q-opt{display:flex;align-items:center;gap:10px;min-height:var(--tap);padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2);color:var(--fg2);text-align:left;line-height:1.35}
 @media (hover:hover){.q-opt:hover:not(:disabled){border-color:var(--bd-strong);background:var(--sel)}}
@@ -1831,8 +1833,12 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
   const head=document.createElement("div");head.className="q-head";
   head.append(translate("Вопрос агента"));
   if(question.progress){const progress=document.createElement("span");progress.className="q-progress";progress.textContent=question.progress;head.append(progress)}
-  const title=document.createElement("button");title.type="button";title.className="q-title"+(expanded?" open":"");
+  // Not a <button>: WebKit neither clamps nor scrolls the text of one, so a long command pushed the answers off
+  // a phone's screen with no way to reach them.
+  const title=document.createElement("div");title.className="q-title"+(expanded?" open":"");
+  title.setAttribute("role","button");title.tabIndex=0;
   title.textContent=question.title;title.setAttribute("aria-expanded",String(Boolean(expanded)));title.onclick=onToggle;
+  title.onkeydown=event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onToggle?.()}};
   const options=document.createElement("div");options.className="q-options";
   question.options.forEach((option,index)=>{
     const button=document.createElement("button");button.type="button";
@@ -1878,7 +1884,15 @@ function askConfirm(dialog,{title,text="",confirm,danger=false}){
   });
 }
 
-if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft};
+// A question stays on the agent's screen for a moment after its answer is typed, and a list read then would
+// bring the card back. One answered (deck/session/id) is left out for a few seconds, in the card and the inbox.
+const answeredQuestions=new Map(),ANSWERED_MS=8000;
+function markAnswered(key,now=Date.now()){answeredQuestions.set(key,now)}
+function wasAnswered(key,now=Date.now()){
+  for(const [k,at] of answeredQuestions)if(now-at>ANSWERED_MS)answeredQuestions.delete(k);
+  return answeredQuestions.has(key);
+}
+if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft,markAnswered,wasAnswered};
 
 // The open session's question: fetched with the screen, drawn as a card, answered by its buttons.
 let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
@@ -1887,7 +1901,10 @@ async function loadQuestion(){
   if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
   if(loadingQuestion||question.busy!==null||document.hidden)return;
   loadingQuestion=true;const name=s.name;
-  try{const data=await api("/api/question?name="+encodeURIComponent(name));if(active===name)setQuestion(name,data.question)}
+  try{
+    const data=await api("/api/question?name="+encodeURIComponent(name)),got=data.question;
+    if(active===name)setQuestion(name,got&&wasAnswered(answerKey(name,got.id))?null:got);
+  }
   catch(e){/* Questions are an optional shortcut; the key row still works. */}
   finally{loadingQuestion=false}
 }
@@ -1927,7 +1944,7 @@ async function answerQuestion(index,text){
   question.busy=index;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
   try{
     await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
-    saveAnswerDraft(answerKey(name,data.id),null);
+    saveAnswerDraft(answerKey(name,data.id),null);markAnswered(answerKey(name,data.id));
     sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
     question={name,data:null,expanded:false,busy:null,textIndex:null};
   }catch(e){toast(e.message);question.busy=null}
@@ -2422,7 +2439,9 @@ async function loadInbox(){
   finally{inbox.loading=false}
   renderInbox();
 }
-function inboxCount(){return inboxItems(inbox.questions,finishedSessions()).length}
+// Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
+const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
+function inboxCount(){return inboxItems(openQuestions(),finishedSessions()).length}
 function renderInboxBadge(){
   const count=inboxCount();
   // Always in place: a count appears or goes, the layout around it never moves.
@@ -2437,7 +2456,7 @@ function openInboxSession(deck,session){
 function renderInbox(){
   renderInboxBadge();
   if(!$("inbox_dlg").open)return;
-  const list=$("inbox_list"),items=inboxItems(inbox.questions,finishedSessions());
+  const list=$("inbox_list"),items=inboxItems(openQuestions(),finishedSessions());
   if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
@@ -2466,7 +2485,7 @@ function renderInboxItem(item){
     state.busy=index;draw();
     const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
     try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
-      saveAnswerDraft(draftKey,null);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
+      saveAnswerDraft(draftKey,null);markAnswered(draftKey);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
     catch(e){state.busy=null;draw();toast(e.message)}
   };
   const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
@@ -6518,7 +6537,7 @@ const closedDrafts=new Map();
 // A pending question is the state that needs you most, so the list says so, not only the inbox count.
 function waitingFor(deck,name){
   if((deck||"")===selectedDeck&&name===active&&question.data)return true;
-  return inbox.questions.some(q=>(q.deck||"")===(deck||"")&&q.session===name);
+  return openQuestions().some(q=>(q.deck||"")===(deck||"")&&q.session===name);
 }
 function renderTabs(){
   const q=$("q").value.trim().toLowerCase(),view=$("tabs"),box=document.createElement("div");

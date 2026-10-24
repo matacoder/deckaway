@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.65.1
+
+- A question with a long command no longer pushes its answers off an iPhone's screen: WebKit neither shortened nor scrolled the text of a button, so the text is now a block of four lines that opens on a tap and scrolls in its own box.
+- An answered question does not flash back for a moment, in the session's card or in the inbox: the agent's screen still shows it right after the answer, so it is left out for a few seconds.
+
 ## 1.65.0
 
 - A folder the agent prints on the screen (`/Users/me/reports/run-2026-10-24/`, `~/dev/`, `./out/`) is a link: a tap opens it in the file browser, like `open` on a Mac. Only a path with a slash at its end, so `and/or/` and web links stay text.

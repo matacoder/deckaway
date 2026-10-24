@@ -19,7 +19,9 @@ async function loadInbox(){
   finally{inbox.loading=false}
   renderInbox();
 }
-function inboxCount(){return inboxItems(inbox.questions,finishedSessions()).length}
+// Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
+const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
+function inboxCount(){return inboxItems(openQuestions(),finishedSessions()).length}
 function renderInboxBadge(){
   const count=inboxCount();
   // Always in place: a count appears or goes, the layout around it never moves.
@@ -34,7 +36,7 @@ function openInboxSession(deck,session){
 function renderInbox(){
   renderInboxBadge();
   if(!$("inbox_dlg").open)return;
-  const list=$("inbox_list"),items=inboxItems(inbox.questions,finishedSessions());
+  const list=$("inbox_list"),items=inboxItems(openQuestions(),finishedSessions());
   if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
@@ -63,7 +65,7 @@ function renderInboxItem(item){
     state.busy=index;draw();
     const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
     try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
-      saveAnswerDraft(draftKey,null);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
+      saveAnswerDraft(draftKey,null);markAnswered(draftKey);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
     catch(e){state.busy=null;draw();toast(e.message)}
   };
   const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,

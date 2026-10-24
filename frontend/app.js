@@ -257,7 +257,7 @@ const closedDrafts=new Map();
 // A pending question is the state that needs you most, so the list says so, not only the inbox count.
 function waitingFor(deck,name){
   if((deck||"")===selectedDeck&&name===active&&question.data)return true;
-  return inbox.questions.some(q=>(q.deck||"")===(deck||"")&&q.session===name);
+  return openQuestions().some(q=>(q.deck||"")===(deck||"")&&q.session===name);
 }
 function renderTabs(){
   const q=$("q").value.trim().toLowerCase(),view=$("tabs"),box=document.createElement("div");

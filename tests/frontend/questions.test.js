@@ -95,3 +95,19 @@ test('a dialog that takes focus itself draws no ring around the whole window',()
   const css=fs.readFileSync(path.resolve(__dirname,'../../frontend/style.css'),'utf8');
   expect(css).toMatch(/dialog:focus,dialog:focus-visible\{outline:none\}/);
 });
+
+test('the question text is a block that clamps and scrolls, toggled by a tap or a key, not a WebKit button',()=>{
+ const {box,onToggle}=render();
+ const title=box.querySelector('.q-title');
+ expect(title.tagName).toBe('DIV');expect(title.getAttribute('role')).toBe('button');expect(title.tabIndex).toBe(0);
+ title.click();title.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}));
+ expect(onToggle).toHaveBeenCalledTimes(2);
+});
+
+test('a question just answered is left out for a few seconds, then may come back',()=>{
+ const {markAnswered,wasAnswered}=require('../../frontend/questions');
+ markAnswered('/demo/q1',1000);
+ expect(wasAnswered('/demo/q1',5000)).toBe(true);
+ expect(wasAnswered('/demo/q2',5000)).toBe(false);
+ expect(wasAnswered('/demo/q1',9500)).toBe(false);
+});
