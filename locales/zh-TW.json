@@ -848,6 +848,7 @@
     "Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся": "The interface was updated and this page is still the previous version. Drafts are kept",
     "Вставить с картинками": "Paste with pictures",
     "Вставка": "貼上",
+    "Отправить подсказку Claude": "傳送 Claude 的建議",
     "Пути и команды из ответа": "回答中的路徑與指令",
     "Команда": "指令",
     "Папка": "資料夾",

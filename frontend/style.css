@@ -317,6 +317,11 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer>[hidden]{display:none}
 }
 .quick-chip{flex:none;max-width:220px;height:32px;padding:0 12px;border:1px solid var(--bd);border-radius:16px;background:var(--side2);color:var(--fg);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Claude's suggested next step: one tap sends it. */
+.suggest-chip{display:flex;align-items:center;gap:8px;max-width:100%;min-height:34px;margin-bottom:8px;padding:6px 12px;border:1px dashed var(--acc);border-radius:17px;background:var(--acc-soft);color:var(--fg);font-size:13.5px;text-align:left}
+.suggest-chip[hidden]{display:none}
+.suggest-chip span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.suggest-chip svg{flex:none;width:15px;height:15px;color:var(--acc-text)}
 /* Paths and commands of the last answer: one scrolling row, each chip opens what can be done with it. */
 .answer-refs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 .answer-refs::-webkit-scrollbar{display:none}

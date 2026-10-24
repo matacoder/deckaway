@@ -22,6 +22,7 @@ SCRIPTS = (
     "files.js",
     "review.js",
     "refs.js",
+    "suggest.js",
     "gallery.js",
     "git.js",
     "session-info.js",

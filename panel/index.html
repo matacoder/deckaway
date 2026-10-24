@@ -328,6 +328,11 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
   .composer>[hidden]{display:none}
 }
 .quick-chip{flex:none;max-width:220px;height:32px;padding:0 12px;border:1px solid var(--bd);border-radius:16px;background:var(--side2);color:var(--fg);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Claude's suggested next step: one tap sends it. */
+.suggest-chip{display:flex;align-items:center;gap:8px;max-width:100%;min-height:34px;margin-bottom:8px;padding:6px 12px;border:1px dashed var(--acc);border-radius:17px;background:var(--acc-soft);color:var(--fg);font-size:13.5px;text-align:left}
+.suggest-chip[hidden]{display:none}
+.suggest-chip span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.suggest-chip svg{flex:none;width:15px;height:15px;color:var(--acc-text)}
 /* Paths and commands of the last answer: one scrolling row, each chip opens what can be done with it. */
 .answer-refs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 .answer-refs::-webkit-scrollbar{display:none}
@@ -1251,6 +1256,7 @@ body.resizing iframe{pointer-events:none}
           <button class="keyboard-hide" id="b_keyboard" onpointerdown="event.preventDefault()" onclick="hideKeyboard()" aria-label="Скрыть клавиатуру" title="Скрыть клавиатуру"><svg class="ui-icon"><use href="#i-keyboard-hide"/></svg></button>
           </div>
           </div>
+          <button type="button" id="suggest_chip" class="suggest-chip" onclick="sendSuggestion()" aria-label="Отправить подсказку Claude" hidden><svg class="ui-icon"><use href="#i-chat"/></svg><span id="suggest_text"></span><svg class="ui-icon"><use href="#i-arrow-up"/></svg></button>
           <div id="answer_refs" class="answer-refs" role="group" aria-label="Пути и команды из ответа" hidden></div>
           <div id="quick_prompts" class="quick-prompts" role="group" aria-label="Быстрые сообщения" hidden></div>
           <div id="attachments" aria-label="Приложенные файлы"></div>
@@ -2633,6 +2639,7 @@ function updateJump(fresh){
 }
 function jumpToLatest(){const p=$("pre");p.scrollTo({top:p.scrollHeight,behavior:"smooth"});$("jump").classList.remove("on","fresh")}
 function updateScreen(s,force){
+  renderSuggestion(s);
   const p=$("pre"),stick=force||atBottom(p);
   screenView.shown=s;
   // Nothing known about this session's screen yet: keep the skeleton instead of a blank or stale view.
@@ -3165,6 +3172,38 @@ async function runInTerminal(command){
 }
 
 if(typeof module!=="undefined")module.exports={answerRefs,lastAnswer};
+// The next step Claude Code suggests in its empty input box (dim text after the prompt mark, gone once
+// anything is typed) as a button that sends it. Bundled before app.js.
+const suggestion={name:"",text:""};
+const SUGGESTING=["claude","claude-kimi","claude-provider"];
+// The suggestion on a screen captured with its colours, or "". Typed text is not dim, and an empty box's own
+// hint ('Try "…"') is no suggestion. Pure for tests.
+function promptSuggestion(ansi){
+  const lines=String(ansi||"").split("\n").slice(-30);
+  for(let i=lines.length-1;i>=0;i--){
+    const match=lines[i].match(/^(?:\x1b\[[0-9;]*m)*❯[  ]\x1b\[2m([^\x1b]{1,400})\x1b\[(?:0|22)m\s*$/);
+    if(!match)continue;
+    const text=match[1].trim();
+    return text&&!/^Try "/.test(text)?text:"";
+  }
+  return "";
+}
+function renderSuggestion(s){
+  const chip=$("suggest_chip");if(!chip)return;
+  const text=s&&SUGGESTING.includes(s.agent)&&s.name===active?promptSuggestion(s.preview_ansi):"";
+  if(text===suggestion.text&&s?.name===suggestion.name)return;
+  Object.assign(suggestion,{name:s?.name||"",text});
+  chip.hidden=!text;
+  $("suggest_text").textContent=text;chip.title=text;
+}
+async function sendSuggestion(){
+  const {name,text}=suggestion;
+  if(!text||name!==active)return;
+  $("suggest_chip").hidden=true;
+  await post("/api/send",{name,text});
+}
+
+if(typeof module!=="undefined")module.exports={promptSuggestion};
 // Every picture the open session showed, kept by the panel after it left the screen: a grid of square
 // thumbnails, newest first, opening in the full-screen viewer. Reloaded while the tab is open and visible.
 // key: computer and session, as in sessionInfoKey(): the same name on another computer has other pictures.

@@ -848,6 +848,7 @@
     "Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся": "The interface was updated and this page is still the previous version. Drafts are kept",
     "Вставить с картинками": "Paste with pictures",
     "Вставка": "Paste",
+    "Отправить подсказку Claude": "Send Claude's suggestion",
     "Пути и команды из ответа": "Paths and commands from the answer",
     "Команда": "Command",
     "Папка": "Folder",

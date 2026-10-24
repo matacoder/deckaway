@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.63.0 — 2026-10-24
+
+- **Claude Code's suggested next step is a button.** When Claude finishes it often suggests what to say next, as dim text in its empty input box (“commit it”, “push and deploy when Fable is done”). The panel now shows that suggestion above the message field; one tap sends it to the session. Text you type there yourself, and the box's own “Try …” hint, are not taken for one.
+
 ## 1.62.1 — 2026-10-23
 
 - The version under the session list opens the project's GitHub repository in a new tab.

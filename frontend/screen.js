@@ -191,6 +191,7 @@ function updateJump(fresh){
 }
 function jumpToLatest(){const p=$("pre");p.scrollTo({top:p.scrollHeight,behavior:"smooth"});$("jump").classList.remove("on","fresh")}
 function updateScreen(s,force){
+  renderSuggestion(s);
   const p=$("pre"),stick=force||atBottom(p);
   screenView.shown=s;
   // Nothing known about this session's screen yet: keep the skeleton instead of a blank or stale view.
