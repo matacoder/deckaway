@@ -45,3 +45,21 @@ test('a folder printed on the screen opens in the file browser on a tap, like op
   await page.locator('#pre a.file-link', { hasText: 'tts-compare-2026-10-24/' }).click();
   await expect.poll(() => listed.at(-1)).toBe('/home/test/projects/demo/reports/tts-compare-2026-10-24');
 });
+
+test('a home path without a slash at its end opens as a folder when it is one and downloads otherwise', async ({ app, page }) => {
+  const listed = await conversation(page), downloads = [];
+  await page.route(/https:\/\/panel\.test\/api\/files\?/, route => {
+    const path = new URL(route.request().url()).searchParams.get('path');
+    if (path.endsWith('Makefile')) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Папка не найдена' }) });
+    listed.push(path);
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ home: '/home/test', path, parent: '/home/test', entries: [] }) });
+  });
+  await page.route(/https:\/\/panel\.test\/api\/download\?/, route => { downloads.push(new URL(route.request().url()).searchParams.get('path')); return route.fulfill({ body: 'all:' }); });
+  app.sessions = [session('demo', { agent: 'claude', path: '/home/test/projects/demo', preview: 'Сборка: /home/test/projects/demo/store/1.4.0 и /home/test/projects/demo/Makefile' })];
+  await app.open({ width: 390, height: 844 });
+  await page.locator('#pre a.file-link', { hasText: '1.4.0' }).click();
+  await expect.poll(() => listed.at(-1)).toBe('/home/test/projects/demo/store/1.4.0');
+  await page.evaluate(() => closeProject());
+  await page.locator('#pre a.file-link', { hasText: 'Makefile' }).click();
+  await expect.poll(() => downloads.at(-1)).toBe('/home/test/projects/demo/Makefile');
+});

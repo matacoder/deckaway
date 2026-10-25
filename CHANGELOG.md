@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.65.2
+
+- A folder named like a version (`/Users/me/app/store/1.4.0`) opens in the file browser instead of downloading as a file `.0`: an extension needs a letter. A home path without a slash at its end and without an extension opens as a folder when it is one and downloads otherwise; paths outside home-like roots (`/api/send`) stay text.
+
 ## 1.65.1
 
 - A question with a long command no longer pushes its answers off an iPhone's screen: WebKit neither shortened nor scrolled the text of a button, so the text is now a block of four lines that opens on a tap and scrolls in its own box.

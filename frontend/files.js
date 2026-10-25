@@ -181,26 +181,40 @@ function renderPreview(box,head,file){
 }
 // Paths to any file that agents print ("/home/me/plan.pdf", "docs/notes.md"): a tap downloads it.
 // A folder in the path keeps ordinary words ("v1.2", "e.g.") from turning into links.
-const FILE_PATH_RE=/(?<![\w/.~@+-])(?:~\/|\/|\.\.?\/)?(?:[\w.@+-]+\/)+[\w.@+-]*\w\.[A-Za-z0-9]{1,10}(?![\w-]|\.\w)/g;
+// An extension has a letter: "store/1.4.0" is a folder of a version, not a file ".0".
+const FILE_PATH_RE=/(?<![\w/.~@+-])(?:~\/|\/|\.\.?\/)?(?:[\w.@+-]+\/)+[\w.@+-]*\w\.(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{1,10}(?![\w-]|\.\w)/g;
 // A folder only with a slash at its end and a start that is no word ("/Users/me/reports/", "~/dev/", "./out/"),
 // so "and/or/" or the middle of a path stay text; a tap opens it in the file browser, like `open` on a Mac.
 const FOLDER_PATH_RE=/(?<![\w/.~@+:-])(?:~\/|\/|\.\.?\/)(?:[\w.@+-]+\/)*(?![\w.@+\/-])/g;
+// A home path with no slash at its end and no extension ("/Users/me/app/store/1.4.0") may be a folder or a file
+// without one; under a home-like root only, so "/api/send" stays text. A tap finds out which (openScreenPath).
+const BARE_PATH_RE=/(?<![\w/.~@+:-])(?:~|\/(?:Users|home|Volumes|private|tmp|mnt|srv|opt|workspace))(?:\/[\w.@+-]+)+(?![\w.@+\/-])/g;
 function fileMatches(text,taken=[]){
   const files=[...text.matchAll(FILE_PATH_RE)].map(m=>({index:m.index,file:m[0]}));
   const folders=[...text.matchAll(FOLDER_PATH_RE)].filter(m=>m[0].replace(/^(~|\.\.?)?\//,"").length).map(m=>({index:m.index,file:m[0],folder:true}));
-  return [...files,...folders].filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a)).sort((x,y)=>x.index-y.index);
+  const bare=[...text.matchAll(BARE_PATH_RE)].map(m=>({index:m.index,file:m[0].replace(/\.+$/,""),folder:"maybe"}));
+  const found=[...files,...folders];
+  for(const m of bare)if(!found.some(f=>m.index<f.index+f.file.length&&m.index+m.file.length>f.index))found.push(m);
+  return found.filter(({index,file})=>!taken.some(([a,b])=>index<b&&index+file.length>a)).sort((x,y)=>x.index-y.index);
 }
 // A Markdown file opens in the file viewer instead, where it is read rendered and can be commented on.
 function fileLink(session,path,runs,from,to,folder=false){
   const read=isMarkdown(path),link=el("a","file-link");link.href="#";
-  link.title=folder?tr("Открыть папку")+" "+path:tr(read?"Открыть файл {0}":"Скачать файл {0}",[path.split("/").pop()]);
+  link.title=folder===true?tr("Открыть папку")+" "+path:folder?path:tr(read?"Открыть файл {0}":"Скачать файл {0}",[path.split("/").pop()]);
   appendStyledRange(link,runs,from,to);
   link.onclick=event=>{
     event.preventDefault();
-    if(folder){if(session===active)openRefFolder(path);return}
+    if(folder===true){if(session===active)openRefFolder(path);return}
+    if(folder){if(session===active)openScreenPath(path);return}
     read&&session===active?openScreenFile(path):downloadFile(session,path);
   };
   return link;
+}
+// A folder opens in the file browser; anything that is not one downloads (with its own message if missing).
+async function openScreenPath(path){
+  try{await api("/api/files?name="+encodeURIComponent(active)+"&path="+encodeURIComponent(sessionRelative(path)),null,true)}
+  catch(e){downloadFile(active,path);return}
+  openRefFolder(path);
 }
 async function openScreenFile(path){
   if(filesDirty()&&!await confirmAction(tr("Изменения не сохранены. Закрыть без сохранения?"),{confirm:tr("Закрыть без сохранения"),danger:true}))return;

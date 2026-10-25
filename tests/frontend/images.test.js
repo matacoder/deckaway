@@ -46,3 +46,9 @@ test('a folder path ending in a slash is a link of its own; "and/or/", a lone "~
  const url=text.indexOf('https');
  expect(fileMatches(text,[[url,text.length]]).map(m=>(m.folder?'dir ':'')+m.file)).toEqual(['dir /Users/denis/dev/med/reports/tts-compare-2026-10-24/','dir ~/dev/','/tmp/x/a.txt']);
 });
+
+test('a version folder is no ".0" file; a home path without a slash at its end may be either, other roots stay text',()=>{
+ const {fileMatches}=require('../../frontend/files');
+ const text='Сборка в /Users/denis/dev/Audopia/mobile/store/1.4.0. Маршрут /api/send, v1.2.3, store/1.4.0 и ~/dev/a.md';
+ expect(fileMatches(text).map(m=>(m.folder?m.folder+' ':'')+m.file)).toEqual(['maybe /Users/denis/dev/Audopia/mobile/store/1.4.0','~/dev/a.md']);
+});
