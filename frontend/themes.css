@@ -1,6 +1,7 @@
 /* ---------- themes ---------- */
-/* A theme only sets the tokens of style.css. Light is a warm, homely look: cream paper, white cards, a coral
-   accent, rounder corners, a rounded font where the device has one and softer shadows. Text keeps WCAG AA. */
+/* A theme only sets the tokens of style.css; a token it leaves out keeps the dark value. Text keeps WCAG AA on every
+   surface (tests/frontend/theme.test.js). Light is a warm, homely look: cream paper, white cards, a coral accent,
+   rounder corners, a rounded font where the device has one and softer shadows. */
 :root[data-theme=light]{
   --scheme:light;--scrollbar:#d3c8ba;
   --bg:#fbf7f1;--side:#fffdf9;--side2:#f4ede3;--sel:#efe4d6;--bd:#e9dfd2;--bd-soft:#5a3c1e14;
@@ -19,4 +20,51 @@
   --toast-bad-bg:#fdecea;--toast-bad-fg:#8a2318;--toast-bad-bd:#f1c3bc;--toast-ok-bg:#e8f5ec;--toast-ok-fg:#1d5e33;--toast-ok-bd:#bfe0c9;
   --toast-info-bg:#fdf3e7;--toast-info-fg:#6b4210;--toast-info-bd:#efd6b4;
   --sub-strong:#5a5047;
+}
+/* Black: true black for OLED phones, the dark theme's accent and greys. */
+:root[data-theme=black]{
+  --scrollbar:#3a3a3c;
+  --bg:#000;--side:#000;--side2:#121214;--sel:#232326;--bd:#1f1f22;--bd-soft:#ffffff10;
+  --fg:#d8d8dc;--fg2:#f2f2f5;--mut:#a1a1a6;--dim:#8e8e93;
+  --hover-tint:#ffffff0e;--card-tint:#ffffff05;--nav-tint:#ffffff05;--hl:#ffffff16;
+  --overlay:rgba(0,0,0,.7);
+  --bd-strong:#3a3a3d;--bd-hover:#4a4a4e;--ctl:#3a3a3d;--ctl-bd:#4a4a4e;
+}
+/* Dusk: a calm blue-grey night with a lavender accent and slightly rounder corners. */
+:root[data-theme=dusk]{
+  --scrollbar:#4a5270;
+  --bg:#232838;--side:#1c2030;--side2:#2a3044;--sel:#353c54;--bd:#30364b;--bd-soft:#c8d3ff14;
+  --fg:#d5dbea;--fg2:#eef1f8;--mut:#a3abc2;--dim:#959db5;
+  --acc:#8b93ff;--acc-strong:#5b5fd0;--acc-text:#adb3ff;--acc-soft:#8b93ff1f;--link:#a3aaff;--on-acc:#fff;
+  --acc-line:#8b93ff66;--acc-hover:#8b93ff30;--acc-wash:#8b93ff26;--bad-wash:#ff6b7a1f;
+  --ok:#7fd6a0;--warn:#f2cf6b;--bad:#ff6b7a;--bad-text:#ff8d97;--heavy:#f5a65b;
+  --orange:#f0956d;--teal:#6fd0cb;--violet:#b9a7ff;--sky:#7fb4ff;--lime:#a3d77f;--telegram:#6cc2f0;--telegram-soft:#229ed922;
+  --hover-tint:#c8d3ff12;--card-tint:#ffffff04;--nav-tint:#0000000f;--hl:#c8d3ff1a;
+  --overlay:rgba(8,10,22,.55);
+  --shadow-sm:0 6px 20px rgba(5,8,20,.5);--shadow-md:0 12px 32px rgba(5,8,20,.5);--shadow-lg:0 18px 50px rgba(5,8,20,.6);
+  --shadow-xl:0 24px 80px rgba(5,8,20,.55);--shadow-side:0 0 40px rgba(5,8,20,.6);
+  --r-sm:8px;--r-xs:9px;--r-btn:10px;--r:12px;--r-md:14px;--r-lg:16px;--r-xl:18px;
+  --bd-strong:#3d4560;--bd-hover:#4a5372;--ctl:#3a4260;--ctl-bd:#4b5577;--danger-bg:#c8364a;--knob:#eef1f8;
+  --toast-bad-bg:#3a1f2a;--toast-bad-fg:#ffd3d8;--toast-bad-bd:#6b2a3a;--toast-ok-bg:#183327;--toast-ok-fg:#d3f8e2;--toast-ok-bd:#2b6b4a;
+  --toast-info-bg:#232a4a;--toast-info-fg:#d8dcff;--toast-info-bd:#3a4478;
+  --sub-strong:#bcc3d6;
+}
+/* Mint: a fresh, cool light page: white cards on a pale green-grey, a teal accent. */
+:root[data-theme=mint]{
+  --scheme:light;--scrollbar:#c3d3d0;
+  --bg:#f2f7f6;--side:#fff;--side2:#e7f0ee;--sel:#d6ebe5;--bd:#dae7e4;--bd-soft:#1e4a4214;
+  --fg:#2b3a37;--fg2:#152320;--mut:#53635f;--dim:#5a6a66;
+  --acc:#14a38b;--acc-strong:#0b7a68;--acc-text:#0a6b5b;--acc-soft:#14a38b1f;--link:#0a6b5b;--on-acc:#fff;
+  --acc-line:#14a38b66;--acc-hover:#14a38b2e;--acc-wash:#14a38b24;--bad-wash:#d1394a1a;
+  --ok:#1f7a4a;--warn:#8a5f00;--bad:#d1394a;--bad-text:#b02a3a;--heavy:#d9800b;
+  --orange:#c45a2c;--teal:#147d78;--violet:#6a50c4;--sky:#2b6cc0;--lime:#467f22;--telegram:#1f86c2;--telegram-soft:#2a9ed91c;
+  --hover-tint:#1e4a420d;--card-tint:#fff;--nav-tint:#eef5f3;--hl:#1e4a421a;
+  --overlay:rgba(20,50,45,.28);
+  --shadow-sm:0 4px 14px rgba(20,60,55,.1);--shadow-md:0 10px 28px rgba(20,60,55,.12);--shadow-lg:0 16px 44px rgba(20,60,55,.14);
+  --shadow-xl:0 24px 70px rgba(20,60,55,.16);--shadow-side:0 0 30px rgba(20,60,55,.16);
+  --r-sm:9px;--r-xs:10px;--r-btn:11px;--r:12px;--r-md:14px;--r-lg:16px;--r-xl:20px;
+  --bd-strong:#cbdcd8;--bd-hover:#b9cec9;--ctl:#d3e2de;--ctl-bd:#bdd0cb;--danger-bg:#c8362a;--knob:#fff;
+  --toast-bad-bg:#fdecee;--toast-bad-fg:#8a1f2c;--toast-bad-bd:#f1c3c9;--toast-ok-bg:#e6f5ee;--toast-ok-fg:#1b5c3a;--toast-ok-bd:#bde0cd;
+  --toast-info-bg:#e6f3f1;--toast-info-fg:#14504a;--toast-info-bd:#b8dcd6;
+  --sub-strong:#46524f;
 }

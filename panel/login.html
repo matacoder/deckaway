@@ -8,12 +8,15 @@
 <link rel="apple-touch-icon" href="/icon-180.png"><link rel="icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest">
 <title>DeckAway · вход</title>
 <script id="theme_boot">/* The panel's theme (frontend/theme.js), chosen in this browser, applies to this page too. */
-try{const t=localStorage.getItem("cc.theme");document.documentElement.dataset.theme=t==="light"||t==="system"&&matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}catch(e){}</script>
+try{const t=localStorage.getItem("cc.theme");document.documentElement.dataset.theme=t==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):/^(light|black|dusk|mint)$/.test(t)?t:"dark"}catch(e){}</script>
 <style>
 :root{color-scheme:dark;--bg:#1e1e1e;--fg:#d4d4d4;--fg2:#ececec;--mut:#8a8a8e;--bd:#38383d;--field:#252526;--acc:#0a84ff;--acc-strong:#0a84ff;--bad:#ff6b61;--shadow:rgba(0,0,0,.4);--r:10px;
   --sans:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
 :root[data-theme=light]{color-scheme:light;--bg:#fbf7f1;--fg:#3b332c;--fg2:#231d18;--mut:#6a5f55;--bd:#e9dfd2;--field:#fffdf9;--acc:#e0694a;--acc-strong:#c4512f;--bad:#b42a1e;--shadow:rgba(90,60,30,.16);--r:14px;
   --sans:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Nunito","Segoe UI",system-ui,sans-serif}
+:root[data-theme=black]{--bg:#000;--bd:#2a2a2d;--field:#121214}
+:root[data-theme=dusk]{--bg:#232838;--fg:#d5dbea;--fg2:#eef1f8;--mut:#a3abc2;--bd:#3d4560;--field:#1c2030;--acc:#8b93ff;--acc-strong:#5b5fd0;--bad:#ff8d97;--shadow:rgba(5,8,20,.5);--r:12px}
+:root[data-theme=mint]{color-scheme:light;--bg:#f2f7f6;--fg:#2b3a37;--fg2:#152320;--mut:#53635f;--bd:#dae7e4;--field:#fff;--acc:#14a38b;--acc-strong:#0b7a68;--bad:#b02a3a;--shadow:rgba(20,60,55,.14);--r:12px}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:15px/1.4 var(--sans)}
 body{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px 16px;padding-top:max(24px,env(safe-area-inset-top))}

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.66.0
+
+- Three more themes in the settings beside dark and warm light: **Black** (true black for OLED phone screens), **Dusk** (a calm blue-grey night with a lavender accent) and **Mint** (a fresh, cool light page with a teal accent). The sign-in page follows the chosen one; a test keeps text contrast at WCAG AA in every theme.
+
 ## 1.65.2
 
 - A folder named like a version (`/Users/me/app/store/1.4.0`) opens in the file browser instead of downloading as a file `.0`: an extension needs a letter. A home path without a slash at its end and without an extension opens as a folder when it is one and downloads otherwise; paths outside home-like roots (`/api/send`) stay text.
