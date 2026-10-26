@@ -234,9 +234,14 @@ __PANEL_STYLE__</style></head><body>
       <div id="n_win_row"><label for="n_winpath">Папка в Windows</label><input type="text" id="n_winpath" autocapitalize="off" autocorrect="off" spellcheck="false"><p class="hint" id="n_win_hint"></p></div></div>
     <div class="two">
       <div><label for="n_name">Имя сессии</label><input type="text" id="n_name" placeholder="myapp-auth" autocapitalize="off" autocorrect="off" spellcheck="false" required></div>
-      <div id="n_proj_box"><label for="n_proj">Папка проекта</label><input type="text" id="n_proj" list="projlist" placeholder="как имя сессии" autocapitalize="off" autocorrect="off" spellcheck="false"><datalist id="projlist"></datalist></div>
+      <div id="n_proj_box"><label for="n_proj">Папка проекта</label><input type="text" id="n_proj" list="projlist" placeholder="как имя сессии" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderProjectFolders()"><datalist id="projlist"></datalist></div>
     </div>
     <div id="n_containers_row" hidden><label for="n_containers">Контейнеры</label><select id="n_containers" onchange="this.dataset.touched='1'"></select></div>
+    <div class="gh" id="n_folders" hidden>
+      <div class="gh-head"><span id="n_folders_state">Папки проектов</span></div>
+      <input type="text" id="n_folders_q" class="search" placeholder="Поиск папки…" aria-label="Поиск папки…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderProjectFolders()">
+      <div id="n_folders_list" class="folder-list"></div>
+    </div>
     <div class="gh" id="gh">
       <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
       <div id="gh_body"></div>

@@ -267,7 +267,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 /* A session in Windows: its folder is a Windows one; git, GitHub, models and containers belong to WSL. */
 #n_win_row{display:none;margin-top:10px}
 .windows-run #n_win_row{display:block}
-.windows-run #n_proj_box,.windows-run #gh,.windows-run #n_adv,.windows-run #source_row,.windows-run #n_containers_row{display:none!important}
+.windows-run #n_proj_box,.windows-run #n_folders,.windows-run #gh,.windows-run #n_adv,.windows-run #source_row,.windows-run #n_containers_row{display:none!important}
 #n_win_hint.warn{color:var(--warn)}
 /* Opened, "…" stays "…" and lights up: the same button folds the keys again. */
 .keys.expanded #b_keymore{background:var(--sel);border-color:var(--bd-strong)}
@@ -506,7 +506,7 @@ dialog:focus,dialog:focus-visible{outline:none}
 .gh-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut)}
 .gh-head button{color:var(--acc-text);font-size:12px;min-height:28px}
 .gh .search{width:100%;margin-top:8px;padding:8px 10px}
-#gh_list{max-height:220px;overflow-y:auto;margin-top:6px}
+#gh_list,#n_folders_list{max-height:220px;overflow-y:auto;margin-top:6px}
 .repo{display:flex;gap:8px;align-items:baseline;width:100%;padding:7px 8px;border-radius:var(--r-sm);text-align:left}
 @media (hover:hover){.repo:hover{background:var(--side2)}}.repo.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--acc)}
 .repo .rn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;color:var(--fg2)}
@@ -1021,7 +1021,7 @@ body.resizing iframe{pointer-events:none}
   .agsel{gap:2px}
   .agsel button{min-height:64px;font-size:12.5px}
   .repo{padding:11px 10px}
-  #gh_list{max-height:38vh}
+  #gh_list,#n_folders_list{max-height:38vh}
   .chk,.dlg label.chk{font-size:15px}
   .dlg textarea,.later-when input[type=datetime-local]{font-size:16px}
   .quick-chip{height:36px;font-size:14px;border-radius:18px}.quick-edit{width:36px}
@@ -1470,9 +1470,14 @@ body.resizing iframe{pointer-events:none}
       <div id="n_win_row"><label for="n_winpath">Папка в Windows</label><input type="text" id="n_winpath" autocapitalize="off" autocorrect="off" spellcheck="false"><p class="hint" id="n_win_hint"></p></div></div>
     <div class="two">
       <div><label for="n_name">Имя сессии</label><input type="text" id="n_name" placeholder="myapp-auth" autocapitalize="off" autocorrect="off" spellcheck="false" required></div>
-      <div id="n_proj_box"><label for="n_proj">Папка проекта</label><input type="text" id="n_proj" list="projlist" placeholder="как имя сессии" autocapitalize="off" autocorrect="off" spellcheck="false"><datalist id="projlist"></datalist></div>
+      <div id="n_proj_box"><label for="n_proj">Папка проекта</label><input type="text" id="n_proj" list="projlist" placeholder="как имя сессии" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderProjectFolders()"><datalist id="projlist"></datalist></div>
     </div>
     <div id="n_containers_row" hidden><label for="n_containers">Контейнеры</label><select id="n_containers" onchange="this.dataset.touched='1'"></select></div>
+    <div class="gh" id="n_folders" hidden>
+      <div class="gh-head"><span id="n_folders_state">Папки проектов</span></div>
+      <input type="text" id="n_folders_q" class="search" placeholder="Поиск папки…" aria-label="Поиск папки…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" oninput="renderProjectFolders()">
+      <div id="n_folders_list" class="folder-list"></div>
+    </div>
     <div class="gh" id="gh">
       <div class="gh-head"><span id="gh_state">GitHub…</span><button type="button" id="gh_refresh" onclick="loadRepos(true)" style="display:none">обновить</button></div>
       <div id="gh_body"></div>
@@ -4042,6 +4047,45 @@ function renderGroups(box){
 }
 
 if(typeof module!=="undefined")module.exports={diffRows,lineComment,authorColor,AUTHOR_COLORS,filesToOpen};
+// Folders in the projects directory for the new-session form, most recently worked in first: a folder's name
+// is easy to forget, when it was last worked in is not. Bundled before app.js; nothing runs at load time.
+const projectFolders={deck:null,list:[],root:""};
+function setProjectFolders(data,deck){
+  projectFolders.deck=deck;projectFolders.root=data?.root||"";
+  // A computer before 1.70 sends names only.
+  projectFolders.list=Array.isArray(data?.folders)?data.folders:(data?.projects||[]).map(name=>({name}));
+  $("projlist").replaceChildren(...projectFolders.list.map(f=>{const o=document.createElement("option");o.value=f.name;return o}));
+  renderProjectFolders();
+}
+// Pure for tests.
+function matchFolders(list,query){
+  const q=(query||"").trim().toLowerCase();
+  return list.filter(f=>!q||f.name.toLowerCase().includes(q));
+}
+function renderProjectFolders(){
+  const box=$("n_folders");
+  if(projectFolders.deck!==selectedDeck){projectFolders.list=[];projectFolders.root=""}
+  box.hidden=!projectFolders.list.length;
+  if(box.hidden)return;
+  const root=projectFolders.root.replace(/^\/(?:Users|home)\/[^/]+/,"~");
+  $("n_folders_state").textContent=root?tr("Папки в {0}",[root]):tr("Папки проектов");
+  const list=$("n_folders_list"),chosen=$("n_proj").value.trim();
+  const found=matchFolders(projectFolders.list,$("n_folders_q").value).slice(0,100);
+  list.replaceChildren(...found.map(f=>{
+    const row=el("button","repo"+(chosen===f.name?" sel":""),el("span","rn",f.name));row.type="button";
+    if(f.changed)row.append(el("span","rm",relativeTime(f.changed)));
+    row.onclick=()=>pickProjectFolder(f.name);
+    return row;
+  }));
+  if(!found.length)list.append(el("div","hint",tr("Ничего не найдено")));
+}
+function pickProjectFolder(name){
+  $("n_proj").value=name;
+  // The folder is there already: a repository picked before would have been cloned into it.
+  if($("n_git").value){$("n_git").value="";renderAdvanced();if($("gh_list"))renderRepos()}
+  if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=name.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}
+  renderProjectFolders();
+}
 // The open session's conversation at a glance, read by the panel from the agent's own conversation file: a
 // summary under the bar (its whole headline; a tap shows the rest) and, at the bottom,
 // the two restarts, how long the conversation has run and how full the context is. Shells, other agents and computers without this version show neither.
@@ -7724,7 +7768,8 @@ async function openNew(preset){
   if(newPreset){$("n_proj").value=newPreset.project;if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=newPreset.project.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}}
   // The dialog opens at once; the list of folders only feeds the suggestions of its field.
   if(!$("dlg").open){delete $("n_containers").dataset.touched;$("dlg").showModal()}
-  api("/api/projects").then(({projects})=>$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))).catch(()=>{});
+  $("n_folders_q").value="";renderProjectFolders();  // The last list of this computer while it is read again.
+  const deck=selectedDeck;api("/api/projects").then(data=>{if(deck===selectedDeck)setProjectFolders(data,deck)}).catch(()=>{});
   renderNewContainers();ensureContainers();ensureWindows();renderNewRuntime();renderSources();checkGithubFoot();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){

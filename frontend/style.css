@@ -253,7 +253,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 /* A session in Windows: its folder is a Windows one; git, GitHub, models and containers belong to WSL. */
 #n_win_row{display:none;margin-top:10px}
 .windows-run #n_win_row{display:block}
-.windows-run #n_proj_box,.windows-run #gh,.windows-run #n_adv,.windows-run #source_row,.windows-run #n_containers_row{display:none!important}
+.windows-run #n_proj_box,.windows-run #n_folders,.windows-run #gh,.windows-run #n_adv,.windows-run #source_row,.windows-run #n_containers_row{display:none!important}
 #n_win_hint.warn{color:var(--warn)}
 /* Opened, "…" stays "…" and lights up: the same button folds the keys again. */
 .keys.expanded #b_keymore{background:var(--sel);border-color:var(--bd-strong)}
@@ -492,7 +492,7 @@ dialog:focus,dialog:focus-visible{outline:none}
 .gh-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut)}
 .gh-head button{color:var(--acc-text);font-size:12px;min-height:28px}
 .gh .search{width:100%;margin-top:8px;padding:8px 10px}
-#gh_list{max-height:220px;overflow-y:auto;margin-top:6px}
+#gh_list,#n_folders_list{max-height:220px;overflow-y:auto;margin-top:6px}
 .repo{display:flex;gap:8px;align-items:baseline;width:100%;padding:7px 8px;border-radius:var(--r-sm);text-align:left}
 @media (hover:hover){.repo:hover{background:var(--side2)}}.repo.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--acc)}
 .repo .rn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;color:var(--fg2)}
@@ -1007,7 +1007,7 @@ body.resizing iframe{pointer-events:none}
   .agsel{gap:2px}
   .agsel button{min-height:64px;font-size:12.5px}
   .repo{padding:11px 10px}
-  #gh_list{max-height:38vh}
+  #gh_list,#n_folders_list{max-height:38vh}
   .chk,.dlg label.chk{font-size:15px}
   .dlg textarea,.later-when input[type=datetime-local]{font-size:16px}
   .quick-chip{height:36px;font-size:14px;border-radius:18px}.quick-edit{width:36px}

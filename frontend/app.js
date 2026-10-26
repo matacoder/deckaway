@@ -1124,7 +1124,8 @@ async function openNew(preset){
   if(newPreset){$("n_proj").value=newPreset.project;if(!$("n_name").value||$("n_name").dataset.auto){$("n_name").value=newPreset.project.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,32);$("n_name").dataset.auto="1"}}
   // The dialog opens at once; the list of folders only feeds the suggestions of its field.
   if(!$("dlg").open){delete $("n_containers").dataset.touched;$("dlg").showModal()}
-  api("/api/projects").then(({projects})=>$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))).catch(()=>{});
+  $("n_folders_q").value="";renderProjectFolders();  // The last list of this computer while it is read again.
+  const deck=selectedDeck;api("/api/projects").then(data=>{if(deck===selectedDeck)setProjectFolders(data,deck)}).catch(()=>{});
   renderNewContainers();ensureContainers();ensureWindows();renderNewRuntime();renderSources();checkGithubFoot();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){

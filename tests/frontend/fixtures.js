@@ -138,7 +138,11 @@ const test = base.extend({
         case '/api/server-metrics': return app.metricsError ? json({}, 503) : json(app.metrics);
         case '/api/server': return json({ hostname: 'test-server', ip: '192.0.2.1', tailscale_ip: '100.64.0.1', country: 'GB' });
         case '/api/new': {const data=route.request().postDataJSON();app.newSessions.push(data);app.sessions.push(session(data.name,{agent:data.agent,source:data.source}));return json({ok:true});}
-        case '/api/projects': return json({ projects: ['demo'] });
+        case '/api/projects': {
+          const now = Math.floor(Date.now() / 1000);
+          return json({ projects: ['demo', 'teyes-cable', 'padel-bot'], root: '/home/dev/dev',
+            folders: [{ name: 'teyes-cable', changed: now - 3600 }, { name: 'padel-bot', changed: now - 86400 * 2 }, { name: 'demo', changed: now - 86400 * 30 }] });
+        }
         case '/api/upload': {
           app.uploads.push(route.request().postDataJSON());
           if (app.uploadError) return json({ error: app.uploadError }, 400);

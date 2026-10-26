@@ -1460,3 +1460,40 @@ test('paths and agent links are clickable in the terminal itself',async()=>{
   expect(asked).toEqual([]);
   }finally{window.close()}
 });
+
+test('the new session form lists the project folders, latest worked in first, and a tap fills the form',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state),now=Math.floor(Date.now()/1000);
+  routes['/api/projects']=()=>({projects:['alpha','teyes-cable','zeta'],root:'/home/demo/dev',
+    folders:[{name:'teyes-cable',changed:now-3600},{name:'zeta',changed:now-86400*3},{name:'alpha',changed:now-86400*40}]});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openNew()');await settle();await settle();
+  expect(doc.getElementById('n_folders').hidden).toBe(false);
+  expect(doc.getElementById('n_folders_state').textContent).toBe('Папки в ~/dev');
+  const names=()=>[...doc.querySelectorAll('#n_folders_list .rn')].map(n=>n.textContent);
+  expect(names()).toEqual(['teyes-cable','zeta','alpha']);
+  const search=doc.getElementById('n_folders_q');search.value='TEY';search.dispatchEvent(new window.Event('input'));
+  expect(names()).toEqual(['teyes-cable']);
+  doc.getElementById('n_git').value='https://github.com/me/other.git';
+  doc.querySelector('#n_folders_list .repo').click();
+  expect(doc.getElementById('n_proj').value).toBe('teyes-cable');
+  expect(doc.getElementById('n_name').value).toBe('teyes-cable');
+  expect(doc.getElementById('n_git').value).toBe('');  // The folder exists: nothing is cloned into it.
+  expect(doc.querySelector('#n_folders_list .repo.sel .rn').textContent).toBe('teyes-cable');
+  }finally{window.close()}
+});
+
+test('a computer that sends folder names only still gets the list',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const routes=routesFor(state);routes['/api/projects']=()=>({projects:['alpha','beta']});
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  window.eval('openNew()');await settle();await settle();
+  expect([...window.document.querySelectorAll('#n_folders_list .rn')].map(n=>n.textContent)).toEqual(['alpha','beta']);
+  expect(window.document.getElementById('n_folders_state').textContent).toBe('Папки проектов');
+  }finally{window.close()}
+});

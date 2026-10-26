@@ -962,6 +962,9 @@
     "Вывод сессии": "Session output",
     "Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.": "Use Tab to choose a paragraph or line and Enter to comment. You can also click it.",
     "Где взять логин и пароль?": "Wo finde ich Benutzername und Passwort?",
-    "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "Das Installationsprogramm hat sie am Ende im Terminalfenster angezeigt. Ist das Fenster geschlossen, führen Sie dies im Terminal des DeckAway-Computers aus (unter Windows in PowerShell):"
+    "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "Das Installationsprogramm hat sie am Ende im Terminalfenster angezeigt. Ist das Fenster geschlossen, führen Sie dies im Terminal des DeckAway-Computers aus (unter Windows in PowerShell):",
+    "Папки в {0}": "Ordner in {0}",
+    "Папки проектов": "Projektordner",
+    "Поиск папки…": "Ordner suchen…"
   }
 }

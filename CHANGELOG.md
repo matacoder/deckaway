@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.70.0
+
+- The new session form lists the folders of the projects directory (`~/dev`), the ones worked in last at the top with when that was, and a search over their names: a tap fills in the folder and the session name, for when the folder's name is forgotten. A folder picked after a GitHub repository is used as it is, not cloned into. A computer on an earlier version gives the names only.
+
 ## 1.69.0
 
 - Links an agent prints with their address hidden behind the text (Claude Code's "Ozon" or "DRIVE2" links) open on a tap, in the Screen view and in the terminal: tmux now passes them to the browser terminal (`hyperlinks` in `tmux.conf`, and the panel turns it on in a running tmux after an in-panel update), and the Screen view draws them as links. Only http, https and mailto addresses open; a `file://` one opens the file browser.

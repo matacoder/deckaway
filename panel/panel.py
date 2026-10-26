@@ -3046,9 +3046,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/project_directory":
             return self.send_json(200, {"directory": project_directory.get()})
         if self.path == "/api/projects":
-            dirs = sorted(e.name for e in os.scandir(project_directory.get())
-                          if e.is_dir() and not e.name.startswith(".") and not e.name.endswith(".worktrees"))
-            return self.send_json(200, {"projects": dirs})
+            folders = project_folders(project_directory.get())
+            # "projects" (names only) is what pages before 1.70 read.
+            return self.send_json(200, {"projects": sorted(f["name"] for f in folders), "folders": folders,
+                                        "root": project_directory.get()})
         self.send_json(404, {"error": "not found"})
 
     def do_POST(self):
@@ -3534,6 +3535,25 @@ def keep_sessions_on_oom(home=None, run=subprocess.run):
             run(["systemctl", "--user", "daemon-reload"], input=b"", capture_output=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired):
             print("Could not reload systemd user units", flush=True)
+
+
+def project_folders(root):
+    """Folders in the projects directory with when they were last worked in, for a list sorted by that.
+    A folder's own time changes only when an entry is added or removed; git's index changes with every commit
+    or staged file, so the later of both is taken."""
+    folders = []
+    for entry in os.scandir(root):
+        if not entry.is_dir() or entry.name.startswith(".") or entry.name.endswith(".worktrees"):
+            continue
+        try:
+            changed = entry.stat().st_mtime
+            index = os.path.join(entry.path, ".git", "index")
+            if os.path.isfile(index):
+                changed = max(changed, os.stat(index).st_mtime)
+        except OSError:
+            continue
+        folders.append({"name": entry.name, "changed": int(changed)})
+    return sorted(folders, key=lambda f: -f["changed"])
 
 
 def enable_terminal_links():

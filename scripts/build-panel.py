@@ -26,6 +26,7 @@ SCRIPTS = (
     "suggest.js",
     "gallery.js",
     "git.js",
+    "folders.js",
     "session-info.js",
     "quotas.js",
     "hotkeys.js",

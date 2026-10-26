@@ -300,6 +300,21 @@ class SessionTests(PanelCase):
         self.assertEqual(self.panel.load_state(), {})
 
 
+class ProjectFolderTests(PanelCase):
+    def test_folders_come_latest_worked_in_first_and_hidden_ones_stay_out(self):
+        root = self.home / 'dev'
+        for name, when in (('old', 1_000), ('fresh', 3_000), ('committed', 2_000), ('.hidden', 9_000), ('x.worktrees', 9_000)):
+            (root / name).mkdir(parents=True)
+            os.utime(root / name, (when, when))
+        (root / 'notes.txt').write_text('a file')
+        (root / 'committed' / '.git').mkdir()
+        (root / 'committed' / '.git' / 'index').write_text('')
+        os.utime(root / 'committed' / '.git' / 'index', (5_000, 5_000))
+        os.utime(root / 'committed', (2_000, 2_000))
+        self.assertEqual(self.panel.project_folders(str(root)),
+                         [{'name': 'committed', 'changed': 5000}, {'name': 'fresh', 'changed': 3000}, {'name': 'old', 'changed': 1000}])
+
+
 class TerminalLinkTests(PanelCase):
     def test_the_tmux_server_is_told_once_that_terminals_take_links(self):
         features = ['terminal-features[0] xterm*:clipboard\n']
