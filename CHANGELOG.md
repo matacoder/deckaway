@@ -6,6 +6,7 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
 
 - The installers end with the login and password in a box of their own, as the last thing on the screen, with the command that shows them again. On Windows they are read from WSL and printed after the Linux installer's lines, before the browser opens.
 - The sign-in page has "Where are the login and password?": it says the installer showed them and gives the command for this computer (Linux, macOS, Windows PowerShell, Docker) that prints them again. The command never names the account.
+- Several messages copied together on an iPhone (a photo and the messages around it) are pasted whole through "Paste with pictures": the page took the clipboard's text, which Safari gives for the first copied item only, and lost the others (all of them when the photo came first). The text is now taken from what the paste really put in, when that holds more.
 
 ## 1.67.0
 

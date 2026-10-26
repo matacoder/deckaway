@@ -6106,6 +6106,30 @@ function pastedImageSources(box){
   const sources=Array.from(box.querySelectorAll("img[src]"),img=>img.getAttribute("src"));
   return [...new Set(sources.filter(src=>/^(data:image\/|https?:\/\/|blob:)/i.test(src)))];
 }
+// What a paste left in a block, as text: blocks and line breaks become new lines, pictures nothing. Pure for
+// tests (jsdom has no innerText, and a block off the screen would lose its lines in innerText anyway).
+const PASTE_BLOCK=/^(DIV|P|LI|TR|H[1-6]|BLOCKQUOTE|PRE|UL|OL|TABLE|SECTION|ARTICLE)$/;
+function pastedText(box){
+  let out="";
+  const walk=node=>{
+    if(node.nodeType===3){out+=node.nodeValue;return}
+    if(node.nodeType!==1||/^(IMG|STYLE|SCRIPT|META|TITLE)$/.test(node.tagName))return;
+    if(node.tagName==="BR"){out+="\n";return}
+    const block=PASTE_BLOCK.test(node.tagName);
+    if(block&&out&&!out.endsWith("\n"))out+="\n";
+    node.childNodes.forEach(walk);
+    if(block&&out&&!out.endsWith("\n"))out+="\n";
+  };
+  box.childNodes.forEach(walk);
+  return out.replace(/\u00a0/g," ").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+// Several messages copied on an iPhone are several clipboard items: Safari puts all of them into the block,
+// while the text it hands the page is the first item's alone (none when the first one is a photo). The
+// clipboard's own text keeps its exact spacing, so it wins unless the block holds more. Pure for tests.
+function richPasteText(plain,box){
+  const whole=pastedText(box),size=text=>(text||"").replace(/\s+/g,"").length;
+  return size(whole)>size(plain)?whole:plain||"";
+}
 // ⌘V or Ctrl+V as typed, on any keyboard layout; with Shift or Alt it is "paste as plain text". Pure for tests.
 function isPasteKey(event){
   return Boolean((event.metaKey||event.ctrlKey)&&!(event.metaKey&&event.ctrlKey)&&!event.shiftKey&&!event.altKey&&event.code==="KeyV");
@@ -6137,9 +6161,9 @@ function takeRichPaste(event){
   const table=/<table/i.test(data?.getData?data.getData("text/html"):"");
   const files=table?[]:Array.from(data?.files||[]).filter(file=>file.type.startsWith("image/"));
   setTimeout(()=>{
-    const sources=pastedImageSources(box);box.replaceChildren();
+    const sources=pastedImageSources(box),whole=richPasteText(text,box);box.replaceChildren();
     if($("paste_dlg").open)$("paste_dlg").close();
-    insertIntoMessage(text);
+    insertIntoMessage(whole);
     if(!sources.length&&!files.length)return;
     const target=dropTarget(cur(),dropBlocked());
     if(target.ok)attachPastedPictures(files.length?[]:sources,files);else toast(tr(target.text));
@@ -6175,7 +6199,7 @@ function watchRichPaste(){
   $("paste_catch").addEventListener("input",()=>setTimeout(()=>{$("paste_catch").replaceChildren()},50));
 }
 
-if(typeof module!=="undefined")module.exports={pastedImageSources,isPasteKey,mentionsPictures};
+if(typeof module!=="undefined")module.exports={pastedImageSources,isPasteKey,mentionsPictures,pastedText,richPasteText};
 // Speech is recorded as plain 16 kHz samples and cut into pieces at pauses, so a piece never splits a word,
 // fits one request to the computer that recognises it, and a long dictation is never one fragile upload.
 const VOICE_RATE=16000,VOICE_PIECE_MIN=10,VOICE_PIECE_MAX=18,VOICE_WINDOW=VOICE_RATE/10;
