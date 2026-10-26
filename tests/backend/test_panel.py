@@ -263,6 +263,30 @@ class SessionTests(PanelCase):
         self.panel.sync_state()
         self.assertEqual([call.args[0] for call in self.panel.restore_session.call_args_list], ["broken", "fine"])
         self.panel.save_state.assert_called_once()
+        saved = self.panel.save_state.call_args.args[0]
+        self.assertEqual(saved['sessions'], {'broken': {}})
+        self.assertEqual(saved['pending_restore'], ['broken'])
+
+    def test_failed_restore_is_retried_on_the_same_server_and_a_closed_session_stays_closed(self):
+        info = {'path': str(self.home), 'agent': 'codex', 'sid': 'conversation'}
+        self.panel.save_state({'server_pid': 10, 'sessions': {'retry': info, 'closed': {}}})
+        self.panel.tmux_server_pid = Mock(return_value=20)
+        self.panel.live_sessions = Mock(return_value={})
+        self.panel.containers_ready = Mock()
+        self.panel.restore_session = Mock(side_effect=[OSError('temporary outage'), None])
+        self.panel.sync_state()
+        self.assertEqual(self.panel.load_state(), {
+            'server_pid': 20, 'sessions': {'retry': info}, 'pending_restore': ['retry']})
+        self.panel.restore_session = Mock()
+        self.panel.live_sessions = Mock(side_effect=[{}, {'retry': dict(info, created=1)}])
+        self.panel.sync_state()
+        self.panel.restore_session.assert_called_once_with('retry', info)
+        self.assertEqual(self.panel.load_state(), {'server_pid': 20, 'sessions': {'retry': info}})
+        self.panel.live_sessions = Mock(return_value={})
+        self.panel.restore_session.reset_mock()
+        self.panel.sync_state()
+        self.panel.restore_session.assert_not_called()
+        self.assertEqual(self.panel.load_state(), {'server_pid': 20, 'sessions': {}})
 
     def test_atomic_state_round_trip_and_corrupt_state_fallback(self):
         state = {"server_pid": 1, "sessions": {"demo": {"agent": "codex"}}}
@@ -782,3 +806,59 @@ class OutOfMemoryTests(PanelCase):
                 (home / '.config/systemd/user/cc-tmux.service.d/agent-deck-oom.conf').unlink()
                 self.panel.keep_sessions_on_oom(str(home), Mock())
             self.assertIn('read-only', printed.call_args.args[0])
+
+
+class PerformanceSnapshotTests(PanelCase):
+    def test_local_questions_are_shared_with_aggregators_without_remote_recursion(self):
+        self.panel._local_questions_cache.update(at=-10, refreshing=False, items=[])
+        self.panel._questions_cache.update(at=-10, refreshing=False, items=[])
+        with patch.object(self.panel, 'scan_questions', return_value=[]) as scan, \
+             patch.object(self.panel, 'remote_questions', return_value=[]) as remote:
+            self.panel.questions_payload()
+            self.panel.shared_questions()
+            self.panel.questions_payload()
+            scan.assert_called_once()
+            remote.assert_called_once()
+
+    def test_question_scan_reuses_list_metadata_and_captures_only_the_screen(self):
+        row = {'name': 'demo', 'agent': 'claude', 'sid': None, 'running': True, 'instance': '%1:123:', 'title': 'Demo'}
+        with patch.object(self.panel, 'list_sessions', return_value=[row]), \
+             patch.object(self.panel, 'parse_question', return_value=None) as parse:
+            self.panel.tmux = Mock(return_value='screen')
+            self.assertEqual(self.panel.scan_questions(), [])
+            self.panel.opt = Mock(side_effect=AssertionError('metadata already known'))
+            self.panel.scan_questions()
+            self.assertEqual([c.args[0] for c in self.panel.tmux.call_args_list], ['capture-pane'] * 2)
+            parse.assert_called_with('demo', 'claude', '%1:123:', 'screen')
+
+    def test_active_question_reuses_agent_and_conversation_metadata(self):
+        self.panel.session_exists = Mock(return_value=True)
+        self.panel.opt = Mock(side_effect=lambda name, key: 'claude' if key == '@cc_agent' else '')
+        self.panel.tmux = Mock(return_value='')
+        self.panel.session_question('demo')
+        self.assertEqual([c.args[1] for c in self.panel.opt.call_args_list], ['@cc_agent', '@cc_sid'])
+        self.panel.session_exists.assert_called_once_with('demo')
+        self.assertEqual([c.args[0] for c in self.panel.tmux.call_args_list], ['display-message', 'capture-pane'])
+
+    def test_preview_revision_omits_unchanged_output(self):
+        self.panel.tmux.side_effect = lambda command, *args, **kwargs: (
+            'cc-demo\t1\t0\t/tmp\tclaude\t2\tclaude\t\t0\t\t\n' if command == 'list-sessions' else 'same screen')
+        first = self.panel.list_sessions('demo')[0]
+        second = self.panel.list_sessions('demo', first['preview_revision'])[0]
+        self.assertEqual(second['preview_revision'], first['preview_revision'])
+        self.assertNotIn('preview_ansi', second)
+        self.assertNotIn('preview', second)
+
+    def test_github_status_is_shared_by_concurrent_readers_and_expires(self):
+        import concurrent.futures
+        clock = [100.0]
+        self.panel._cache.pop('github-status', None)
+        with patch.object(self.panel.time, 'time', side_effect=lambda: clock[0]), \
+             patch.object(self.panel, 'gh', return_value=Mock(returncode=0, stdout='demo\n')) as gh:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                results = list(pool.map(lambda _: self.panel.github_status(), range(8)))
+            self.assertTrue(all(r == {'connected': True, 'login': 'demo'} for r in results))
+            gh.assert_called_once()
+            clock[0] += 16
+            self.panel.github_status()
+            self.assertEqual(gh.call_count, 2)

@@ -98,6 +98,21 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(stored.stat().st_mode & 0o777, 0o700)
         self.assertTrue(all(p.stat().st_mode & 0o777 == 0o600 for p in stored.iterdir()))
 
+    def test_provider_settings_and_keys_restore_from_the_encrypted_backup(self):
+        alpha = machine(self)
+        code = alpha.setup()['code']
+        providers = b'{"profiles":[{"name":"GLM","key":"provider-secret"}]}'
+        (alpha.home / '.config/cc-panel/providers.json').write_bytes(providers)
+        blob = alpha.create()
+        self.assertNotIn(b'provider-secret', blob)
+        self.assertEqual(B.unpack(B.unseal(alpha.key(), blob)[1])['deck/providers.json'], providers)
+        fresh = machine(self, 'fresh')
+        result = fresh.restore(blob, code)
+        path = fresh.home / '.config/cc-panel/providers.json'
+        self.assertIn('deck/providers.json', result['files'])
+        self.assertEqual(path.read_bytes(), providers)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
     def test_retention_keeps_the_newest_copies_per_machine(self):
         alpha = machine(self); alpha.setup()
         for created in range(B.KEEP + 3):

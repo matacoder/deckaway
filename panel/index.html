@@ -17,6 +17,7 @@ try{const t=localStorage.getItem("cc.theme");document.documentElement.dataset.th
   /* Every colour, shadow, radius and font of the panel is a token here; a theme (themes.css) only sets tokens.
      The scheme keeps native controls and scrollbars in the theme's own light or dark look. */
   color-scheme:var(--scheme);scrollbar-color:var(--scrollbar) transparent;
+  --author-0:#64d2ff;--author-1:#ff9f0a;--author-2:#cf8aff;--author-3:#ffd60a;--author-4:#fa89c5;--author-5:#66d4cf;--author-6:#aaa8ff;--author-7:#d3ab80;
   --scheme:dark;--scrollbar:#4d4d52;
   --bg:#1e1e1e;--side:#252526;--side2:#2d2d30;--sel:#37373d;--bd:#333336;--bd-soft:#ffffff12;
   /* Text tokens keep WCAG AA (≥4.5:1) on --side, the darkest surface they sit on. */
@@ -46,7 +47,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px/1.4 var(--sans);overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
 button:disabled{cursor:default}
-button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#pre:focus-visible,[data-line]:focus-visible,button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 input,textarea,select{font:inherit}
 [hidden]{display:none!important}
 /* A plain terminal has no agent to attach files to, restart or read a conversation of. */
@@ -54,6 +55,8 @@ body.is-shell .agent-only{display:none!important}
 .ui-icon{display:block;width:var(--icon-md);height:var(--icon-md);flex:none;fill:none;stroke:currentColor;stroke-width:var(--icon-stroke);stroke-linecap:round;stroke-linejoin:round}
 .m-only{display:none!important}
 #app{display:flex;height:var(--app-h)}
+
+#n_readiness{margin:8px 0;color:var(--mut)}#n_agent_step{color:var(--acc-text);text-decoration:underline}
 
 /* ---------- agent marks ---------- */
 .ag{display:inline-flex;align-items:center;justify-content:center;flex:none;width:var(--icon-lg);height:var(--icon-lg);font:600 var(--icon-lg)/1 var(--mono)}
@@ -121,6 +124,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .empty-list{padding:20px 10px;color:var(--mut);line-height:1.5}
 /* Other connected machines: compact sections under the current instance. */
 .deck-head{display:flex;align-items:center;gap:7px;width:100%;margin-top:10px;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left}
+.deck-head.off{display:grid;grid-template-columns:var(--icon-sm) minmax(0,1fr) var(--icon-sm)}
+.deck-head.off .deck-count{grid-row:2;grid-column:2/-1;margin-left:0;text-align:left}
 .deck-head.current{margin-top:2px;color:var(--fg)}
 @media (hover:hover){button.deck-head:hover{background:var(--side2);color:var(--fg)}}
 .deck-head svg{width:var(--icon-sm);height:var(--icon-sm)}
@@ -811,6 +816,7 @@ body.resizing iframe{pointer-events:none}
 .reviewing [data-line] [data-line]:hover{background:none}
 .reviewed{box-shadow:inset 3px 0 0 var(--acc);background:var(--acc-soft)}
 .review-note,.review-edit{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px;padding:8px 10px;border:1px solid var(--bd-strong);border-radius:var(--r);background:var(--side2);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+.review-note{width:100%;text-align:left}
 .review-edit{cursor:auto}
 .review-lines{font-size:12px;color:var(--dim)}
 .review-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
@@ -945,8 +951,6 @@ body.resizing iframe{pointer-events:none}
   .dot{width:10px;height:10px}
   .local-live-line{font-size:12px}
   .side-foot{padding:12px 18px calc(12px + var(--sab));font-size:12px}
-  /* A phone keeps what is acted on there: a computer that does not answer is for the desk. */
-  .deck-head.off{display:none}
   #ver{font-size:12px}
   .side-foot>button{min-height:var(--tap);font-size:15px}
 
@@ -981,12 +985,14 @@ body.resizing iframe{pointer-events:none}
   .attachment button{width:var(--tap);height:var(--tap)}
 
 
-  /* While typing, the conversation gets the space: no tab strip, no status line, compact header. */
-  body.keyboard-open #session_meta,body.keyboard-open .composer-status,body.keyboard-open #hint_more{display:none!important}
+  /* While typing, secondary indicators yield space to the conversation; send feedback stays beside the field. */
+  body.keyboard-open #session_meta,body.keyboard-open #hint_more{display:none!important}
   .session-meta{padding:2px 14px max(2px,var(--sab)) 8px}
   /* The two names sit beside the home indicator, clear of the rounded corners, instead of adding a line above it. */
   .session-meta:has(.session-where:not([hidden])){padding-bottom:max(2px,calc(var(--sab) - 20px))}.session-where{flex:0 0 100%;order:1;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;padding:0 8px 4px 14px}.session-meta .ctx{order:0}#session_computer_box,.session-meta .where-containers{margin-left:0}.session-meta .where-containers{margin-left:auto}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
   main:has(#session_meta:not([hidden])) .composer{padding-bottom:8px}
+  body.keyboard-open #send_state:not(.pending):not(.error):not(.success){display:none}
+  body.keyboard-open .composer-status:has(#send_state:empty){display:none}
   body.keyboard-open .composer{padding-bottom:8px}
   body.keyboard-open .bar{height:calc(48px + var(--sat));padding-top:calc(var(--sat) + 4px)}
   body.keyboard-open #title .st{display:none}
@@ -1175,6 +1181,7 @@ body.resizing iframe{pointer-events:none}
    surface (tests/frontend/theme.test.js). Light is a warm, homely look: cream paper, white cards, a coral accent,
    rounder corners, a rounded font where the device has one and softer shadows. */
 :root[data-theme=light]{
+  --author-0:#00658a;--author-1:#914c00;--author-2:#8540a0;--author-3:#756000;--author-4:#a32e6a;--author-5:#006b67;--author-6:#5142b0;--author-7:#80532b;
   --scheme:light;--scrollbar:#d3c8ba;
   --bg:#fbf7f1;--side:#fffdf9;--side2:#f4ede3;--sel:#efe4d6;--bd:#e9dfd2;--bd-soft:#5a3c1e14;
   --fg:#3b332c;--fg2:#231d18;--mut:#6a5f55;--dim:#6f645a;
@@ -1223,6 +1230,7 @@ body.resizing iframe{pointer-events:none}
 }
 /* Mint: a fresh, cool light page: white cards on a pale green-grey, a teal accent. */
 :root[data-theme=mint]{
+  --author-0:#00658a;--author-1:#914c00;--author-2:#8540a0;--author-3:#756000;--author-4:#a32e6a;--author-5:#006b67;--author-6:#5142b0;--author-7:#80532b;
   --scheme:light;--scrollbar:#c3d3d0;
   --bg:#f2f7f6;--side:#fff;--side2:#e7f0ee;--sel:#d6ebe5;--bd:#dae7e4;--bd-soft:#1e4a4214;
   --fg:#2b3a37;--fg2:#152320;--mut:#53635f;--dim:#5a6a66;
@@ -1317,7 +1325,7 @@ body.resizing iframe{pointer-events:none}
       <div id="term_loading" class="term-loading" role="status" hidden><span class="spinner" aria-hidden="true"></span><span>Подключаюсь к терминалу…</span></div>
       <div id="empty"><span id="empty_text">Загружаю сессии…</span><button type="button" class="pri" id="empty_new" onclick="openNew()" hidden><svg class="ui-icon"><use href="#i-plus"/></svg><span>Новая сессия</span></button></div>
       <div id="screen">
-        <div id="pre_wrap"><div id="pre"></div><section id="talk_view" class="talk-view" hidden aria-label="Разговор"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="closeConversation()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div id="talk_list"></div></section><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
+        <div id="pre_wrap"><div id="pre" tabindex="0" role="region" aria-label="Вывод сессии"></div><section id="talk_view" class="talk-view" hidden aria-label="Разговор"><div class="hub-heading"><h3 tabindex="-1">Разговор</h3><button type="button" onclick="closeConversation()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div id="talk_list"></div></section><button type="button" id="jump" onclick="jumpToLatest()"><svg class="ui-icon"><use href="#i-arrow-down"/></svg><span>К новому выводу</span></button></div>
         <div class="composer" id="session_composer">
           <div id="question" hidden></div>
           <div id="screen_keys"><div class="keys-row" id="session_keys">
@@ -1448,7 +1456,7 @@ body.resizing iframe{pointer-events:none}
 </div>
 <dialog id="voice_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Голосовой ввод</h3><button type="button" onclick="$('voice_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body"><p id="voice_summary" class="voice-summary"></p><p class="hint">Текст добавляется в конец поля сообщения, к тому, что там уже есть; отправляете его вы. Запись распознаёт whisper.cpp на вашем компьютере и никуда больше не уходит.</p><details id="voice_more" class="voice-more" hidden><summary>Компьютеры · <span id="voice_more_count"></span></summary><div id="voice_computers"></div></details><h4 id="voice_texts_title" hidden>Последние записи</h4><div id="voice_texts" class="voice-texts"></div></div></div></dialog>
 <dialog id="confirm_dlg"><form class="dlg" method="dialog"><div class="dlg-body"><h3 id="confirm_title"></h3><p id="confirm_text"></p></div><div class="acts"><button value="cancel">Отмена</button><button value="ok" class="pri" id="confirm_ok">OK</button></div></form></dialog>
-<dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
+<dialog id="palette_dlg" class="palette"><div class="dlg"><input id="palette_q" type="text" placeholder="Сессия или действие" aria-label="Сессия или действие" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-controls="palette_list" aria-expanded="false" aria-autocomplete="list"><div class="palette-list" id="palette_list" role="listbox"></div></div></dialog>
 <dialog id="inbox_dlg"><div class="dlg"><div class="hub-heading"><h3 tabindex="-1" autofocus>Ждут ответа</h3><button type="button" onclick="$('inbox_dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="inbox_list"></div></div></dialog>
 <dialog id="draft_dlg"><div class="dlg"><div class="dlg-body"><h3>Черновики закрытых сессий</h3><div id="closed_drafts"></div></div><div class="acts"><button type="button" onclick="$('draft_dlg').close()">Закрыть</button></div></div></dialog>
 
@@ -1456,7 +1464,8 @@ body.resizing iframe{pointer-events:none}
   <div class="hub-heading"><h3 tabindex="-1" autofocus>Новая сессия</h3><button type="button" onclick="$('dlg').close()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div>
   <div class="dlg-body">
     <div class="agsel" id="agsel" role="group" aria-label="Агент"></div>
-    <div id="source_row"><label for="n_source">Источник модели</label><select id="n_source"></select><button type="button" onclick="configureSource()">Настроить модели</button></div>
+    <div id="n_readiness" role="status"><span id="n_agent_status"></span> <button type="button" id="n_agent_step"></button></div>
+    <div id="source_row"><label for="n_source">Источник модели</label><select id="n_source" onchange="renderNewAgentReadiness()"></select><button type="button" onclick="configureSource()">Настроить модели</button></div>
     <div id="n_runtime_row" hidden><label>Где работает агент</label><div class="agsel runtime-pick" id="n_runtime" role="group" aria-label="Где работает агент"><button type="button" data-runtime="wsl" onclick="pickRuntime('wsl')" aria-pressed="true"><svg class="ui-icon"><use href="#i-terminal"/></svg><span>Linux (WSL)</span></button><button type="button" data-runtime="windows" onclick="pickRuntime('windows')" aria-pressed="false"><svg class="ui-icon"><use href="#i-monitor"/></svg><span>Windows</span></button></div>
       <div id="n_win_row"><label for="n_winpath">Папка в Windows</label><input type="text" id="n_winpath" autocapitalize="off" autocorrect="off" spellcheck="false"><p class="hint" id="n_win_hint"></p></div></div>
     <div class="two">
@@ -1721,6 +1730,29 @@ function cliAgentCard(spec){
   // The line on signing in is for an agent that still needs it; a working one does not repeat it.
   if(spec.hint&&!(state.installed&&state.logged_in&&!spec.always))card.append(el("p","hint",tr(spec.hint)));
   return card;
+}
+
+// Readiness is advisory: an older computer may not report its agents yet.
+function newAgentReadiness(agent,status,source){
+  if(agent==="shell")return {text:"Готов к запуску"};
+  const state=status[agent];
+  if(!state)return {text:"Готовность агента ещё не проверена",section:"agents",step:"Проверить агента"};
+  if(!state.installed)return {text:"Агент не установлен",section:"agents",step:"Установить"};
+  if(agent==="pi"&&!source)return {text:"Для Pi подключите локальную модель",section:"models",step:"Настроить модели"};
+  if(agent==="kimi"&&!status.kimi_config?.configured)return {text:"Сохраните ключ Kimi в настройках",section:"agents",step:"Настроить"};
+  if(!["pi","opencode"].includes(agent)&&!(agent==="claude"&&source&&source.kind!=="default")&&!state.logged_in)
+    return {text:"Агенту нужен вход",section:"agents",step:"Войти"};
+  return {text:"Готов к запуску"};
+}
+function renderNewAgentReadiness(){
+  const box=$("n_readiness");
+  box.hidden=windowsOffered()&&newRuntime==="windows";
+  if(box.hidden)return;  // Windows has its own installation and readiness line.
+  const value=$("n_source").value,source=value?JSON.parse(value):null;
+  const ready=newAgentReadiness(newAgent,lastAg,source);
+  $("n_agent_status").textContent=tr(ready.text);
+  const step=$("n_agent_step");step.hidden=!ready.section;step.textContent=ready.step?tr(ready.step):"";
+  step.onclick=()=>{returnToNew=true;$("dlg").close();openSettings(ready.section)};
 }
 
 if(typeof module!=="undefined")module.exports={AGENT_LIST,agentCommands,pickableAgents};
@@ -2295,14 +2327,17 @@ function imageMatches(text,taken=[]){
 }
 // Agents hard-wrap long paths ("…/padel-w1-cashier-" + "preview/shot.png"); glue such lines back.
 function joinImageLines(lines){
-  const text=runs=>runs.map(r=>r.text).join(""),out=[];
+  const text=lines.map(runs=>runs.map(r=>r.text).join("")),out=[];
   for(let i=0;i<lines.length;i++){
     const runs=lines[i].slice();
+    // Only a path at the end can wrap; scanning long base64 output would block the page.
+    let tail=text[i].trimEnd().slice(-300);
     while(i+1<lines.length){
-      const tail=text(runs).trimEnd().match(/[\w.~@+-]*\/[\w./@+-]*$/);
-      if(!tail||/\.(?:png|jpe?g|webp|gif)$/i.test(tail[0])||!IMAGE_HEAD_RE.test(text(lines[i+1])))break;
+      const path=tail.match(/[\w.~@+-]*\/[\w./@+-]*$/);
+      if(!path||/\.(?:png|jpe?g|webp|gif)$/i.test(path[0])||!IMAGE_HEAD_RE.test(text[i+1]))break;
       for(let j=runs.length-1;j>=0&&/\s$/.test(runs[j].text);j--)runs[j]={...runs[j],text:runs[j].text.trimEnd()};
       runs.push(...lines[++i]);
+      tail=(tail+text[i]).trimEnd().slice(-300);
     }
     out.push(runs);
   }
@@ -2420,6 +2455,23 @@ function versionLabel(v,translate){
   return v.update&&v.latest?"v"+v.version+" → v"+v.latest:"v"+v.version;
 }
 
+// A missing release check is unknown, even when this computer reports no available update.
+function fleetSummary(versions,translate){
+  const values=[...versions];
+  if(values.some(v=>v?.job?.phase==="error"))return translate("Обновление некоторых компьютеров не удалось");
+  if(values.some(v=>!v?.version||!v.latest))return translate("Версии некоторых компьютеров не подтверждены");
+  if(values.some(v=>UPDATING.has(v.job?.phase)))return translate("Обновляю компьютеры…");
+  if(values.some(v=>v.update&&v.can_update===false))return translate("Некоторые компьютеры требуют ручного обновления");
+  const count=values.filter(v=>v.update||v.version!==v.latest).length;
+  return count?translate("Обновления доступны: {0}",[count]):translate("Все компьютеры обновлены");
+}
+function fleetUpdated(targets,versions){
+  return [...targets].every(([id,latest])=>{
+    const v=versions.get(id);
+    return Boolean(latest&&v?.version===latest&&!v.update&&!UPDATING.has(v.job?.phase)&&v.job?.phase!=="error");
+  });
+}
+
 async function loadFleet(fresh=false){
   fleet.loadedAt=Date.now();
   const decks=deckDirectory.decks;
@@ -2435,13 +2487,13 @@ function renderFleet(){
   for(const node of document.querySelectorAll("[data-deck-version]")){
     const v=fleet.versions.get(node.dataset.deckVersion);
     node.textContent=versionLabel(v,tr);node.classList.toggle("outdated",Boolean(v?.update));
-    if(node.classList.contains("card-status"))node.className="card-status "+(!v?"bad":v.update||UPDATING.has(v.job?.phase)?"warn":"ok");
+    if(node.classList.contains("card-status"))node.className="card-status "+(!v||v.job?.phase==="error"?"bad":v.update||!v.latest||UPDATING.has(v.job?.phase)?"warn":"ok");
   }
   const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
   const count=targets.length+(gatewayOld?1:0);
   bar.replaceChildren();
   if(!deckDirectory.decks.length)return;
-  bar.append(el("span","",fleet.updating?tr("Обновляю компьютеры…"):count?tr("Обновления доступны: {0}",[count]):tr("Все компьютеры обновлены")));
+  bar.append(el("span","",fleet.updating?tr("Обновляю компьютеры…"):fleetSummary([...deckDirectory.decks.map(d=>fleet.versions.get(d.id)),fleet.gateway],tr)));
   if(count&&!fleet.updating)bar.append(btn(tr("Обновить все"),"pri",updateAllComputers));
   if(typeof updateHubDots==="function"&&$("settings_dlg").open)updateHubDots();
 }
@@ -2449,8 +2501,10 @@ async function updateAllComputers(){
   const targets=fleetTargets(fleet.versions),gatewayOld=Boolean(fleet.gateway?.update&&fleet.gateway?.can_update);
   if(!targets.length&&!gatewayOld)return;
   if(!await confirmAction(tr("Обновить все компьютеры?"),{text:tr("Панели перезапустятся по очереди, сессии и агенты продолжат работать. Этот компьютер обновится последним."),confirm:tr("Обновить все")}))return;
+  const expected=new Map(targets.map(id=>[id,fleet.versions.get(id).latest]));
+  let accepted=true;
   fleet.updating=true;renderFleet();
-  await Promise.all(targets.map(id=>api(instancePath(id,"/api/update"),{},true).catch(e=>toast(e.message))));
+  await Promise.all(targets.map(id=>api(instancePath(id,"/api/update"),{},true).catch(e=>{accepted=false;toast(e.message)})));
   // Poll until every started job ends; the gateway goes last because its restart interrupts the proxy.
   const deadline=Date.now()+10*60*1000;
   while(Date.now()<deadline){
@@ -2459,15 +2513,20 @@ async function updateAllComputers(){
     if(targets.every(id=>!UPDATING.has(fleet.versions.get(id)?.job?.phase)))break;
   }
   fleet.updating=false;renderFleet();
+  const verified=accepted&&fleetUpdated(expected,fleet.versions);
+  if(!verified)toast(tr("Обновление не подтверждено на всех компьютерах. Проверьте версии и повторите попытку."));
   if(gatewayOld){
     if(!selectedDeck)startPanelUpdate();
     else api("/api/update",{},true).then(()=>toast(tr("Этот компьютер обновляется"),true)).catch(e=>toast(e.message));
-  }else toast(tr("Компьютеры обновлены"),"success");
+  }else if(verified){
+    const summary=fleetSummary([...deckDirectory.decks.map(d=>fleet.versions.get(d.id)),fleet.gateway],tr);
+    toast(summary,summary===tr("Все компьютеры обновлены")?"success":"info");
+  }
 }
 
-if(typeof module!=="undefined")module.exports={fleetTargets,versionLabel};
+if(typeof module!=="undefined")module.exports={fleetTargets,versionLabel,fleetSummary,fleetUpdated};
 // Everything waiting for you on every computer: agent questions (answerable here) and finished work.
-const inbox={questions:[],cards:new Map(),loading:false};
+const inbox={questions:[],cards:new Map(),nodes:new Map(),loading:false};
 
 // Questions plus finished sessions, without listing a session twice; pure for tests.
 function inboxItems(questions,finished){
@@ -2505,10 +2564,33 @@ function renderInbox(){
   renderInboxBadge();
   if(!$("inbox_dlg").open)return;
   const list=$("inbox_list"),items=inboxItems(openQuestions(),finishedSessions());
-  if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
-  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.")))]));
+  const nodes=items.map(item=>{
+    const key=item.kind+"/"+item.key+(item.question?"/"+item.question.id:"");
+    const deck=item.question?item.question.deck||"":item.deck,session=item.question?item.question.session:item.session;
+    const signature=JSON.stringify([item,inboxLabel(item,deck,session),deckDirectory.name]),known=inbox.nodes.get(key);
+    if(known?.signature===signature)return known.node;
+    const node=renderInboxItem(item);node.dataset.inboxKey=key;
+    inbox.nodes.set(key,{signature,node});return node;
+  });
+  for(const [key,entry] of inbox.nodes)if(!nodes.includes(entry.node))inbox.nodes.delete(key);
+  if(!nodes.length)nodes.push(list.querySelector(".inbox-empty")||el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере."))));
+  reconcileInbox(list,nodes);
+}
+// Moving an unchanged focused row also blurs it in browsers, so leave rows already in place alone.
+function reconcileInbox(list,nodes){
+  const focused=document.activeElement,row=focused?.closest(".inbox-item"),index=row?[...row.querySelectorAll('button,textarea,[tabindex="0"]')].indexOf(focused):-1;
+  const selection=focused?.tagName==="TEXTAREA"?[focused.selectionStart,focused.selectionEnd]:null;
+  const rowIndex=row?[...list.children].indexOf(row):-1;
+  nodes.forEach((node,i)=>{if(list.children[i]!==node)list.insertBefore(node,list.children[i]||null)});
+  for(const node of [...list.children])if(!nodes.includes(node))node.remove();
+  if(row&&document.activeElement!==focused){
+    const next=nodes.find(n=>n.dataset.inboxKey===row.dataset.inboxKey)||nodes[Math.min(rowIndex,nodes.length-1)];
+    const control=next?.querySelectorAll('button,textarea,[tabindex="0"]')[Math.max(0,index)];
+    control?.focus({preventScroll:true});
+    if(selection&&control?.tagName==="TEXTAREA")control.setSelectionRange(...selection);
+  }
 }
 // The name the user gave the session, not its technical tmux name.
 function inboxLabel(item,deck,session){
@@ -2708,15 +2790,22 @@ function screenEarlier(p,name){
 }
 async function loadScreenHistory(key){
   // Asked at most once a while, also after a failure: the screen is drawn again on every change.
-  if(screenHistory.key!==key){screenHistory.node?.remove();screenHistory.node=null}
+  if(screenHistory.key!==key){screenHistory.node?.remove();screenHistory.node=null;screenHistory.signature=null}
   Object.assign(screenHistory,{key,at:Date.now(),loading:true});
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
     if(key!==sessionInfoKey())return;
+    keepAnswer(conversationKnown,key,data,8);
+    if(conversationOpen())renderConversation(data);
     showRefs(key,data?.supported?data.turns:[]);
     const p=$("pre"),stick=atBottom(p),below=p.scrollHeight-p.scrollTop;
+    const screen=[...p.childNodes].filter(node=>node!==screenHistory.node).map(node=>node.textContent).join("\n");
+    const turns=turnsAboveScreen(data?.supported?data.turns||[]:[],screen);
+    const signature=JSON.stringify(turns);
+    if(screenHistory.signature===signature)return;
+    screenHistory.signature=signature;screenHistory.revision=data.revision;
     screenHistory.node?.remove();
-    screenHistory.node=historyNode(data,p.textContent);
+    screenHistory.node=historyNode({supported:true,turns},"");
     if(!screenHistory.node||screenView.cut)return;
     p.prepend(screenHistory.node);p.scrollTop=stick?p.scrollHeight:p.scrollHeight-below;
   }catch(e){}finally{screenHistory.loading=false}
@@ -2977,9 +3066,10 @@ async function leaveFile(){
 }
 async function saveFile(){
   const file=files.file;if(!file)return;
+  const content=file.content;
   try{
-    const result=await api("/api/file_save",{path:file.path,content:file.content,hash:file.isNew?null:file.hash});
-    Object.assign(file,{hash:result.hash,saved:file.content,isNew:false});
+    const result=await api("/api/file_save",{path:file.path,content,hash:file.isNew?null:file.hash});
+    Object.assign(file,{hash:result.hash,saved:content,isNew:false});
     toast(tr("Файл сохранён"),"success");
   }catch(e){if(e.message!==STALE)toast(e.message)}
   // Only the button changes: re-rendering would move the cursor and scroll of the open text.
@@ -3047,14 +3137,32 @@ function renderEditor(box,listing){
   });
   box.append(head,area,el("div","acts",copy,save));
 }
+const FILE_PAGE_LINES=400;
+function readerPage(file){
+  const lines=file.content.split("\n");
+  if(lines.length>1&&!lines.at(-1))lines.pop();
+  const pages=Math.max(1,Math.ceil(lines.length/FILE_PAGE_LINES));
+  file.page=Math.max(0,Math.min(file.page||0,pages-1));
+  const start=file.page*FILE_PAGE_LINES;
+  return {lines:lines.slice(start,start+FILE_PAGE_LINES),start,pages,total:lines.length};
+}
+function readerPaging(file,page){
+  const move=step=>{file.page+=step;renderFiles()};
+  const previous=fileButton(tr("Предыдущая страница"),"files-up",()=>move(-1));previous.disabled=!file.page;
+  const next=fileButton(tr("Следующая страница"),"files-up",()=>move(1));next.disabled=file.page+1>=page.pages;
+  return el("div","files-path",previous,el("span","",tr("Страница {0} из {1}",[file.page+1,page.pages])),next);
+}
 function renderReader(box,head,file){
+  const page=readerPage(file);
   let view=el("div","files-view");
-  if(file.rendered)view=renderMarkdown(file.content);
-  else view.style.setProperty("--ln",Math.max(2,String(file.content.split("\n").length).length));
-  if(!file.rendered)file.content.split("\n").forEach((line,i,lines)=>{
-    if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
-    const row=el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" "));
-    row.dataset.line=row.dataset.end=i+1;view.append(row);
+  // Bound rows and inline markup too: one enormous Markdown line could otherwise create thousands of nodes.
+  const markdown=file.rendered&&page.lines.join("\n").length<=32768;
+  if(markdown)view=renderMarkdown(page.lines.join("\n"),document,page.start);
+  else view.style.setProperty("--ln",Math.max(2,String(page.total).length));
+  if(!markdown)page.lines.forEach((line,i)=>{
+    const number=page.start+i+1;
+    const row=el("div","fl",el("span","ln",String(number)),el("span","code",line||" "));
+    row.dataset.line=row.dataset.end=number;view.append(row);
   });
   if(isMarkdown(file.path))head.append(fileButton(file.rendered?tr("Текст"):tr("Просмотр"),"files-up",()=>{file.rendered=!file.rendered;renderFiles()}));
   const copy=fileButton(tr("Копировать"),"",()=>{
@@ -3064,7 +3172,7 @@ function renderReader(box,head,file){
   const change=fileButton(tr("Изменить"),"",()=>{file.editing=true;renderFiles()});
   const download=fileButton(tr("Скачать"),"",()=>downloadFile(null,file.path));
   const acts=el("div","acts",copy,download,change);
-  box.append(head,view,acts);
+  box.append(head,...(page.pages>1?[readerPaging(file,page)]:[]),view,acts);
   reviewReader(view,head,acts,file);
 }
 // Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
@@ -3109,8 +3217,8 @@ function fileLink(session,path,runs,from,to,folder=false){
 }
 // A folder opens in the file browser; anything that is not one downloads (with its own message if missing).
 async function openScreenPath(path){
-  try{await api("/api/files?name="+encodeURIComponent(active)+"&path="+encodeURIComponent(sessionRelative(path)),null,true)}
-  catch(e){downloadFile(active,path);return}
+  try{await api("/api/files?name="+encodeURIComponent(active)+"&path="+encodeURIComponent(sessionRelative(path)))}
+  catch(e){if(e.message!==STALE)downloadFile(active,path);return}
   openRefFolder(path);
 }
 async function openScreenFile(path){
@@ -3158,18 +3266,18 @@ if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatch
 // Comments on lines of a file open in the file viewer, sent to the session's agent as one review message.
 // Tapping a paragraph (or a line in text view) while commenting opens a note for its source lines. Notes are
 // kept in this browser per computer and file until sent, like a draft. Bundled before app.js.
-const review={path:null,notes:[],on:false,send:null,toggle:null};
+const review={key:null,path:null,notes:[],on:false,send:null,toggle:null};
 const reviewKey=path=>"cc.review."+(selectedDeck||"")+":"+path;
 function loadReview(path){
-  if(review.path===path)return;
+  const key=reviewKey(path);if(review.key===key)return;
   let notes=[];
-  try{notes=JSON.parse(localStore.getItem(reviewKey(path))||"[]")}catch(e){}
-  review.path=path;
+  try{notes=JSON.parse(localStore.getItem(key)||"[]")}catch(e){}
+  review.key=key;review.path=path;
   review.notes=Array.isArray(notes)?notes.filter(n=>n&&n.from>0&&n.to>=n.from&&typeof n.text==="string"&&n.text.trim()):[];
   review.on=review.notes.length>0;
 }
-function storeReview(){
-  try{review.notes.length?localStore.setItem(reviewKey(review.path),JSON.stringify(review.notes)):localStore.removeItem(reviewKey(review.path))}catch(e){}
+function storeReview(notes=review.notes,key=review.key){
+  try{notes.length?localStore.setItem(key,JSON.stringify(notes)):localStore.removeItem(key)}catch(e){}
 }
 // The message for the agent: each note with its lines quoted from the file as it is now. Pure for tests.
 function reviewPrompt(path,notes,lines){
@@ -3194,6 +3302,10 @@ function reviewReader(view,head,acts,file){
     const target=event.target.closest("[data-line]");
     if(target&&view.contains(target))editNote(view,file,target);
   });
+  view.addEventListener("keydown",event=>{
+    if(!review.on||!["Enter"," "].includes(event.key)||!event.target.matches("[data-line]"))return;
+    event.preventDefault();event.stopPropagation();editNote(view,file,event.target);
+  });
   drawNotes(view,file);
 }
 function drawNotes(view,file){
@@ -3201,14 +3313,16 @@ function drawNotes(view,file){
   view.querySelectorAll(".review-note,.review-edit,.review-hint").forEach(node=>node.remove());
   view.querySelectorAll(".reviewed").forEach(node=>node.classList.remove("reviewed"));
   for(const target of view.querySelectorAll("[data-line]")){
+    target.tabIndex=review.on?0:-1;
+    if(review.on)target.setAttribute("aria-keyshortcuts","Enter Space");else target.removeAttribute("aria-keyshortcuts");
     const from=Number(target.dataset.line),note=review.notes.find(n=>n.from===from&&n.to===Number(target.dataset.end));
     if(!note)continue;
     target.classList.add("reviewed");
-    const box=el("div","review-note",el("span","review-lines",lineSpan(note.from,note.to)),el("span","review-text",note.text));
-    box.onclick=()=>editNote(view,file,target);
+    const box=el("button","review-note",el("span","review-lines",lineSpan(note.from,note.to)),el("span","review-text",note.text));
+    box.type="button";box.onclick=()=>editNote(view,file,target);
     target.after(box);
   }
-  if(review.on&&!review.notes.length)view.prepend(el("p","review-hint",tr("Нажмите на абзац или строку, чтобы оставить комментарий")));
+  if(review.on&&!review.notes.length)view.prepend(el("p","review-hint",tr("Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.")));
   review.send.parentNode.hidden=!review.notes.length;
   review.send.textContent=tr("Отправить ревью ({0})",[review.notes.length]);
   review.toggle.setAttribute("aria-pressed",String(review.on));
@@ -3223,26 +3337,42 @@ function editNote(view,file,target){
   const done=text=>{
     review.notes=review.notes.filter(n=>n!==note);
     if(text.trim())review.notes.push({from,to,text:text.trim()});
-    storeReview();drawNotes(view,file);
+    storeReview();drawNotes(view,file);target.focus({preventScroll:true});
   };
   const buttons=el("div","acts",
     ...(note?[fileButton(tr("Удалить"),"",()=>done(""))]:[]),
-    fileButton(tr("Отмена"),"",()=>drawNotes(view,file)),
+    fileButton(tr("Отмена"),"",()=>{drawNotes(view,file);target.focus({preventScroll:true})}),
     fileButton(tr("Сохранить"),"pri",()=>done(area.value)));
   target.after(el("div","review-edit",el("span","review-lines",lineSpan(from,to)),area,buttons));
   area.focus({preventScroll:true});
 }
-// Into the message field and sent like a typed message: the same send state, and the text stays there as a
-// draft if it cannot be sent.
+// A review is a separate message: the composer may hold another task and its attachments.
 async function sendReview(view,file){
-  if(!review.notes.length)return;
-  if(files.session!==active){toast(tr("Откройте сессию этого файла"));return}
-  const text=reviewPrompt(file.path,review.notes,file.content.replace(/\r\n?/g,"\n").split("\n")),field=$("msg");
-  field.value=field.value.trim()?field.value.replace(/\s+$/,"")+"\n\n"+text:text;
-  field.dispatchEvent(new Event("input"));  // Kept as this session's draft, as typed text is.
-  review.notes=[];storeReview();review.on=false;drawNotes(view,file);
-  if(projectDrawer()||isMobile())closeProject();
-  await send();
+  if(!review.notes.length||sending||uploading||panelUpdating)return;
+  if(files.session!==active||review.key!==reviewKey(file.path)){toast(tr("Откройте сессию этого файла"));return}
+  if(isLocal(cur())&&!cur().running){toast(agentLabel(cur())+tr(" не запущен"));return}
+  const deck=selectedDeck,epoch=deckEpoch,name=active,key=review.key,notes=review.notes.slice();
+  const text=reviewPrompt(file.path,notes,file.content.replace(/\r\n?/g,"\n").split("\n"));
+  sending=true;review.send.disabled=true;renderAttachments();
+  sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
+  try{
+    await gatewayApi(instancePath(deck,"/api/send"),{name,text});
+    finishReview(key,notes);
+    if(epoch!==deckEpoch)return;
+    sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(cur()),phase:"success"});
+    if(files.file===file){drawNotes(view,file);if(projectDrawer()||isMobile())closeProject()}
+    await load();
+  }catch(e){
+    if(epoch===deckEpoch)sendStates.set(name,{text:tr("Не отправлено: ")+e.message,error:true});
+    toast(tr("Не отправлено: ")+e.message);
+  }finally{sending=false;review.send.disabled=false;renderAttachments();renderSendState()}
+}
+function finishReview(key,sent){
+  let notes=review.notes;
+  if(review.key!==key){try{notes=JSON.parse(localStore.getItem(key)||"[]")}catch(e){notes=[]}}
+  const remaining=notes.filter(n=>!sent.some(s=>s.from===n.from&&s.to===n.to&&s.text===n.text));
+  storeReview(remaining,key);
+  if(review.key===key){review.notes=remaining;review.on=remaining.length>0}
 }
 
 if(typeof module!=="undefined")module.exports={reviewPrompt};
@@ -3337,11 +3467,16 @@ async function openRefFolder(path){
 // A terminal of its own in the session's folder: the agent's session keeps its screen and its input.
 async function runInTerminal(command){
   const s=cur();if(!s)return;
-  const asked=s.name.slice(0,28)+"-run",made=await post("/api/new",{name:asked,agent:"shell",path:s.path});
-  if(!made)return;
-  const name=made.name||asked;
-  try{await api("/api/send",{name,text:command})}catch(e){toast(e.message)}
-  select(name);
+  if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return}
+  const deck=selectedDeck,epoch=deckEpoch,asked=s.name.slice(0,28)+"-run";
+  try{
+    const made=await gatewayApi(instancePath(deck,"/api/new"),{name:asked,agent:"shell",path:s.path});
+    const name=made.name||asked;
+    await gatewayApi(instancePath(deck,"/api/send"),{name,text:command});
+    if(epoch!==deckEpoch)return;
+    await load();
+    if(epoch===deckEpoch)select(name);
+  }catch(e){toast(e.message)}
 }
 
 if(typeof module!=="undefined")module.exports={answerRefs,lastAnswer};
@@ -3655,10 +3790,14 @@ async function showGroup(group){
   if(hist.view===view)renderHistory();
 }
 // Groups are sorted on the server in the background; the tab only reads them (and re-reads while open).
+const groupRequests=new Set();
 async function loadGroups(quiet){
-  const seq=hist.seq,session=hist.session;
+  const seq=hist.seq,session=hist.session,key=hist.key;
+  if(groupRequests.has(key))return;
+  groupRequests.add(key);
   let state;
   try{state=await api(gitPath("groups"),null,false,{timeout:60000})}catch(e){state=e.message===STALE||quiet?null:{error:e.message}}
+  finally{groupRequests.delete(key)}
   if(seq!==hist.seq||session!==hist.session||!state)return;
   if(quiet&&JSON.stringify(state)===JSON.stringify(hist.groups))return;
   hist.groups=state;if(!state.error)keepAnswer(groupsKnown,hist.key,state);
@@ -3679,7 +3818,7 @@ function historyTab(tab){
 // Authors get colours in this order, chosen so the first few are as far apart as possible; green and
 // red are left out because they already mean added and removed lines. An author keeps the colour
 // first given (remembered in this browser), so the same person looks the same everywhere.
-const AUTHOR_COLORS=["#64d2ff","#ff9f0a","#bf5af2","#ffd60a","#f472b6","#66d4cf","#7d7aff","#c69c6d"];
+const AUTHOR_COLORS=Array.from({length:8},(_,i)=>"var(--author-"+i+")");
 function authorColor(name,taken){
   if(!taken.has(name)){
     const used=new Set(taken.values());
@@ -3904,6 +4043,7 @@ async function loadSessionInfo(){
   }
   sessionInfo.doubt=false;
   sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
+  if(conversationOpen())refreshConversation();
   if(curMode()==="screen")screenEarlier($("pre"),active);
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
@@ -3920,28 +4060,45 @@ function talkTurn(turn){return el("div","talk-turn"+(turn.role==="user"?" mine":
 function renderConversation(data,failed){
   const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
   if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
-  const turns=data.supported?data.turns||[]:[];
+  const turns=data.supported?data.turns||[]:[],selection=getSelection();
+  const range=selection&&!selection.isCollapsed&&box.contains(selection.anchorNode)?selection.getRangeAt(0):null;
+  // New messages can appear during selection; only a change to the selected text waits until the next poll.
+  if(range&&[...box.children].some((node,i)=>node.dataset.turn!==JSON.stringify(turns[i])&&range.intersectsNode(node)))return;
   if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
-  box.replaceChildren(...turns.map(talkTurn));
-  if(stick)box.scrollTop=box.scrollHeight;
+  const top=box.scrollTop;
+  if(!box.querySelector(".talk-turn"))box.replaceChildren();
+  turns.forEach((turn,i)=>{
+    const signature=JSON.stringify(turn),old=box.children[i];
+    if(old?.dataset.turn===signature)return;
+    const node=talkTurn(turn);node.dataset.turn=signature;
+    if(old)old.replaceWith(node);else box.append(node);
+  });
+  while(box.children.length>turns.length)box.lastChild.remove();
+  box.scrollTop=stick&&!range?box.scrollHeight:top;
 }
 // Drawn in place of the screen, not as a dialog: the message field and the microphone stay usable, so an
 // answer can be read and replied to at once.
+let conversationSeq=0;
 const conversationOpen=()=>!$("talk_view").hidden;
-function closeConversation(){$("talk_view").hidden=true}
+function closeConversation(){conversationSeq++;$("talk_view").hidden=true}
 async function openConversation(){
   if(!active)return;
   if(conversationOpen()){closeConversation();return}
-  const key=sessionInfoKey(),known=knownAnswer(conversationKnown,key);
+  const known=knownAnswer(conversationKnown,sessionInfoKey());
   $("talk_list").replaceChildren();
   if(curMode()!=="screen")setMode("screen");
   $("talk_view").hidden=false;
   renderConversation(known);
+  await refreshConversation();
+}
+async function refreshConversation(){
+  if(document.hidden||!active||!conversationOpen())return;
+  const key=sessionInfoKey(),seq=++conversationSeq,known=knownAnswer(conversationKnown,key);
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
-    if(key!==sessionInfoKey()||!conversationOpen())return;
+    if(seq!==conversationSeq||key!==sessionInfoKey()||!conversationOpen())return;
     keepAnswer(conversationKnown,key,data,8);renderConversation(data);
-  }catch(e){if(e.message!==STALE&&!known)renderConversation(null,e.message)}
+  }catch(e){if(seq===conversationSeq&&key===sessionInfoKey()&&conversationOpen()&&e.message!==STALE&&!known)renderConversation(null,e.message)}
 }
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
 function renderSessionInfo(){
@@ -4072,15 +4229,16 @@ function hotkeys(e){
   e.preventDefault();e.stopPropagation();if(target)select(target);
 }
 // The text screen has no terminal to type into, so the keys an agent's menu needs (digits, arrows, Enter,
-// Esc, Tab) go to the session, like the on-screen keys, while nothing else has the focus.
-const SCREEN_KEYS={Enter:"Enter",Escape:"Escape",Tab:"Tab",ArrowUp:"Up",ArrowDown:"Down",ArrowLeft:"Left",ArrowRight:"Right"};
+// Esc) go to the session while the screen itself or nothing has the focus. Tab stays the browser's, and a
+// focused link or button on the screen keeps its own Enter.
+const SCREEN_KEYS={Enter:"Enter",Escape:"Escape",ArrowUp:"Up",ArrowDown:"Down",ArrowLeft:"Left",ArrowRight:"Right"};
 function screenKey(e){
-  if(e.isComposing||!cur()||curMode()!=="screen")return false;
+  if(e.isComposing||e.key==="Tab"||!cur()||curMode()!=="screen")return false;
   const focus=document.activeElement;
-  if(focus&&focus!==document.body&&!$("pre_wrap").contains(focus))return false;
+  if(focus&&focus!==document.body&&focus!==$("pre"))return false;
   if(document.querySelector("dialog[open]:not(.docked)")||$("sheet").classList.contains("on")||!$("search_pop").hidden||!$("viewer").hidden)return false;
   const digit=/^(Digit|Numpad)[1-9]$/.test(e.code)&&!e.shiftKey?e.code.slice(-1):"";
-  const name=digit||(e.key==="Tab"&&e.shiftKey?"BTab":e.shiftKey?"":SCREEN_KEYS[e.key]);
+  const name=digit||(e.shiftKey?"":SCREEN_KEYS[e.key]);
   if(!name)return false;
   e.preventDefault();e.stopPropagation();key(name);return true;
 }
@@ -4568,7 +4726,7 @@ if(typeof module!=="undefined")module.exports={renderMarkdown,isMarkdown};
 // Search in the open session's whole output (tmux scrollback) and the quick switcher (Alt+K, Ctrl/Cmd+K).
 // Output is shown with textContent only; the server matches plain text, newest first.
 // Bundled before app.js; nothing here runs at load time.
-const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false};
+const outputSearch={key:null,session:null,query:"",seq:0,result:null,error:"",busy:false};
 
 // The field lives in the session bar: always shown on a wide screen, opened by the search icon on a phone.
 // Results float under the bar instead of covering the session.
@@ -4585,9 +4743,10 @@ function closeOutputSearch(){
 function showSearchPop(on){$("search_pop").hidden=!on}
 // Another session starts a new search; a new number drops an answer still on its way for the previous one.
 function searchSession(){
-  if(outputSearch.session===active)return;
-  Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
-  $("search_q").value="";closeOutputSearch();
+  const key=sessionInfoKey();
+  if(outputSearch.key===key)return;
+  Object.assign(outputSearch,{key,session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
+  $("search_q").value="";$("search_body").replaceChildren();closeOutputSearch();
 }
 async function runOutputSearch(){
   const query=$("search_q").value.trim();
@@ -4638,19 +4797,21 @@ function paletteItems(){
 function openPalette(){
   if($("palette_dlg").open){$("palette_dlg").close();return}
   if(document.querySelector("dialog[open]:not(.docked)"))return;  // A switch from inside another dialog would leave it behind.
-  palette.items=paletteItems();
+  palette.items=paletteItems().map((item,i)=>({...item,id:"palette_option_"+i}));
   const input=$("palette_q");input.value="";filterPalette();
-  $("palette_dlg").showModal();setTimeout(()=>input.focus(),0);
+  $("palette_dlg").showModal();$("palette_q").setAttribute("aria-expanded","true");setTimeout(()=>input.focus(),0);
 }
 function filterPalette(){palette.shown=matchPalette(palette.items,$("palette_q").value).slice(0,50);palette.index=0;renderPalette()}
 function renderPalette(){
   const list=$("palette_list");list.replaceChildren();
   palette.shown.forEach((item,i)=>{
     const row=el("button","palette-row"+(i===palette.index?" on":""),svgIcon(item.icon),el("span","palette-label",item.label),el("span","palette-hint",item.hint));
-    row.type="button";row.setAttribute("role","option");row.setAttribute("aria-selected",String(i===palette.index));
+    row.type="button";row.id=item.id;row.setAttribute("role","option");row.setAttribute("aria-selected",String(i===palette.index));
     row.onclick=()=>runPalette(i);list.append(row);
   });
   if(!palette.shown.length)list.append(el("p","files-empty",tr("Ничего не найдено")));
+  const input=$("palette_q"),chosen=palette.shown[palette.index];
+  if(chosen)input.setAttribute("aria-activedescendant",chosen.id);else input.removeAttribute("aria-activedescendant");
   list.querySelector(".on")?.scrollIntoView?.({block:"nearest"});
 }
 function runPalette(i){const item=palette.shown[i];if(!item)return;$("palette_dlg").close();item.run()}
@@ -4961,7 +5122,7 @@ function duplicateWarning(c){
 }
 async function disableTelegramOn(deck){
   if(!await confirmAction(tr("Отключить Telegram на {0}?",[deck.name]),{text:tr("Токен бота там будет удалён; здесь Telegram продолжит работать."),confirm:tr("Отключить"),danger:true}))return;
-  try{await api(instancePath(deck.id,"/api/telegram_config"),{clear:true});telegramClearedOn.add(deck.id);toast(tr("Telegram отключён на {0}",[deck.name]),"success")}
+  try{await gatewayApi(instancePath(deck.id,"/api/telegram_config"),{clear:true});telegramClearedOn.add(deck.id);toast(tr("Telegram отключён на {0}",[deck.name]),"success")}
   catch(e){if(e.message!==STALE)toast(e.message)}
   renderTelegram(telegramConfig);
 }
@@ -5424,6 +5585,7 @@ function renderNewRuntime(){
     :!WINDOWS_AGENTS.includes(newAgent)?tr("В Windows запускаются Claude, Codex и терминал")
     :tr(status.admin?"PowerShell {0}. Установлены в Windows: {1}. Агент работает от имени администратора.":"PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
   $("n_win_hint").classList.toggle("warn",win&&(!status.ready||!WINDOWS_AGENTS.includes(newAgent)));
+  renderNewAgentReadiness();
 }
 // What createSession adds to its request. The account or model and the containers picked for WSL are hidden
 // for Windows and must not be sent with it: the computer refuses a Windows session with a source.
@@ -5850,7 +6012,7 @@ function restoreScreens(){
 // then shows text at once and the fresh screen replaces it.
 const WARM_SCREENS=8;let warmingScreens=false;
 async function warmScreens(){
-  if(warmingScreens||document.hidden)return;
+  if(warmingScreens||document.hidden||curMode()!=="screen")return;
   warmingScreens=true;const epoch=deckEpoch;
   try{
     const rest=sessions.filter(s=>s.name!==active&&!previewCache.has(s.name)).sort((a,b)=>Number(b.activity)-Number(a.activity)).slice(0,WARM_SCREENS);
@@ -5865,7 +6027,7 @@ async function warmScreens(){
 // A switch made while a list request is on its way would wait for it and then for its own: the new session's
 // screen is asked for at once instead.
 async function screenNow(name){
-  if(!loadingSessions||previewCache.has(name))return;
+  if(curMode()!=="screen"||!loadingSessions||previewCache.has(name))return;
   const epoch=deckEpoch;
   try{
     const got=(await api("/api/sessions?preview="+encodeURIComponent(name))).sessions?.find(x=>x.name===name);
@@ -6105,7 +6267,7 @@ function bytesToBase64(bytes){
 if(typeof module!=="undefined")module.exports={downsample,cutPoint,hasSpeech,encodeWav,joinDictation,voicePieceKey,bytesToBase64,VOICE_RATE};
 // Dictation: the microphone button records, a computer with whisper.cpp turns each piece into text, and the
 // text joins the draft of the session it was spoken to. Pieces wait in IndexedDB until their text is there.
-const voice={doneAt:0,rec:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
+const voice={doneAt:0,rec:null,starting:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
 const VOICE_ENGINE_MS=300000,VOICE_ASK_MS=8000,VOICE_RETRY=[5,15,30,60],VOICE_DONE_MS=4000;
 
 // The first ready computer answers the question; a sleeping one is not waited for.
@@ -6130,18 +6292,30 @@ function voiceEngine(force=false){
 async function toggleVoice(){
   if(voice.held){voice.held=false;return}  // A long press opened the dialog instead.
   if(voice.rec)return stopVoice();
-  if(!active)return;
+  if(voice.starting||!active)return;
   if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast(tr("Микрофон работает только по https: откройте панель по её https-адресу"));return}
-  // Created inside the tap: Safari keeps an audio context made later silent.
-  const context=new (window.AudioContext||window.webkitAudioContext)();
-  const engine=await voiceEngine();
-  if(engine===null){context.close();openVoice();return}
-  let stream;
-  try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
-  catch(e){context.close();toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"));return}
-  // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
-  context.resume().catch(()=>{});
-  startRecording(context,stream);
+  const start={epoch:deckEpoch,session:active};voice.starting=start;
+  let context,stream,recording=false;
+  const current=()=>voice.starting===start&&start.epoch===deckEpoch&&start.session===active;
+  try{
+    // Created inside the tap: Safari keeps an audio context made later silent.
+    context=new (window.AudioContext||window.webkitAudioContext)();
+    const engine=await voiceEngine();
+    if(!current())return;
+    if(engine===null){openVoice();return}
+    stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    if(!current())return;
+    // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
+    context.resume().catch(()=>{});
+    startRecording(context,stream);recording=true;
+  }catch(e){if(current())toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"))}
+  finally{
+    if(voice.starting===start)voice.starting=null;
+    if(!recording){
+      for(const track of stream?.getTracks()||[])track.stop();
+      context?.close().catch(()=>{});
+    }
+  }
 }
 function startRecording(context,stream){
   const source=context.createMediaStreamSource(stream),node=context.createScriptProcessor(4096,1,1);
@@ -6182,6 +6356,7 @@ function queueSave(rec,seq,samples,open){
   }).catch(()=>{voice.error=tr("Не удалось сохранить запись в браузере");renderVoice()});
 }
 function stopVoice(message){
+  voice.starting=null;
   const rec=voice.rec;if(!rec)return;
   voice.rec=null;clearInterval(rec.tick);
   rec.node.onaudioprocess=null;rec.source.disconnect();rec.node.disconnect();
@@ -6471,7 +6646,7 @@ async function api(path,body,gateway=false,options={}){
   if(!j||typeof j!=="object")throw new OfflineError(controller?.signal.aborted?tr("Панель не ответила за {0} с",[Math.round(limit/1000)]):tr("Панель вернула неожиданный ответ"));
   // A route this computer's DeckAway does not have yet: say what to do instead of "Not Found".
   if(r.status===404&&(!j.error||/^(not found|Agent Deck route not found)$/i.test(j.error)))throw new Error(tr("Эта функция недоступна: обновите DeckAway на этом компьютере"));
-  if(!r.ok)throw new Error(j.error||r.statusText);return j;
+  if(!r.ok)throw new Error(tr(j.error||r.statusText));return j;
 }
 // Shown only when connecting takes noticeable time, so a quick resume does not flicker.
 let connection="online",connectionTimer=null;
@@ -6690,6 +6865,14 @@ function renderTitle(){
     el("span","st",stateText(s)+(s.source?.label?" · "+s.source.label:"")+" · "+shortPath(s.path)));
 }
 
+// The active terminal plus the ones warmTerminals opens ahead; anything older is closed with its tmux client.
+const TERMINAL_LIMIT=1+WARM_TERMINALS;
+function trimTerminals(){
+  for(const[name,frame]of frames){
+    if(frames.size<=TERMINAL_LIMIT)break;
+    if(name!==active){frame.remove();frames.delete(name)}
+  }
+}
 function frameFor(name){
   let f=frames.get(name);
   if(!f){
@@ -6699,6 +6882,8 @@ function frameFor(name){
     f.onload=()=>{try{keepPageFocus(f.contentWindow);f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
+  // Map order is visit order, so capacity eviction always removes the least recently used client.
+  frames.delete(name);frames.set(name,f);trimTerminals();
   return f;
 }
 function show(){
@@ -6727,7 +6912,7 @@ function reconnectTerminal(){
 }
 // The view switch lives in the ⋯ menu; the bar keeps Files and History, which are used more often.
 function toggleMode(){setMode(curMode()==="term"?"screen":"term")}
-function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show()}
+function setMode(m){mode=m;try{deckLocalStorage.setItem("cc.mode."+(isMobile()?"m":"d"),m)}catch(e){}show();if(m==="screen")load()}
 
 let wrapPreview=true;
 function applyWrap(){
@@ -6792,11 +6977,13 @@ function load(){
 async function loadSessions(){
   const requested=active;
   try{
-    const{sessions:list}=await api("/api/sessions"+(requested?"?preview="+encodeURIComponent(requested):""));
+    const revision=previewCache.get(requested)?.preview_revision;
+    const preview=requested?"?preview="+encodeURIComponent(requested)+(revision?"&preview_revision="+encodeURIComponent(revision):""):"";
+    const{sessions:list}=await api("/api/sessions"+preview);
     if(!Array.isArray(list))throw new OfflineError(tr("Панель вернула неожиданный ответ"));
     setConnection("online");
     for(const s of list){
-      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi,model:s.model});
+      if(s.preview!==undefined||s.preview_ansi!==undefined)previewCache.set(s.name,{preview:s.preview,preview_ansi:s.preview_ansi,model:s.model,preview_revision:s.preview_revision});
       else Object.assign(s,previewCache.get(s.name)||{});
     }
     for(const s of list){
@@ -7135,20 +7322,27 @@ document.addEventListener("pointerdown",e=>{if(!$("search_pop").hidden&&!$("sear
 $("palette_q").addEventListener("input",filterPalette);
 $("palette_q").addEventListener("keydown",paletteKey);
 // A click on the backdrop (outside the box) closes the switcher, as Escape does.
+$("palette_dlg").addEventListener("close",()=>{$("palette_q").setAttribute("aria-expanded","false");$("palette_q").removeAttribute("aria-activedescendant")});
 $("palette_dlg").addEventListener("click",e=>{if(e.target===$("palette_dlg"))$("palette_dlg").close()});
 
 /* ---------- GitHub ---------- */
 const GH_ICON='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
 let repos=[],ghLogin=null;
-async function ghStatus(){try{const st=await api("/api/github/status");ghLogin=st.connected?st.login:null;keepShown(deckLocalStorage,selectedDeck,"github",{login:ghLogin})}catch(e){ghLogin=null}return ghLogin}
+async function ghStatus(){const epoch=deckEpoch;try{const st=await api("/api/github/status");if(epoch!==deckEpoch)return;ghLogin=st.connected?st.login:null;keepShown(deckLocalStorage,selectedDeck,"github",{login:ghLogin})}catch(e){if(epoch===deckEpoch)ghLogin=null}return ghLogin}
 async function ghConnect(){if(await post("/api/github_login",{})){if($("dlg").open)$("dlg").close();select("github-login");setMode("screen")}}
 function btn(label,cls,fn,title){const b=el("button",cls||"",label);b.onclick=fn;if(title)b.title=title;return b}
 let lastGh=0,lastAg={},usageData={};
+const githubChecks=new Set();
 async function checkGithubFoot(force){
-  if(document.hidden)return;
-  try{lastAg=await api("/api/agents");if($("dlg").open)renderAgentPicker()}catch(e){}
-  if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();lastGh=Date.now()}
-  renderInteg();
+  const epoch=deckEpoch;
+  if(document.hidden||githubChecks.has(epoch))return;
+  githubChecks.add(epoch);
+  try{
+    try{const agents=await api("/api/agents");if(epoch!==deckEpoch)return;lastAg=agents;if($("dlg").open){renderAgentPicker();renderNewAgentReadiness()}}catch(e){}
+    if(epoch!==deckEpoch)return;
+    if(force===true||Date.now()-lastGh>30000||sessions.some(s=>s.name==="github-login")){await ghStatus();if(epoch===deckEpoch)lastGh=Date.now()}
+    if(epoch===deckEpoch)renderInteg();
+  }finally{githubChecks.delete(epoch)}
 }
 async function loadUsage(){if(document.hidden)return;try{usageData=await api("/api/usage");keepShown(deckLocalStorage,selectedDeck,"usage",usageData)}catch(e){}integReady.usage=true;renderInteg()}
 
@@ -7183,44 +7377,48 @@ async function loadDeckSettings(){
   if(selectedDeck&&!data.decks.some(d=>d.id===selectedDeck))switchDeck("");
 }
 // Sessions of every connected machine, so switching environments is one tap from the sidebar.
-let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],loadingOthers=false,deckOpen={};
+let deckDirectory={decks:[],name:"",network:{}},otherDecks=[],deckOpen={};
+const otherRequests=new Map();
 const otherBusy=new Map(),otherAttention=new Set();
 try{deckOpen=JSON.parse(localStore.getItem("cc.deck-open")||"{}")||{}}catch(e){}
 const currentDeckName=()=>selectedDeck?deckDirectory.decks.find(d=>d.id===selectedDeck)?.name||"DeckAway":deckDirectory.name||tr("Этот компьютер");
 async function loadOtherDecks(){
-  if(document.hidden||loadingOthers||!deckDirectory.decks.length){if(!deckDirectory.decks.length&&otherDecks.length){otherDecks=[];renderTabs()}return}
-  loadingOthers=true;const epoch=deckEpoch;
+  if(document.hidden)return;
+  if(!deckDirectory.decks.length){if(otherDecks.length){otherDecks=[];renderTabs()}return}
+  const epoch=deckEpoch;
   const targets=[{id:"",name:deckDirectory.name||tr("Этот компьютер")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))].filter(d=>d.id!==selectedDeck);
-  try{
-    const loaded=await Promise.all(targets.map(async d=>{
-      // Lists come without previews: only names and states travel through the gateway.
-      try{return {...d,sessions:(await api(instancePath(d.id,"/api/sessions"),null,true)).sessions}}
-      catch(e){return {...d,sessions:[],error:true}}
-    }));
-    // Built for the computer we just left; switchDeck already placed it in the sidebar.
-    if(epoch!==deckEpoch)return;
-    otherDecks=loaded;
-    for(const d of loaded)if(!d.error)keepShown(instanceStorage(localStore,d.id),d.id,"sessions",sessionsToKeep(d.sessions));
-  }finally{loadingOthers=false}
-  // Same "done" signal as local tabs: a session that stopped working since the last poll.
-  for(const deck of otherDecks)for(const s of deck.sessions){
-    const key=deck.id+"/"+s.name,busy=state(s)==="busy";
-    if(otherBusy.get(key)&&!busy)otherAttention.add(key);
-    otherBusy.set(key,busy);
-  }
-  renderTabs();
+  otherDecks=otherDecks.filter(d=>targets.some(t=>t.id===d.id));
+  await Promise.all(targets.map(async d=>{
+    const previous=otherRequests.get(d.id);
+    if(previous?.epoch===epoch&&(previous.pending||Date.now()<previous.retry))return;
+    const request={epoch,pending:true,retry:0};otherRequests.set(d.id,request);
+    let result;
+    try{result={...d,sessions:(await api(instancePath(d.id,"/api/sessions"),null,true)).sessions};if(!Array.isArray(result.sessions))throw new Error()}
+    catch(e){const known=otherDecks.find(x=>x.id===d.id);result={...d,sessions:[],error:true,lastCount:known?.error?known.lastCount:known?.sessions.length};request.retry=Date.now()+30000}
+    finally{request.pending=false}
+    if(epoch!==deckEpoch||otherRequests.get(d.id)!==request)return;
+    // Publish independently: an offline computer must not hold back another computer's fresh list.
+    otherDecks=targets.map(target=>target.id===d.id?result:otherDecks.find(x=>x.id===target.id)).filter(Boolean);
+    if(!result.error)keepShown(instanceStorage(localStore,d.id),d.id,"sessions",sessionsToKeep(result.sessions));
+    for(const s of result.sessions){
+      const key=d.id+"/"+s.name,busy=state(s)==="busy";
+      if(otherBusy.get(key)&&!busy)otherAttention.add(key);
+      otherBusy.set(key,busy);
+    }
+    renderTabs();
+  }));
 }
 function deckHeader(deck,current){
   const key=deck.id||"local",open=current||deckOpen[key]!==false;
   const head=el(current?"div":"button","deck-head"+(current?" current":"")+(deck.error?" off":""),svgIcon("monitor"),el("span","deck-name",deck.name),
-    el("span","deck-count",deck.error?tr("недоступен"):String(deck.count)));
+    el("span","deck-count",deck.error?tr("Недоступен")+(deck.lastCount===undefined?"":" · "+tr("Последнее число сессий: {0}",[deck.lastCount])):String(deck.count)));
   // A connected computer behind the latest release shows an arrow; Settings → Network updates it.
   if(!current&&fleet.versions.get(deck.id)?.update){const mark=el("span","deck-update","↑");mark.title=tr("Доступно обновление");head.append(mark)}
   if(!current){
-    head.type="button";head.dataset.deck=key;head.setAttribute("aria-expanded",String(open));head.append(svgIcon(open?"chevron-down":"chevron-right"));
+    head.type="button";head.dataset.deck=key;head.setAttribute("aria-expanded",String(open));head.append(svgIcon(deck.error?"restart":open?"chevron-down":"chevron-right"));
     head.onclick=()=>{deckOpen[key]=!open;try{localStore.setItem("cc.deck-open",JSON.stringify(deckOpen))}catch(e){}renderTabs()};
   }
-  if(deck.error)return head;
+  if(deck.error){head.title=tr("Повторить подключение");head.setAttribute("aria-label",head.textContent+" · "+head.title);head.removeAttribute("aria-expanded");head.onclick=()=>{otherRequests.delete(deck.id);loadOtherDecks()};return head}
   return el("div","head-row",head,addButton(tr("Новая сессия на «{0}»",[deck.name]),()=>newSessionOn(deck.id,{})));
 }
 // A project heading with its own "+": a new session in that folder, on that computer.
@@ -7328,6 +7526,7 @@ function renderSources(){
   if(newAgent==="claude")values.push(...providerSources(savedProviders()));
   if(["claude","pi"].includes(newAgent))for(const p of lmData.profiles||[])for(const m of p.models||[])values.push([{kind:"lmstudio",profile:p.id,model:m.id},p.name+" · "+m.name]);
   $("n_source").replaceChildren(...values.map(([v,label])=>{const o=el("option","",label);o.value=JSON.stringify(v);return o}));if([...$("n_source").options].some(o=>o.value===old))$("n_source").value=old;else if(newAgent==="kimi"&&lastAg.kimi_config?.model)$("n_source").value=JSON.stringify({kind:"kimi",model:lastAg.kimi_config.model});
+  renderNewAgentReadiness();
 }
 function saveLanguage(){
   if(sending||uploading||choosingImages){toast(tr("Дождитесь окончания отправки или загрузки"));return}
@@ -7448,7 +7647,7 @@ async function openNew(preset){
   // The dialog opens at once; the list of folders only feeds the suggestions of its field.
   if(!$("dlg").open){delete $("n_containers").dataset.touched;$("dlg").showModal()}
   api("/api/projects").then(({projects})=>$("projlist").replaceChildren(...projects.map(p=>{const o=document.createElement("option");o.value=p;return o}))).catch(()=>{});
-  renderNewContainers();ensureContainers();ensureWindows();renderNewRuntime();loadGithub();await refreshLMModels();renderSources();
+  renderNewContainers();ensureContainers();ensureWindows();renderNewRuntime();renderSources();checkGithubFoot();loadGithub();await refreshLMModels();renderSources();
 }
 async function createSession(){
   const name=$("n_name").value.trim();$("n_go").disabled=true;$("n_go").textContent=tr("Создаю…");
@@ -7501,6 +7700,7 @@ function stashDrafts(){
   deckSessionStorage.setItem("cc.session-drafts",JSON.stringify([...messageDrafts]));deckSessionStorage.setItem("cc.reload-images",JSON.stringify([...imageAttachments].map(([name,images])=>[name,images.map(x=>({attachment:x.attachment,label:x.label}))])));deckSessionStorage.setItem("cc.reload-draft",JSON.stringify({name:active,text:$("msg").value}));
 }
 function refreshInterface(){
+  if(filesDirty()){toast(tr("Сохраните или закройте файл: он открыт на этом компьютере"));return}
   if(sending||uploading||choosingImages){toast(tr("Дождитесь окончания отправки или загрузки"));return}
   try{stashDrafts()}catch(e){
     if($("msg").value||attachmentsFor(active).length){toast(tr("Не удалось сохранить черновик. Очистите поле перед обновлением."));return}
@@ -7508,7 +7708,7 @@ function refreshInterface(){
   location.reload();
 }
 function canAutoRefresh(){
-  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!document.querySelector("dialog[open]:not(.docked)")&&
+  return !document.hidden&&!panelUpdating&&!sending&&!uploading&&!choosingImages&&!filesDirty()&&!Array.from(imageAttachments.values()).some(images=>images.length)&&!Array.from(messageDrafts.values()).some(Boolean)&&!$("msg").value&&!document.querySelector("dialog[open]:not(.docked)")&&
     !$("sheet").classList.contains("on")&&!document.body.classList.contains("drawer")&&
     (!cur()||(curMode()==="screen"&&$("pre").scrollTop+$("pre").clientHeight>=$("pre").scrollHeight-40))&&
     !String(window.getSelection())&&

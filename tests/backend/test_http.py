@@ -44,6 +44,22 @@ class HTTPTests(PanelCase):
         self.assertEqual(status, 303)
         return response_headers["Set-Cookie"].split(";", 1)[0]
 
+    def test_panel_gzip_is_negotiated_and_matches_the_localized_identity_copy(self):
+        import gzip
+        cookie = self.login() + '; cc_lang=en'
+        status, headers, plain = self.request('GET', '/', headers={'Cookie': cookie})
+        self.assertEqual(status, 200)
+        self.assertNotIn('Content-Encoding', headers)
+        status, headers, compressed = self.request('GET', '/', headers={'Cookie': cookie, 'Accept-Encoding': 'br, gzip'})
+        self.assertEqual(status, 200)
+        self.assertEqual(headers['Content-Encoding'], 'gzip')
+        self.assertEqual(headers['Vary'], 'Accept-Encoding, Cookie')
+        self.assertEqual(gzip.decompress(compressed), plain)
+        self.assertLess(len(compressed), len(plain) // 2)
+        _, headers, body = self.request('GET', '/', headers={'Cookie': cookie, 'Accept-Encoding': '*;q=1, gzip;q=0'})
+        self.assertNotIn('Content-Encoding', headers)
+        self.assertEqual(body, plain)
+
     def test_legacy_update_without_catalogs_still_serves_ui_and_offers_repair(self):
         cookie = self.login()
         with patch.object(self.panel, 'locales', None):

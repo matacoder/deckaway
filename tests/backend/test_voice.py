@@ -46,6 +46,23 @@ class VoiceTests(unittest.TestCase):
         self.assertIn('16 kHz', wav_problem(wav(channels=2)))
         self.assertIn('WAV', wav_problem(b'OggS' + bytes(60)))
 
+    def test_repeated_install_returns_while_the_existing_job_is_running(self):
+        import threading
+        service = self.service(system='Linux')
+        service.found = (voice.time.monotonic(), None, None)
+        for phase in ('binary', 'model'):
+            service.job = {'phase': phase}
+            result = []
+            worker = threading.Thread(target=lambda: result.append(service.install()), daemon=True)
+            with patch.object(service, 'install_job') as install:
+                worker.start()
+                worker.join(1)
+                self.assertFalse(worker.is_alive(), 'Repeated voice installation deadlocked')
+                install.assert_not_called()
+            self.assertEqual(result[0]['voice']['phase'], phase)
+        service.set_job(phase='done')
+        self.assertEqual(service.status()['voice']['phase'], 'done')
+
     def test_noise_markers_are_not_speech(self):
         self.assertEqual(clean_text(' one\n[BLANK_AUDIO]\n(Music)\n two \n'), 'one two')
 

@@ -3,6 +3,7 @@
 A prompt is sent at a time, when the session is free, or when the limit that stopped the session resets.
 Every prompt is removed from the file before it is typed: a crash in between loses it, never sends it twice.
 """
+from contextlib import nullcontext
 import json
 from pathlib import Path
 import secrets
@@ -21,11 +22,13 @@ CONTINUE = "continue"
 
 
 class Schedule:
-    def __init__(self, directory, sessions, screen, blocked, send, window_reset=None, clock=time.time):
+    def __init__(self, directory, sessions, screen, blocked, send, window_reset=None, clock=time.time, input_lock=None):
         self.path = Path(directory) / "schedule.json"
         self.sessions, self.screen, self.blocked, self.send = sessions, screen, blocked, send
         self.window_reset = window_reset or (lambda agent: None)
         self.clock = clock
+        self.input_lock = input_lock or (lambda name: nullcontext())
+        self.waiting = set()  # After typing, every trigger waits for a new quiet period.
         self.lock = threading.RLock()
         self.activity = {}   # session -> [activity, changed_at]
         self.missing = {}    # session -> first time it was not found
@@ -49,9 +52,13 @@ class Schedule:
                 and isinstance(prompt.get("text"), str) and prompt.get("trigger") in TRIGGERS
                 and isinstance(prompt.get("at", 0), (int, float)))
 
-    def save(self):
-        write_private(self.path, json.dumps({"prompts": self.prompts, "auto_resume": sorted(self.auto),
-                                             "resumed": self.resumed}, ensure_ascii=False).encode())
+    def save(self, prompts=None, auto=None, resumed=None):
+        prompts = self.prompts if prompts is None else prompts
+        auto = self.auto if auto is None else auto
+        resumed = self.resumed if resumed is None else resumed
+        write_private(self.path, json.dumps({"prompts": prompts, "auto_resume": sorted(auto),
+                                             "resumed": resumed}, ensure_ascii=False).encode())
+        self.prompts, self.auto, self.resumed = prompts, auto, resumed
 
     def status(self, name):
         with self.lock:
@@ -82,9 +89,8 @@ class Schedule:
                 raise ValueError("Слишком много отложенных сообщений в этой сессии; удалите лишние")
             prompt = {"id": secrets.token_hex(8), "session": name, "text": text, "trigger": trigger,
                       "at": int(at) if trigger == "time" else 0, "created": int(now)}
-            self.prompts.append(prompt)
+            self.save(prompts=[*self.prompts, prompt])
             self.errors.pop(name, None)
-            self.save()
         self.start()
         return self.status(name)
 
@@ -92,8 +98,7 @@ class Schedule:
         with self.lock:
             kept = [p for p in self.prompts if p["id"] != identity]
             if len(kept) != len(self.prompts):
-                self.prompts = kept
-                self.save()
+                self.save(prompts=kept)
 
     def set_auto(self, name, enabled):
         session = self.session(name)
@@ -102,8 +107,7 @@ class Schedule:
         if enabled and session.get("agent") == "shell":
             raise ValueError("У терминала нет лимитов подписки")
         with self.lock:
-            (self.auto.add if enabled else self.auto.discard)(name)
-            self.save()
+            self.save(auto=self.auto | {name} if enabled else self.auto - {name})
         self.start()
         return self.status(name)
 
@@ -111,12 +115,12 @@ class Schedule:
         with self.lock:
             kept = [p for p in self.prompts if p["session"] != name]
             changed = len(kept) != len(self.prompts) or name in self.auto or name in self.resumed
-            self.prompts = kept
-            self.auto.discard(name)
-            for memory in (self.activity, self.missing, self.resumed, self.limits, self.errors):
-                memory.pop(name, None)
             if changed:
-                self.save()
+                self.save(prompts=kept, auto=self.auto - {name},
+                          resumed={k: v for k, v in self.resumed.items() if k != name})
+            for memory in (self.activity, self.missing, self.limits, self.errors):
+                memory.pop(name, None)
+            self.waiting.discard(name)
 
     def idle(self, session, now):
         state = self.activity.get(session["name"])
@@ -141,13 +145,17 @@ class Schedule:
             else:
                 self.limits.pop(name, None)
                 # The notice left the screen: the next one, even with the same words, is a new limit.
-                if self.resumed.pop(name, None) is not None:
-                    self.save()
+                if name in self.resumed:
+                    self.save(resumed={k: v for k, v in self.resumed.items() if k != name})
         return found
 
     def due(self, session, now):
-        """Texts to type into this session now, oldest first; their prompts are already removed from the file."""
+        """Claim at most one prompt; only a durable removal permits terminal input."""
         name, free = session["name"], self.idle(session, now)
+        if name in self.waiting and not free:
+            return []
+        if free:
+            self.waiting.discard(name)
         with self.lock:
             mine = [p for p in self.prompts if p["session"] == name]
             waits_for_limit = name in self.auto or any(p["trigger"] == "limit" for p in mine)
@@ -155,26 +163,30 @@ class Schedule:
         if free and waits_for_limit and session.get("running"):
             found = self.limit(session, now)
             # A notice without a date reads as today's hour again tomorrow: it is acted on once, by its text.
-            if found and found["at"] and now >= found["at"] + AFTER_RESET and self.resumed.get(name) != found["notice"]:
-                lifted = found["notice"]
+            if found and found["at"] and now >= found["at"] + AFTER_RESET:
+                if self.resumed.get(name) != found["notice"] or any(p["trigger"] == "limit" for p in mine):
+                    lifted = found["notice"]
         chosen = [p for p in mine if p["trigger"] == "time" and now >= p["at"]]
         if lifted:
             chosen += [p for p in mine if p["trigger"] == "limit"]
         if free and not chosen:
             chosen = [p for p in mine if p["trigger"] == "idle"][:1]  # One at a time: the next waits for this one.
-        texts = [p["text"] for p in sorted(chosen, key=lambda p: p["created"])]
-        if lifted and not any(p["trigger"] == "limit" for p in chosen):
-            texts.append(CONTINUE)
-        if not texts or not session.get("running") or self.blocked(name):
-            return []  # A question on the screen would take the text as its answer; wait for the user.
+        chosen = min(chosen, key=lambda p: p["created"]) if chosen else None
+        if chosen is None and not lifted:
+            return []
+        if not session.get("running") or self.blocked(name):
+            return []  # A question would take the prompt as its answer; wait for the user.
         with self.lock:
-            gone = {p["id"] for p in chosen}
-            self.prompts = [p for p in self.prompts if p["id"] not in gone]
-            if lifted:
-                self.resumed[name] = lifted
-            if gone or lifted:
-                self.save()
-        return texts
+            if chosen and not any(p["id"] == chosen["id"] for p in self.prompts):
+                return []  # Cancellation may have won while the question or limit was checked.
+            if chosen is None and name not in self.auto:
+                return []
+            resumed = dict(self.resumed)
+            if lifted and (chosen is None or chosen["trigger"] == "limit"):
+                resumed[name] = lifted
+            kept = [p for p in self.prompts if chosen is None or p["id"] != chosen["id"]]
+            self.save(prompts=kept, resumed=resumed)
+        return [chosen["text"] if chosen else CONTINUE]
 
     def tick(self, now=None):
         now = self.clock() if now is None else now
@@ -186,18 +198,21 @@ class Schedule:
         for name in wanted:
             session = sessions.get(name)
             if session is None:
-                if now - self.missing.setdefault(name, now) >= GONE_AFTER:
-                    self.forget(name)
+                with self.lock:
+                    if now - self.missing.setdefault(name, now) >= GONE_AFTER:
+                        self.forget(name)
                 continue
-            self.missing.pop(name, None)
-            for text in self.due(session, now):
-                try:
-                    self.send(name, text)
-                    self.errors.pop(name, None)
-                except Exception as error:  # Never retried: part of the text may already be typed.
-                    self.errors[name] = str(error) if isinstance(error, ValueError) else type(error).__name__
-                    break
-                self.activity[name] = [session.get("activity"), now]
+            with self.input_lock(name), self.lock:
+                self.missing.pop(name, None)
+                for text in self.due(session, now):
+                    # Even a partial failed input must get a quiet period before another prompt.
+                    self.activity[name] = [session.get("activity"), now]
+                    self.waiting.add(name)
+                    try:
+                        self.send(name, text)
+                        self.errors.pop(name, None)
+                    except Exception as error:  # Never retried: part of the text may already be typed.
+                        self.errors[name] = str(error) if isinstance(error, ValueError) else type(error).__name__
 
     def start(self):
         with self.lock:

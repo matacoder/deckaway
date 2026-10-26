@@ -1,8 +1,10 @@
+import io
 import json
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+import urllib.error
 from unittest.mock import Mock, patch
 
 from support import PanelCase, ROOT
@@ -287,8 +289,8 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(free, [True])
         self.assertEqual([row['status'] for row in self.service.database().pending()], ['sent'])  # Recorded after the call.
 
-    def reply(self, row, text, user=100, chat=100):
-        return {'message': {'message_id': 900, 'text': text, 'chat': {'id': chat, 'type': 'private'}, 'from': {'id': user},
+    def reply(self, row, text, user=100, chat=100, message_id=900):
+        return {'message': {'message_id': message_id, 'text': text, 'chat': {'id': chat, 'type': 'private'}, 'from': {'id': user},
                             'reply_to_message': {'message_id': row['message_id']}}}
 
     def test_reply_answers_the_free_text_option_once_and_only_for_the_owner(self):
@@ -332,6 +334,42 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(self.api.calls[-1][1]['reply_to_message_id'], 900)
         self.answer.assert_not_called()
 
+    def test_finished_reply_is_not_retyped_when_the_polling_offset_was_not_saved(self):
+        self.pair()
+        _, row = self.notice()
+        self.service.prompt = Mock()
+        incoming = self.reply(row, 'fix the tests')
+        offset = self.service.database().offset()
+        self.service.handle(incoming)
+        self.assertEqual(self.service.database().offset(), offset)
+        restarted = Telegram(self.directory, lambda: self.questions, self.answer, self.api, prompt=self.service.prompt)
+        restarted.handle(incoming)
+        self.service.prompt.assert_called_once()
+        restarted.handle(self.reply(row, 'next task', message_id=901))
+        self.assertEqual(self.service.prompt.call_count, 2)
+
+    def test_crash_during_a_finished_reply_leaves_a_durable_claim(self):
+        self.pair()
+        _, row = self.notice()
+        self.service.prompt = Mock(side_effect=SystemExit)
+        incoming = self.reply(row, 'fix the tests')
+        with self.assertRaises(SystemExit):
+            self.service.handle(incoming)
+        restarted = Telegram(self.directory, lambda: [], self.answer, self.api, prompt=Mock())
+        restarted.handle(incoming)
+        restarted.prompt.assert_not_called()
+        with restarted.database().connect() as db:
+            self.assertEqual(db.execute('SELECT status FROM prompt_replies').fetchone()[0], 'uncertain')
+
+    def test_a_finished_reply_is_not_typed_when_its_durable_claim_fails(self):
+        self.pair()
+        _, row = self.notice()
+        self.service.prompt = Mock()
+        with patch.object(self.service.database(), 'claim_prompt', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                self.service.handle(self.reply(row, 'fix the tests'))
+        self.service.prompt.assert_not_called()
+
     def test_finished_message_says_what_was_done_when_the_session_has_a_summary(self):
         self.pair()
         language = self.service.language()
@@ -351,9 +389,12 @@ class TelegramTests(unittest.TestCase):
         for failure, expected in ((ValueError('Эта сессия уже закрыта'), 'Эта сессия уже закрыта'),
                                   (RuntimeError('tmux'), 'Проверьте сессию в панели: повторная отправка отключена')):
             self.service.prompt = Mock(side_effect=failure)
-            self.service.handle(self.reply(row, 'continue'))
+            incoming = self.reply(row, 'continue', message_id=900 + len(self.api.calls))
+            self.service.handle(incoming)
             self.assertEqual(self.service.prompt.call_count, 1)
             self.assertEqual(self.api.calls[-1][1]['text'], self.service.translate(expected))
+            self.service.handle(incoming)
+            self.service.prompt.assert_called_once()
         self.service.prompt = Mock()
         self.service.handle(self.reply(row, 'x' * 4001))
         self.service.prompt.assert_not_called()
@@ -421,6 +462,85 @@ class TelegramTests(unittest.TestCase):
         restarted.handle(self.callback(row))
         self.answer.assert_not_called()
         self.assertEqual(restarted.database().get(row['id'])['status'], 'uncertain')
+
+    def test_a_lost_send_response_is_uncertain_and_never_resent_after_restart(self):
+        self.pair()
+        call = self.api.call
+        def lost_response(token, method, **data):
+            if method == 'sendMessage':
+                self.assertEqual(self.service.database().remember(self.questions[0])['status'], 'sending')
+                call(token, method, **data)
+                raise TelegramError('connection lost')
+            return call(token, method, **data)
+        self.api.call = lost_response
+        with self.assertRaises(TelegramError):
+            self.service.deliver()
+        row = self.service.database().remember(self.questions[0])
+        self.assertEqual(row['status'], 'uncertain')
+        self.assertIn('повторная отправка отключена', self.service.status()['error'])
+        self.api.call = call
+        restarted = Telegram(self.directory, lambda: self.questions, self.answer, self.api)
+        for _ in range(2):
+            restarted.deliver()
+        with patch('integrations.store.time.time', return_value=row['created'] + 8 * 86400):
+            restarted.deliver()
+        self.assertIn('повторная отправка отключена', restarted.status()['error'])
+        sent = [d for method, d in self.api.calls if method == 'sendMessage' and 'reply_markup' in d]
+        self.assertEqual(len(sent), 1)
+
+    def test_a_crash_during_an_outgoing_send_prevents_resending(self):
+        self.pair()
+        with patch.object(self.service, 'send_question', side_effect=SystemExit):
+            with self.assertRaises(SystemExit):
+                self.service.deliver()
+        restarted = Telegram(self.directory, lambda: self.questions, self.answer, self.api)
+        restarted.deliver()
+        self.assertEqual(restarted.database().remember(self.questions[0])['status'], 'uncertain')
+        self.assertFalse(any(method == 'sendMessage' and 'reply_markup' in d for method, d in self.api.calls))
+
+    def test_an_explicit_rejection_can_be_retried_without_duplicating_delivery(self):
+        self.pair()
+        with patch.object(self.service, 'send_question', side_effect=TelegramError('rate limited', uncertain=False)):
+            with self.assertRaises(TelegramError):
+                self.service.deliver()
+        self.assertEqual(self.service.database().remember(self.questions[0])['status'], 'pending')
+        self.service.deliver()
+        self.assertEqual(self.service.database().remember(self.questions[0])['status'], 'sent')
+
+    def test_overlapping_delivery_passes_cannot_send_one_question_twice(self):
+        self.pair()
+        send = self.service.send_question
+        def overlapping(token, chat, identity, q):
+            self.service.deliver()
+            return send(token, chat, identity, q)
+        with patch.object(self.service, 'send_question', side_effect=overlapping):
+            self.service.deliver()
+        sent = [d for method, d in self.api.calls if method == 'sendMessage' and 'reply_markup' in d]
+        self.assertEqual(len(sent), 1)
+
+    def test_failed_outgoing_claim_does_not_contact_telegram(self):
+        self.pair()
+        with patch.object(self.service.database(), 'claim_delivery', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                self.service.deliver()
+        self.assertFalse(any(method == 'sendMessage' and 'reply_markup' in d for method, d in self.api.calls))
+
+    def test_transport_classifies_ambiguous_and_definitive_http_errors(self):
+        for status, uncertain in ((429, False), (503, True)):
+            with self.subTest(status=status):
+                body = io.BytesIO(b'{"ok":false,"parameters":{"retry_after":10}}')
+                failure = urllib.error.HTTPError('https://api.telegram.org/', status, 'failed', {}, body)
+                with patch('urllib.request.urlopen', side_effect=failure):
+                    with self.assertRaises(TelegramError) as caught:
+                        API().call(TOKEN, 'sendMessage', chat_id=100, text='hello')
+                self.assertEqual(caught.exception.uncertain, uncertain)
+        # No connection: the request never left, so the question is sent again later.
+        for failure, uncertain in ((urllib.error.URLError(OSError('refused')), False), (TimeoutError(), True)):
+            with self.subTest(failure=type(failure).__name__):
+                with patch('urllib.request.urlopen', side_effect=failure):
+                    with self.assertRaises(TelegramError) as caught:
+                        API().call(TOKEN, 'sendMessage', chat_id=100, text='hello')
+                self.assertEqual(caught.exception.uncertain, uncertain)
 
     def test_disabled_integration_does_not_read_or_send_questions(self):
         self.pair()

@@ -97,7 +97,7 @@ test('the session search opens from its button and takes its filter away when cl
   }finally{window.close()}
 });
 
-test('a computer that does not answer is marked, so a phone can leave it out of the list',async()=>{
+test('a computer that does not answer keeps a marked heading',async()=>{
   const window=boot(routesFor({local:()=>({sessions:[session('alpha')]})}));
   try{
     await settle();await settle();

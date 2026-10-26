@@ -940,6 +940,26 @@
     "Отправить ревью ({0})": "Send review ({0})",
     "Комментарий: {0}": "Comment: {0}",
     "Откройте сессию этого файла": "Open this file's session",
-    "Открыть файл {0}": "Open file {0}"
+    "Открыть файл {0}": "Open file {0}",
+    "Предыдущая страница": "Previous page",
+    "Следующая страница": "Next page",
+    "Страница {0} из {1}": "Page {0} of {1}",
+    "Готов к запуску": "Ready to start",
+    "Готовность агента ещё не проверена": "Agent readiness has not been checked yet",
+    "Проверить агента": "Check agent",
+    "Агент не установлен": "Agent is not installed",
+    "Для Pi подключите локальную модель": "Connect a local model for Pi",
+    "Сохраните ключ Kimi в настройках": "Save your Kimi key in Settings",
+    "Агенту нужен вход": "Sign in to this agent",
+    "Pi requires a saved local model and conversation ID": "Pi could not start. Connect a local model in Settings and create a new session.",
+    "Недоступен": "Unreachable",
+    "Повторить подключение": "Retry connection",
+    "Обновление некоторых компьютеров не удалось": "Some computers failed to update",
+    "Версии некоторых компьютеров не подтверждены": "Some computer versions could not be confirmed",
+    "Некоторые компьютеры требуют ручного обновления": "Some computers need a manual update",
+    "Обновление не подтверждено на всех компьютерах. Проверьте версии и повторите попытку.": "Updates could not be confirmed on every computer. Check versions and try again.",
+    "Последнее число сессий: {0}": "Last known sessions: {0}",
+    "Вывод сессии": "Session output",
+    "Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.": "Use Tab to choose a paragraph or line and Enter to comment. You can also click it."
   }
 }

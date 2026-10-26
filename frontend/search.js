@@ -1,7 +1,7 @@
 // Search in the open session's whole output (tmux scrollback) and the quick switcher (Alt+K, Ctrl/Cmd+K).
 // Output is shown with textContent only; the server matches plain text, newest first.
 // Bundled before app.js; nothing here runs at load time.
-const outputSearch={session:null,query:"",seq:0,result:null,error:"",busy:false};
+const outputSearch={key:null,session:null,query:"",seq:0,result:null,error:"",busy:false};
 
 // The field lives in the session bar: always shown on a wide screen, opened by the search icon on a phone.
 // Results float under the bar instead of covering the session.
@@ -18,9 +18,10 @@ function closeOutputSearch(){
 function showSearchPop(on){$("search_pop").hidden=!on}
 // Another session starts a new search; a new number drops an answer still on its way for the previous one.
 function searchSession(){
-  if(outputSearch.session===active)return;
-  Object.assign(outputSearch,{session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
-  $("search_q").value="";closeOutputSearch();
+  const key=sessionInfoKey();
+  if(outputSearch.key===key)return;
+  Object.assign(outputSearch,{key,session:active,query:"",result:null,error:"",busy:false,seq:outputSearch.seq+1});
+  $("search_q").value="";$("search_body").replaceChildren();closeOutputSearch();
 }
 async function runOutputSearch(){
   const query=$("search_q").value.trim();
@@ -71,19 +72,21 @@ function paletteItems(){
 function openPalette(){
   if($("palette_dlg").open){$("palette_dlg").close();return}
   if(document.querySelector("dialog[open]:not(.docked)"))return;  // A switch from inside another dialog would leave it behind.
-  palette.items=paletteItems();
+  palette.items=paletteItems().map((item,i)=>({...item,id:"palette_option_"+i}));
   const input=$("palette_q");input.value="";filterPalette();
-  $("palette_dlg").showModal();setTimeout(()=>input.focus(),0);
+  $("palette_dlg").showModal();$("palette_q").setAttribute("aria-expanded","true");setTimeout(()=>input.focus(),0);
 }
 function filterPalette(){palette.shown=matchPalette(palette.items,$("palette_q").value).slice(0,50);palette.index=0;renderPalette()}
 function renderPalette(){
   const list=$("palette_list");list.replaceChildren();
   palette.shown.forEach((item,i)=>{
     const row=el("button","palette-row"+(i===palette.index?" on":""),svgIcon(item.icon),el("span","palette-label",item.label),el("span","palette-hint",item.hint));
-    row.type="button";row.setAttribute("role","option");row.setAttribute("aria-selected",String(i===palette.index));
+    row.type="button";row.id=item.id;row.setAttribute("role","option");row.setAttribute("aria-selected",String(i===palette.index));
     row.onclick=()=>runPalette(i);list.append(row);
   });
   if(!palette.shown.length)list.append(el("p","files-empty",tr("Ничего не найдено")));
+  const input=$("palette_q"),chosen=palette.shown[palette.index];
+  if(chosen)input.setAttribute("aria-activedescendant",chosen.id);else input.removeAttribute("aria-activedescendant");
   list.querySelector(".on")?.scrollIntoView?.({block:"nearest"});
 }
 function runPalette(i){const item=palette.shown[i];if(!item)return;$("palette_dlg").close();item.run()}

@@ -3,6 +3,7 @@
   /* Every colour, shadow, radius and font of the panel is a token here; a theme (themes.css) only sets tokens.
      The scheme keeps native controls and scrollbars in the theme's own light or dark look. */
   color-scheme:var(--scheme);scrollbar-color:var(--scrollbar) transparent;
+  --author-0:#64d2ff;--author-1:#ff9f0a;--author-2:#cf8aff;--author-3:#ffd60a;--author-4:#fa89c5;--author-5:#66d4cf;--author-6:#aaa8ff;--author-7:#d3ab80;
   --scheme:dark;--scrollbar:#4d4d52;
   --bg:#1e1e1e;--side:#252526;--side2:#2d2d30;--sel:#37373d;--bd:#333336;--bd-soft:#ffffff12;
   /* Text tokens keep WCAG AA (≥4.5:1) on --side, the darkest surface they sit on. */
@@ -32,7 +33,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:13px/1.4 var(--sans);overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
 button:disabled{cursor:default}
-button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#pre:focus-visible,[data-line]:focus-visible,button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 input,textarea,select{font:inherit}
 [hidden]{display:none!important}
 /* A plain terminal has no agent to attach files to, restart or read a conversation of. */
@@ -40,6 +41,8 @@ body.is-shell .agent-only{display:none!important}
 .ui-icon{display:block;width:var(--icon-md);height:var(--icon-md);flex:none;fill:none;stroke:currentColor;stroke-width:var(--icon-stroke);stroke-linecap:round;stroke-linejoin:round}
 .m-only{display:none!important}
 #app{display:flex;height:var(--app-h)}
+
+#n_readiness{margin:8px 0;color:var(--mut)}#n_agent_step{color:var(--acc-text);text-decoration:underline}
 
 /* ---------- agent marks ---------- */
 .ag{display:inline-flex;align-items:center;justify-content:center;flex:none;width:var(--icon-lg);height:var(--icon-lg);font:600 var(--icon-lg)/1 var(--mono)}
@@ -107,6 +110,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .empty-list{padding:20px 10px;color:var(--mut);line-height:1.5}
 /* Other connected machines: compact sections under the current instance. */
 .deck-head{display:flex;align-items:center;gap:7px;width:100%;margin-top:10px;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);text-align:left}
+.deck-head.off{display:grid;grid-template-columns:var(--icon-sm) minmax(0,1fr) var(--icon-sm)}
+.deck-head.off .deck-count{grid-row:2;grid-column:2/-1;margin-left:0;text-align:left}
 .deck-head.current{margin-top:2px;color:var(--fg)}
 @media (hover:hover){button.deck-head:hover{background:var(--side2);color:var(--fg)}}
 .deck-head svg{width:var(--icon-sm);height:var(--icon-sm)}
@@ -797,6 +802,7 @@ body.resizing iframe{pointer-events:none}
 .reviewing [data-line] [data-line]:hover{background:none}
 .reviewed{box-shadow:inset 3px 0 0 var(--acc);background:var(--acc-soft)}
 .review-note,.review-edit{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px;padding:8px 10px;border:1px solid var(--bd-strong);border-radius:var(--r);background:var(--side2);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+.review-note{width:100%;text-align:left}
 .review-edit{cursor:auto}
 .review-lines{font-size:12px;color:var(--dim)}
 .review-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
@@ -931,8 +937,6 @@ body.resizing iframe{pointer-events:none}
   .dot{width:10px;height:10px}
   .local-live-line{font-size:12px}
   .side-foot{padding:12px 18px calc(12px + var(--sab));font-size:12px}
-  /* A phone keeps what is acted on there: a computer that does not answer is for the desk. */
-  .deck-head.off{display:none}
   #ver{font-size:12px}
   .side-foot>button{min-height:var(--tap);font-size:15px}
 
@@ -967,12 +971,14 @@ body.resizing iframe{pointer-events:none}
   .attachment button{width:var(--tap);height:var(--tap)}
 
 
-  /* While typing, the conversation gets the space: no tab strip, no status line, compact header. */
-  body.keyboard-open #session_meta,body.keyboard-open .composer-status,body.keyboard-open #hint_more{display:none!important}
+  /* While typing, secondary indicators yield space to the conversation; send feedback stays beside the field. */
+  body.keyboard-open #session_meta,body.keyboard-open #hint_more{display:none!important}
   .session-meta{padding:2px 14px max(2px,var(--sab)) 8px}
   /* The two names sit beside the home indicator, clear of the rounded corners, instead of adding a line above it. */
   .session-meta:has(.session-where:not([hidden])){padding-bottom:max(2px,calc(var(--sab) - 20px))}.session-where{flex:0 0 100%;order:1;display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;padding:0 8px 4px 14px}.session-meta .ctx{order:0}#session_computer_box,.session-meta .where-containers{margin-left:0}.session-meta .where-containers{margin-left:auto}.session-meta .iconbtn{width:var(--tap);height:var(--tap)}
   main:has(#session_meta:not([hidden])) .composer{padding-bottom:8px}
+  body.keyboard-open #send_state:not(.pending):not(.error):not(.success){display:none}
+  body.keyboard-open .composer-status:has(#send_state:empty){display:none}
   body.keyboard-open .composer{padding-bottom:8px}
   body.keyboard-open .bar{height:calc(48px + var(--sat));padding-top:calc(var(--sat) + 4px)}
   body.keyboard-open #title .st{display:none}

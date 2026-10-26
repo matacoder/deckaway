@@ -80,9 +80,10 @@ async function leaveFile(){
 }
 async function saveFile(){
   const file=files.file;if(!file)return;
+  const content=file.content;
   try{
-    const result=await api("/api/file_save",{path:file.path,content:file.content,hash:file.isNew?null:file.hash});
-    Object.assign(file,{hash:result.hash,saved:file.content,isNew:false});
+    const result=await api("/api/file_save",{path:file.path,content,hash:file.isNew?null:file.hash});
+    Object.assign(file,{hash:result.hash,saved:content,isNew:false});
     toast(tr("Файл сохранён"),"success");
   }catch(e){if(e.message!==STALE)toast(e.message)}
   // Only the button changes: re-rendering would move the cursor and scroll of the open text.
@@ -150,14 +151,32 @@ function renderEditor(box,listing){
   });
   box.append(head,area,el("div","acts",copy,save));
 }
+const FILE_PAGE_LINES=400;
+function readerPage(file){
+  const lines=file.content.split("\n");
+  if(lines.length>1&&!lines.at(-1))lines.pop();
+  const pages=Math.max(1,Math.ceil(lines.length/FILE_PAGE_LINES));
+  file.page=Math.max(0,Math.min(file.page||0,pages-1));
+  const start=file.page*FILE_PAGE_LINES;
+  return {lines:lines.slice(start,start+FILE_PAGE_LINES),start,pages,total:lines.length};
+}
+function readerPaging(file,page){
+  const move=step=>{file.page+=step;renderFiles()};
+  const previous=fileButton(tr("Предыдущая страница"),"files-up",()=>move(-1));previous.disabled=!file.page;
+  const next=fileButton(tr("Следующая страница"),"files-up",()=>move(1));next.disabled=file.page+1>=page.pages;
+  return el("div","files-path",previous,el("span","",tr("Страница {0} из {1}",[file.page+1,page.pages])),next);
+}
 function renderReader(box,head,file){
+  const page=readerPage(file);
   let view=el("div","files-view");
-  if(file.rendered)view=renderMarkdown(file.content);
-  else view.style.setProperty("--ln",Math.max(2,String(file.content.split("\n").length).length));
-  if(!file.rendered)file.content.split("\n").forEach((line,i,lines)=>{
-    if(i===lines.length-1&&!line&&lines.length>1)return;  // The newline that ends the file is not a line.
-    const row=el("div","fl",el("span","ln",String(i+1)),el("span","code",line||" "));
-    row.dataset.line=row.dataset.end=i+1;view.append(row);
+  // Bound rows and inline markup too: one enormous Markdown line could otherwise create thousands of nodes.
+  const markdown=file.rendered&&page.lines.join("\n").length<=32768;
+  if(markdown)view=renderMarkdown(page.lines.join("\n"),document,page.start);
+  else view.style.setProperty("--ln",Math.max(2,String(page.total).length));
+  if(!markdown)page.lines.forEach((line,i)=>{
+    const number=page.start+i+1;
+    const row=el("div","fl",el("span","ln",String(number)),el("span","code",line||" "));
+    row.dataset.line=row.dataset.end=number;view.append(row);
   });
   if(isMarkdown(file.path))head.append(fileButton(file.rendered?tr("Текст"):tr("Просмотр"),"files-up",()=>{file.rendered=!file.rendered;renderFiles()}));
   const copy=fileButton(tr("Копировать"),"",()=>{
@@ -167,7 +186,7 @@ function renderReader(box,head,file){
   const change=fileButton(tr("Изменить"),"",()=>{file.editing=true;renderFiles()});
   const download=fileButton(tr("Скачать"),"",()=>downloadFile(null,file.path));
   const acts=el("div","acts",copy,download,change);
-  box.append(head,view,acts);
+  box.append(head,...(page.pages>1?[readerPaging(file,page)]:[]),view,acts);
   reviewReader(view,head,acts,file);
 }
 // Images show here; a PDF opens from a link, a direct tap, so no popup blocker stands in the way.
@@ -212,8 +231,8 @@ function fileLink(session,path,runs,from,to,folder=false){
 }
 // A folder opens in the file browser; anything that is not one downloads (with its own message if missing).
 async function openScreenPath(path){
-  try{await api("/api/files?name="+encodeURIComponent(active)+"&path="+encodeURIComponent(sessionRelative(path)),null,true)}
-  catch(e){downloadFile(active,path);return}
+  try{await api("/api/files?name="+encodeURIComponent(active)+"&path="+encodeURIComponent(sessionRelative(path)))}
+  catch(e){if(e.message!==STALE)downloadFile(active,path);return}
   openRefFolder(path);
 }
 async function openScreenFile(path){

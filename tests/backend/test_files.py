@@ -85,6 +85,50 @@ class FileBrowserTests(unittest.TestCase):
         self.assertEqual(saved['hash'], F.digest(b'TOKEN=new\n'))
         self.assertEqual(sorted(p.name for p in self.project.iterdir()), ['.env', 'src'])  # No temp files left.
 
+    def test_parallel_saves_allow_only_one_writer_for_the_same_original_content(self):
+        import threading
+        for create in (False, True):
+            with self.subTest(create=create):
+                target = self.project / ('new.txt' if create else '.env')
+                alias = self.project / ('new-alias' if create else 'env-alias')
+                alias.symlink_to(target)
+                expected = None if create else F.read_text(self.home, str(target))['hash']
+                replacing, release, started, finished = (threading.Event() for _ in range(4))
+                original, results = F.os.replace, []
+                def replace(source, destination):
+                    if threading.current_thread().name == 'first-save':
+                        replacing.set()
+                        if not release.wait(2):
+                            raise TimeoutError('Test did not release first save')
+                    original(source, destination)
+                def save(path, content):
+                    started.set()
+                    try:
+                        F.save_text(self.home, str(path), content, expected)
+                        results.append('saved')
+                    except FileExistsError:
+                        results.append('conflict')
+                    finally:
+                        finished.set()
+                first = threading.Thread(target=save, args=(target, 'first'), name='first-save')
+                second = threading.Thread(target=save, args=(alias, 'second'))
+                with patch.object(F.os, 'replace', side_effect=replace):
+                    first.start()
+                    try:
+                        self.assertTrue(replacing.wait(1))
+                        started.clear()
+                        second.start()
+                        self.assertTrue(started.wait(1))
+                        self.assertFalse(finished.wait(0.1), 'Second writer bypassed the pending save')
+                    finally:
+                        release.set()
+                        first.join(2)
+                        if second.ident:
+                            second.join(2)
+                self.assertFalse(first.is_alive() or second.is_alive())
+                self.assertEqual(results, ['saved', 'conflict'])
+                self.assertEqual(target.read_text(), 'first')
+
     def test_new_files_are_private_and_never_replace_an_existing_one(self):
         secret = self.project / 'src/.env.local'
         F.save_text(self.home, str(secret), 'KEY=pasted\n', None)

@@ -55,6 +55,23 @@ class FeatureGroupTests(unittest.TestCase):
         groups = F.FeatureGroups(cache.name, lambda: models, lambda: [str(path)], clock=lambda: self.NOW)
         return groups
 
+    def test_status_reads_a_worker_snapshot_and_unchanged_refs_do_not_recompute_stats(self):
+        path = repo(self, [('Dev', 'Docs', 'README.md', self.NOW - 3600)])
+        groups = self.service(path, [{'label': 'Fake', 'complete': sorter([])}])
+        with patch.object(F, 'log_commits', wraps=F.log_commits) as history, patch.object(F, 'fetch'):
+            self.assertEqual(groups.status(str(path))['phase'], 'running')
+            history.assert_not_called()
+            groups.tick()
+            self.assertEqual(history.call_count, 1)
+            for _ in range(3):
+                groups.status(str(path))
+            groups.tick()
+            self.assertEqual(history.call_count, 1)
+            repo_commit(path, 'Dev', 'More docs', 'GUIDE.md', self.NOW - 60)
+            groups.tick()
+            self.assertEqual(history.call_count, 2)
+            self.assertEqual(groups.status(str(path))['pending'][0]['subject'], 'More docs')
+
     def test_new_commits_are_grouped_in_the_background_and_only_new_ones_are_sent_next_time(self):
         old = self.NOW - 3600
         path = repo(self, [('Denis', 'Add login form', 'login.py', old), ('Pasha', 'Write docs', 'README.md', old + 60)])

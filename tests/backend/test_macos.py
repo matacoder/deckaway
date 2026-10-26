@@ -1,4 +1,5 @@
 import importlib.util
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -183,20 +184,102 @@ class MacInstallerTests(unittest.TestCase):
             with which, patch.object(installer, 'tailscale_ipv4', return_value=None):
                 installer.install(home, start=False)
             target = home / '.local/share/agent-deck/panel'
+            config, agents = home / '.config/cc-panel', home / 'Library/LaunchAgents'
+            paths = [config / 'macos.json', config / 'projects.json',
+                     *(agents / (label + '.plist') for label in installer.LABELS)]
+            previous = {path: path.read_bytes() for path in paths}
+            old_settings = json.loads(previous[config / 'macos.json'])
             (target / 'VERSION').write_text('0.0.1')
             (target / 'panel.py').write_text('# previous working panel')
             run = Mock(return_value=SimpleNamespace(returncode=0, stdout='', stderr=''))
+            response = Mock()
+            response.__enter__ = Mock(return_value=SimpleNamespace(status=200))
+            response.__exit__ = Mock(return_value=False)
+            old_url = f'http://{old_settings["BIND_HOST"]}:{old_settings["BIND_PORT"]}/login'
+
+            def urlopen(url, **kwargs):
+                if url == old_url:
+                    for path, content in previous.items():
+                        self.assertEqual(path.read_bytes(), content)
+                    return response
+                raise OSError('port occupied')
+
             with which, patch.object(installer, 'tailscale_ipv4', return_value=None), patch.object(installer, 'run', run), \
-                    patch.object(installer.urllib.request, 'urlopen', side_effect=OSError('refused')), \
+                    patch.dict(os.environ, BIND_PORT='18790'), \
+                    patch.object(installer.urllib.request, 'urlopen', side_effect=urlopen) as request, \
                     patch.object(installer.time, 'sleep'), self.assertRaisesRegex(RuntimeError, 'did not start'):
-                installer.install(home, open_browser=False)
+                installer.install(home, open_browser=False, projects_dir='~/new-projects')
             self.assertEqual((target / 'panel.py').read_text(), '# previous working panel')
             self.assertEqual((target / 'VERSION').read_text(), '0.0.1')
+            for path, content in previous.items():
+                self.assertEqual(path.read_bytes(), content)
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(request.call_args.args[0], old_url)
             bootstraps = [c.args for c in run.call_args_list if c.args[:2] == ('launchctl', 'bootstrap')]
             self.assertEqual(len(bootstraps), 2 * len(installer.LABELS))  # The new attempt, then the restored one.
             # The still-loaded new version is unloaded before the restored one is loaded.
             launch = [c.args[1] for c in run.call_args_list if c.args[:1] == ('launchctl',)]
-            self.assertEqual(launch[-2 * len(installer.LABELS):], ['bootout', 'bootstrap'] * len(installer.LABELS))
+            self.assertEqual(launch[-2 * len(installer.LABELS):], ['bootout'] * len(installer.LABELS) + ['bootstrap'] * len(installer.LABELS))
+
+    def test_failed_first_install_removes_new_settings_and_plists(self):
+        with tempfile.TemporaryDirectory(dir='/tmp') as directory:
+            home = Path(directory)
+            with patch.object(installer.shutil, 'which', return_value='/bin/tool'), \
+                    patch.object(installer, 'tailscale_ipv4', return_value=None), \
+                    patch.object(installer, 'run', return_value=SimpleNamespace(returncode=0)), \
+                    patch.object(installer, 'wait_for_panel', side_effect=RuntimeError('failed')), \
+                    self.assertRaisesRegex(RuntimeError, 'failed'):
+                installer.install(home, open_browser=False)
+            for path in ('macos.json', 'projects.json'):
+                self.assertFalse((home / '.config/cc-panel' / path).exists())
+            for label in installer.LABELS:
+                self.assertFalse((home / 'Library/LaunchAgents' / (label + '.plist')).exists())
+
+    def test_install_holds_updater_lock_through_configuration_replacement_and_rollback(self):
+        with tempfile.TemporaryDirectory(dir='/tmp') as directory:
+            home = Path(directory)
+            lock = home / '.config/cc-panel/update.json.lock'
+
+            def assert_locked(*args, **kwargs):
+                with lock.open('rb') as stream, self.assertRaises(BlockingIOError):
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            configure, restore = installer.configuration, installer.restore_settings
+
+            def configuration(*args):
+                assert_locked()
+                return configure(*args)
+
+            def replacement(*args):
+                assert_locked()
+                raise RuntimeError('copy failed')
+
+            def restore_settings(*args):
+                assert_locked()
+                return restore(*args)
+
+            with patch.object(installer.shutil, 'which', return_value='/bin/tool'), \
+                    patch.object(installer, 'tailscale_ipv4', return_value=None), \
+                    patch.object(installer, 'configuration', side_effect=configuration), \
+                    patch.object(installer, 'replace_and_start', side_effect=replacement), \
+                    patch.object(installer, 'restore_settings', side_effect=restore_settings), \
+                    self.assertRaisesRegex(RuntimeError, 'copy failed'):
+                installer.install(home, start=False)
+            with lock.open('rb') as stream:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.assertEqual(lock.stat().st_mode & 0o777, 0o600)
+
+    def test_install_rejects_symlink_lock_without_touching_its_target(self):
+        with tempfile.TemporaryDirectory(dir='/tmp') as directory:
+            home = Path(directory)
+            config = home / '.config/cc-panel'
+            config.mkdir(parents=True)
+            other = home / 'other'
+            other.write_text('keep')
+            (config / 'update.json.lock').symlink_to(other)
+            with self.assertRaises(OSError):
+                installer.install(home, start=False)
+            self.assertEqual(other.read_text(), 'keep')
 
     def test_rerun_preserves_password_hooks_sessions_and_user_tmux_config(self):
         with tempfile.TemporaryDirectory(prefix='mac home ', dir='/tmp') as directory:

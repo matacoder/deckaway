@@ -207,10 +207,14 @@ async function showGroup(group){
   if(hist.view===view)renderHistory();
 }
 // Groups are sorted on the server in the background; the tab only reads them (and re-reads while open).
+const groupRequests=new Set();
 async function loadGroups(quiet){
-  const seq=hist.seq,session=hist.session;
+  const seq=hist.seq,session=hist.session,key=hist.key;
+  if(groupRequests.has(key))return;
+  groupRequests.add(key);
   let state;
   try{state=await api(gitPath("groups"),null,false,{timeout:60000})}catch(e){state=e.message===STALE||quiet?null:{error:e.message}}
+  finally{groupRequests.delete(key)}
   if(seq!==hist.seq||session!==hist.session||!state)return;
   if(quiet&&JSON.stringify(state)===JSON.stringify(hist.groups))return;
   hist.groups=state;if(!state.error)keepAnswer(groupsKnown,hist.key,state);
@@ -231,7 +235,7 @@ function historyTab(tab){
 // Authors get colours in this order, chosen so the first few are as far apart as possible; green and
 // red are left out because they already mean added and removed lines. An author keeps the colour
 // first given (remembered in this browser), so the same person looks the same everywhere.
-const AUTHOR_COLORS=["#64d2ff","#ff9f0a","#bf5af2","#ffd60a","#f472b6","#66d4cf","#7d7aff","#c69c6d"];
+const AUTHOR_COLORS=Array.from({length:8},(_,i)=>"var(--author-"+i+")");
 function authorColor(name,taken){
   if(!taken.has(name)){
     const used=new Set(taken.values());

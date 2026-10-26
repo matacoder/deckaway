@@ -94,7 +94,7 @@ function duplicateWarning(c){
 }
 async function disableTelegramOn(deck){
   if(!await confirmAction(tr("Отключить Telegram на {0}?",[deck.name]),{text:tr("Токен бота там будет удалён; здесь Telegram продолжит работать."),confirm:tr("Отключить"),danger:true}))return;
-  try{await api(instancePath(deck.id,"/api/telegram_config"),{clear:true});telegramClearedOn.add(deck.id);toast(tr("Telegram отключён на {0}",[deck.name]),"success")}
+  try{await gatewayApi(instancePath(deck.id,"/api/telegram_config"),{clear:true});telegramClearedOn.add(deck.id);toast(tr("Telegram отключён на {0}",[deck.name]),"success")}
   catch(e){if(e.message!==STALE)toast(e.message)}
   renderTelegram(telegramConfig);
 }

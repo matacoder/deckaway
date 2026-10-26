@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import sys
@@ -5,7 +6,7 @@ import tempfile
 import time
 import unittest
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from support import ROOT, PanelCase
 sys.path.insert(0, str(ROOT))
@@ -192,6 +193,123 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(self.schedule.status('api')['error'], 'RuntimeError')
         self.assertEqual(self.schedule.status('api')['prompts'], [])
 
+    def test_timed_prompts_wait_for_quiet_and_recheck_questions_between_inputs(self):
+        self.schedule.add('api', 'first', 'time', self.now)
+        self.schedule.add('api', 'second', 'time', self.now)
+        def send(name, text):
+            self.sent.append((name, text))
+            self.questions.add(name)
+        self.schedule.send = send
+        self.tick()
+        self.tick(5)
+        self.assertEqual(self.sent, [('api', 'first')])
+        self.tick(5)
+        self.assertEqual(self.sent, [('api', 'first')])
+        self.assertEqual([p['text'] for p in self.make().prompts], ['second'])
+        self.questions.clear()
+        self.tick(5)
+        self.assertEqual(self.sent, [('api', 'first'), ('api', 'second')])
+
+    def test_a_failed_first_send_preserves_every_unattempted_prompt_on_disk(self):
+        self.schedule.add('api', 'first', 'time', self.now)
+        self.schedule.add('api', 'second', 'time', self.now)
+        self.schedule.send = Mock(side_effect=RuntimeError('tmux'))
+        self.tick()
+        self.schedule.send.assert_called_once_with('api', 'first')
+        self.assertEqual([p['text'] for p in self.make().prompts], ['second'])
+        self.schedule.send = Mock()
+        self.tick(5)
+        self.schedule.send.assert_not_called()
+        self.tick(5)
+        self.schedule.send.assert_called_once_with('api', 'second')
+
+    def test_cancellation_during_the_final_check_wins_over_the_snapshot(self):
+        self.schedule.add('api', 'cancelled', 'time', self.now)
+        identity = self.schedule.prompts[0]['id']
+        def check(name):
+            self.schedule.remove(identity)
+            return False
+        self.schedule.blocked = check
+        self.tick()
+        self.assertEqual(self.sent, [])
+        self.assertEqual(self.make().prompts, [])
+
+    def test_question_check_durable_claim_and_input_share_the_session_lock(self):
+        held = []
+        @contextmanager
+        def input_lock(name):
+            held.append(name)
+            try:
+                yield
+            finally:
+                held.pop()
+        def check(name):
+            self.assertEqual(held, [name])
+            return False
+        def send(name, text):
+            self.assertEqual(held, [name])
+            self.assertEqual(self.make().prompts, [])
+        self.schedule.input_lock, self.schedule.blocked, self.schedule.send = input_lock, check, send
+        self.schedule.add('api', 'first', 'time', self.now)
+        self.tick()
+        self.assertEqual(held, [])
+
+    def test_failed_add_does_not_leave_a_prompt_or_clear_an_error_in_memory(self):
+        self.schedule.errors['api'] = 'RuntimeError'
+        with patch('integrations.schedule.write_private', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                self.schedule.add('api', 'later', 'time', self.now)
+        self.assertEqual(self.schedule.prompts, [])
+        self.assertEqual(self.schedule.errors, {'api': 'RuntimeError'})
+        self.schedule.add('api', 'later', 'time', self.now)
+        self.tick()
+        self.assertEqual(self.sent, [('api', 'later')])
+
+    def test_failed_remove_settings_or_forget_leave_saved_state_in_memory(self):
+        self.schedule.add('api', 'later', 'idle')
+        self.schedule.set_auto('api', True)
+        identity = self.schedule.prompts[0]['id']
+        before = self.schedule.status('api')
+        actions = (lambda: self.schedule.remove(identity), lambda: self.schedule.set_auto('api', False),
+                   lambda: self.schedule.forget('api'))
+        for action in actions:
+            with self.subTest(action=action), patch('integrations.schedule.write_private', side_effect=OSError('disk full')):
+                with self.assertRaises(OSError):
+                    action()
+                self.assertEqual(self.schedule.status('api'), before)
+                self.assertEqual(self.make().status('api'), before)
+
+    def test_failed_claim_keeps_the_prompt_and_does_not_type(self):
+        self.schedule.set_auto('api', True)
+        self.schedule.add('api', 'later', 'limit')
+        self.screens['api'] = CLAUDE
+        self.tick()
+        self.now = at(15, 2)
+        before = list(self.schedule.prompts)
+        with patch('integrations.schedule.write_private', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                self.tick()
+        self.assertEqual(self.schedule.prompts, before)
+        self.assertEqual(self.schedule.resumed, {})
+        self.assertEqual(self.sent, [])
+        self.tick()
+        self.assertEqual(self.sent, [('api', 'later')])
+
+    def test_limit_prompts_are_claimed_individually_without_extra_continues(self):
+        self.schedule.set_auto('api', True)
+        self.schedule.add('api', 'first', 'limit')
+        self.schedule.add('api', 'second', 'limit')
+        self.screens['api'] = CLAUDE
+        self.tick()
+        self.now = at(15, 2)
+        self.tick()
+        self.assertEqual(self.sent, [('api', 'first')])
+        self.tick(5)
+        self.assertEqual(self.sent, [('api', 'first')])
+        self.tick(5)
+        self.tick(10)
+        self.assertEqual(self.sent, [('api', 'first'), ('api', 'second')])
+
     def test_closed_sessions_lose_their_prompts_after_ten_minutes(self):
         self.schedule.add('api', 'later', 'idle')
         self.schedule.set_auto('api', True)
@@ -265,6 +383,26 @@ class PanelWiringTests(PanelCase):
         self.panel.action_kill({'name': 'api'})
         self.assertEqual(self.panel.schedule_service().status('api')['prompts'], [])
         self.assertFalse(self.panel.schedule_service().status('api')['auto_resume'])
+
+    def test_schedule_checks_questions_and_types_under_the_shared_input_lock(self):
+        self.panel.list_sessions = self.sessions
+        schedule = self.panel.schedule_service()
+        schedule.start = lambda: None
+        def check(name):
+            self.assertTrue(self.panel.input_locks[name].locked())
+            return []
+        def send(data):
+            self.assertTrue(self.panel.input_locks[data['name']].locked())
+            self.assertEqual(schedule.prompts, [])
+        self.panel.pending_questions = Mock(side_effect=check)
+        self.panel.current_question = Mock(return_value=None)
+        self.panel.send_input = Mock(side_effect=send)
+        schedule.add('api', 'later', 'time', schedule.clock())
+        schedule.tick()
+        self.panel.pending_questions.assert_called_once_with('api')
+        self.panel.current_question.assert_called_once_with('api')
+        self.panel.send_input.assert_called_once_with({'name': 'api', 'text': 'later'})
+        self.assertFalse(self.panel.input_locks['api'].locked())
 
     def test_a_finished_session_is_summarized_now_and_an_old_or_failed_summary_is_not_used(self):
         answers, calls, pauses = [], [], []

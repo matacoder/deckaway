@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Install user-owned macOS runtime and LaunchAgents; preserve sessions and settings."""
 import argparse
+from contextlib import contextmanager
+import fcntl
 import importlib.util
 import ipaddress
 import json
@@ -12,6 +14,7 @@ import secrets
 import shlex
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -139,21 +142,46 @@ def panel_command(python, panel):
 
 
 def run(*arguments, check=True):
-    return subprocess.run(list(map(str, arguments)), check=check, capture_output=True, text=True, timeout=30)
+    return subprocess.run(list(map(str, arguments)), input='', check=check, capture_output=True, text=True, timeout=30)
 
 
-def install(home, start=True, open_browser=True, projects_dir=None):
-    runtime = home / '.local/share/agent-deck'
-    target = runtime / 'panel'
-    if runtime.is_symlink() or target.is_symlink():
-        raise ValueError('Runtime must not be a symlink')
-    target.mkdir(parents=True, exist_ok=True)
-    config, settings = configuration(home, projects_dir)
+@contextmanager
+def update_lock(config):
+    if config.is_symlink():
+        raise ValueError('Configuration directory must not be a symlink')
+    config.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(config / 'update.json.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        # Share the updater's flock before reading settings or taking a runtime snapshot.
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
+def snapshot_settings(config, agents):
+    paths = [config / 'macos.json', config / 'projects.json',
+             *(agents / (label + '.plist') for label in LABELS)]
+    saved = {}
+    for path in paths:
+        if path.is_symlink():
+            raise ValueError(f'Refusing symlink: {path}')
+        saved[path] = (path.read_bytes(), stat.S_IMODE(path.stat().st_mode)) if path.exists() else None
+    return saved
+
+
+def restore_settings(saved):
+    for path, previous in saved.items():
+        if previous is None:
+            path.unlink(missing_ok=True)
+        else:
+            atomic_write(path, *previous)
+
+
+def prepare_install(home, target, config, settings):
     logs = home / 'Library/Logs/Agent Deck'
     logs.mkdir(parents=True, exist_ok=True)
     logs.chmod(0o700)
-    agents = home / 'Library/LaunchAgents'
-    agents.mkdir(parents=True, exist_ok=True)
     ttyd, tmux = shutil.which('ttyd'), shutil.which('tmux')
     if not ttyd or not tmux:
         raise ValueError('Install ttyd and tmux with Homebrew first')
@@ -164,7 +192,7 @@ def install(home, start=True, open_browser=True, projects_dir=None):
            'PATH': ':'.join([str(home / '.local/bin'), str(Path(sys.executable).parent),
                              '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']),
            'TTYD_SOCK': socket_path, 'TMUX_SOCKET_NAME': 'agent-deck'}
-    python = str(runtime / 'venv/bin/python3')
+    python = str(target.parent / 'venv/bin/python3')
     definitions = {
         LABELS[0]: launch_agent(LABELS[0], [ttyd, '-i', socket_path, '-b', '/t', '-W', '-a', '-O',
                             '-t', 'fontSize=13', '-t', 'disableLeaveAlert=true', '-t', 'titleFixed=AgentDeck',
@@ -177,24 +205,57 @@ def install(home, start=True, open_browser=True, projects_dir=None):
         compile(source.read_text(), str(source), 'exec')
     for source in (SOURCE / 'integrations').glob('*.py'):
         compile(source.read_text(), str(source), 'exec')
-    backup = runtime / 'backup'
-    if (target / 'VERSION').exists():
-        shutil.rmtree(backup, ignore_errors=True)  # Only the version being replaced, not older leftovers.
-        shutil.copytree(target, backup, ignore=shutil.ignore_patterns('__pycache__'))
-    domain = f'gui/{os.getuid()}'
-    try:
-        return replace_and_start(home, target, config, agents, definitions, settings, python, socket_path, logs,
-                                 domain, start, open_browser)
-    except Exception:
-        # Services were stopped before copying: put the previous version back so a remote user keeps access.
-        if start and (backup / 'VERSION').exists():
-            restore(backup, target)
-            for label in LABELS:
-                # The new version may still be loaded and running; unload it, or bootstrap fails silently.
-                run('launchctl', 'bootout', domain + '/' + label, check=False)
-                run('launchctl', 'bootstrap', domain, agents / (label + '.plist'), check=False)
-            print(f'The new version did not start; the previous one was restored. Logs: {logs}', flush=True)
-        raise
+    return definitions, python, socket_path, logs
+
+
+def install(home, start=True, open_browser=True, projects_dir=None):
+    runtime = home / '.local/share/agent-deck'
+    target, backup = runtime / 'panel', runtime / 'backup'
+    if runtime.is_symlink() or target.is_symlink():
+        raise ValueError('Runtime must not be a symlink')
+    config, agents = home / '.config/cc-panel', home / 'Library/LaunchAgents'
+    with update_lock(config):
+        target.mkdir(parents=True, exist_ok=True)
+        agents.mkdir(parents=True, exist_ok=True)
+        saved = snapshot_settings(config, agents)
+        had_runtime = (target / 'VERSION').exists()
+        if had_runtime:
+            shutil.rmtree(backup, ignore_errors=True)
+            shutil.copytree(target, backup, ignore=shutil.ignore_patterns('__pycache__'))
+        replacing = False
+        domain = f'gui/{os.getuid()}'
+        try:
+            config, settings = configuration(home, projects_dir)
+            definitions, python, socket_path, logs = prepare_install(home, target, config, settings)
+            replacing = True
+            return replace_and_start(home, target, config, agents, definitions, settings, python, socket_path, logs,
+                                     domain, start, open_browser)
+        except Exception:
+            rollback_install(target, backup, saved, agents, domain, start and replacing, had_runtime)
+            raise
+
+
+def rollback_install(target, backup, saved, agents, domain, restart, had_runtime):
+    if restart:
+        # Unload the failed version before restoring its files and launch configuration.
+        for label in reversed(LABELS):
+            run('launchctl', 'bootout', domain + '/' + label, check=False)
+    if had_runtime:
+        restore(backup, target)
+    restore_settings(saved)
+    if restart and had_runtime:
+        for label in LABELS:
+            plist = agents / (label + '.plist')
+            if plist.exists():
+                run('launchctl', 'bootstrap', domain, plist, check=False)
+        previous = saved.get(agents / (LABELS[1] + '.plist'))
+        try:
+            if previous:
+                wait_for_panel(plistlib.loads(previous[0])['EnvironmentVariables'], agents.parent / 'Logs/Agent Deck')
+            print('The new version did not start; the previous installation was restored.', flush=True)
+        except (RuntimeError, KeyError, ValueError):
+            # The install failure is what gets reported; this only says the rollback did not bring it back.
+            print('The previous installation was restored but did not answer yet.', flush=True)
 
 
 def restore(backup, target):
@@ -203,6 +264,19 @@ def restore(backup, target):
             if path.is_file() and not (backup / path.relative_to(target)).exists():
                 path.unlink()
     shutil.copytree(backup, target, dirs_exist_ok=True)
+
+
+def wait_for_panel(settings, logs):
+    url = f"http://{settings['BIND_HOST']}:{settings['BIND_PORT']}"
+    for _ in range(40):
+        try:
+            with urllib.request.urlopen(url + '/login', timeout=1) as response:
+                if response.status == 200:
+                    return url
+        except OSError:
+            pass
+        time.sleep(.5)
+    raise RuntimeError(f'Panel did not start. Logs: {logs}')
 
 
 def replace_and_start(home, target, config, agents, definitions, settings, python, socket_path, logs,
@@ -241,17 +315,7 @@ def replace_and_start(home, target, config, agents, definitions, settings, pytho
         for label in LABELS:
             run('launchctl', 'enable', domain + '/' + label)
             run('launchctl', 'bootstrap', domain, agents / (label + '.plist'))
-        url = f"http://{settings['BIND_HOST']}:{settings['BIND_PORT']}"
-        for _ in range(40):
-            try:
-                with urllib.request.urlopen(url + '/login', timeout=1) as response:
-                    if response.status == 200:
-                        break
-            except OSError:
-                pass
-            time.sleep(.5)
-        else:
-            raise RuntimeError(f'Panel did not start. Logs: {logs}')
+        url = wait_for_panel(settings, logs)
         print(f'DeckAway is ready: {url}\nLogin: {settings["PANEL_USER"]}\nPassword: {settings["PANEL_PASSWORD"]}')
         print(f'Projects: {settings["PROJECTS_DIR"]}')
         print('Log into Claude/Codex from the sidebar. Your sessions use a separate tmux server.')

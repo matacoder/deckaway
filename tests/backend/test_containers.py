@@ -265,6 +265,21 @@ class TunnelTests(PanelCase):
         self.assertEqual(command, 'DOCKER_HOST=unix://%s claude --session-id x' % self.gateway.socket_path(DECK))
         self.assertIsNone(self.panel.with_containers(None))  # A plain terminal has no agent command.
 
+    def test_unavailable_remote_docker_blocks_startup_even_before_the_first_refresh(self):
+        self.panel._containers = self.gateway
+        self.gateway.use = DECK
+        self.assertEqual(self.gateway.machines, {})
+        for choice in (None, DECK):
+            with self.subTest(choice=choice), self.assertRaisesRegex(ValueError, 'Docker computer is unavailable'):
+                self.panel.with_containers('claude', choice)
+        self.assertEqual(self.panel.with_containers('claude', 'local'), 'claude')
+        with patch.object(self.gateway, 'environment', side_effect=OSError('secret')):
+            with self.assertRaisesRegex(ValueError, '^Docker settings could not be read;'):
+                self.panel.with_containers('claude')
+        with patch.object(self.gateway, 'environment', side_effect=ValueError('Docker target failed')):
+            with self.assertRaisesRegex(ValueError, 'Docker target failed'):
+                self.panel.with_containers('claude')
+
     def test_a_session_has_its_own_choice_over_the_default(self):
         self.host.save({'host': True})
         self.gateway.refresh()
@@ -276,7 +291,8 @@ class TunnelTests(PanelCase):
         self.gateway.save({'use': DECK})
         self.assertEqual(self.panel.with_containers('claude', None), remote)
         self.assertEqual(self.panel.with_containers('claude', 'local'), 'claude')
-        self.assertEqual(self.panel.with_containers('claude', 'b' * 24), 'claude')  # No longer marked: this computer.
+        with self.assertRaisesRegex(ValueError, 'Docker computer is unavailable'):
+            self.panel.with_containers('claude', 'b' * 24)
         self.assertEqual([self.panel.containers_choice(raw) for raw in (None, '', 'local', DECK)], [None, 'local', 'local', DECK])
         for wrong in ('b' * 24, 5, '../x'):
             with self.assertRaisesRegex(ValueError, 'не отмечен'):

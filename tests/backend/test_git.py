@@ -100,6 +100,37 @@ class HistoryTests(unittest.TestCase):
             G.history(tempfile.gettempdir())
 
 
+    def test_commit_and_group_patches_hide_private_paths_including_renames_and_quoted_names(self):
+        home = repo(self)
+        config = home / '.config/cc-panel'
+        config.mkdir(parents=True)
+        secret = config / 'key\tfile'
+        secret.write_text('provider-secret\n' * 20)
+        (home / 'ordinary.txt').write_text('ordinary-content\n' * 20)
+        def commit(message):
+            subprocess.run(['git', '-C', str(home), 'add', '.'], check=True, capture_output=True)
+            subprocess.run(['git', '-C', str(home), '-c', 'user.name=Dev', '-c', 'user.email=dev@example.test',
+                            '-c', 'commit.gpgsign=false', 'commit', '-qm', message], check=True, capture_output=True)
+            return G.git(home, 'rev-parse', 'HEAD').strip()
+        first = commit('Add configuration')
+        secret.rename(home / 'exposed.txt')
+        (config / ' b').mkdir()
+        moved = config / ' b/moved.txt'
+        (home / 'ordinary.txt').rename(moved)
+        (home / 'README.md').write_text('# Public update\n')
+        second = commit('Move configuration')
+        moved.unlink()
+        third = commit('Remove configuration')
+        with patch.dict('os.environ', {'HOME': str(home)}):
+            details = [G.commit(home, sha) for sha in (first, second, third)]
+            group = G.group_diff(home, [third, second, first])
+        self.assertEqual([f['path'] for f in details[0]['files']], ['ordinary.txt'])
+        self.assertEqual([f['path'] for f in details[1]['files']], ['README.md'])
+        self.assertEqual(details[2]['files'], [])
+        self.assertEqual({f['path'] for f in group['files']}, {'ordinary.txt', 'README.md'})
+        self.assertNotIn('provider-secret', json.dumps([*details, group]))
+
+
 class ChangesTests(unittest.TestCase):
     def test_uncommitted_changes_include_staged_unstaged_and_new_files_without_touching_the_index(self):
         path = repo(self)
@@ -261,3 +292,45 @@ class PanelGroupingModelTests(PanelCase):
         for bad in ('lmstudio:p1:other', 'shell:rm', 'claude'):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 self.panel.grouping_model(bad)
+
+
+class ChangesPerformanceTests(unittest.TestCase):
+    def test_new_files_need_no_process_and_only_changed_files_are_read(self):
+        path = repo(self)
+        for i in range(50):
+            (path / f'new-{i}.txt').write_text('first\nsecond')
+        with patch.object(G, 'new_file_patch', wraps=G.new_file_patch) as read:
+            first = G.changes(path)
+            self.assertEqual(read.call_count, 50)
+            self.assertEqual(len(first['files']), 50)
+            first['files'][0]['patch'] = 'changed by caller'
+            self.assertIn('+first\n+second\n', G.changes(path)['files'][0]['patch'])
+            self.assertEqual(read.call_count, 50)
+            (path / 'new-0.txt').write_text('updated\n')
+            self.assertIn('+updated', G.changes(path)['files'][0]['patch'])
+            self.assertEqual(read.call_count, 51)
+        with patch.object(G, 'subprocess') as process:
+            self.assertIsNotNone(G.untracked_patch(path, 'new-0.txt'))
+            process.run.assert_not_called()
+
+    def test_every_git_process_uses_the_remaining_request_budget(self):
+        times = iter([1, 4, 11])
+        run = __import__('unittest.mock', fromlist=['Mock']).Mock()
+        with patch.object(G.time, 'monotonic', side_effect=lambda: next(times)):
+            bounded = G.budget_run(run, 10)
+            bounded(['git', 'status'], input=b'', timeout=20)
+            bounded(['git', 'diff'], input=b'', timeout=20)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                bounded(['git', 'status'], input=b'')
+        self.assertEqual([c.kwargs['timeout'] for c in run.call_args_list], [9, 6])
+
+    def test_new_file_format_handles_empty_binary_and_missing_newline(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name, content in [('empty', b''), ('binary', b'\0x'), ('text', b'a\r\nb')]:
+                (root / name).write_bytes(content)
+            self.assertEqual(G.untracked_patch(root, 'empty')['added'], 0)
+            self.assertTrue(G.untracked_patch(root, 'binary')['binary'])
+            text = G.untracked_patch(root, 'text')
+            self.assertEqual(text['added'], 2)
+            self.assertIn('\\ No newline at end of file', text['patch'])

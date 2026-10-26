@@ -51,7 +51,8 @@ class WindowsTests(unittest.TestCase):
         self.assertTrue(script('codex', 'C:\\x').endswith("& $agent '--no-daemon' '--no-alt-screen'"))
         self.assertTrue(script('codex', 'C:\\x', SID, resume=True).endswith(f"'--no-alt-screen' 'resume' '{SID}'"))
         self.assertNotIn('$agent', script('shell', 'C:\\x'))
-        self.assertTrue(script('codex', 'C:\\x', resume=True).endswith("'--no-alt-screen' 'resume' '--last'"))
+        with self.assertRaisesRegex(ValueError, 'conversation is unknown'):
+            script('codex', 'C:\\x', resume=True)
         with self.assertRaises(ValueError):
             script('kimi', 'C:\\x')
         with self.assertRaises(ValueError):
@@ -214,6 +215,20 @@ class PanelWindowsTests(PanelCase):
         self.assertEqual(self.panel.windows_codex_sid('cy', 'claude', ''), '')
         options['@cc_runtime'] = ''
         self.assertEqual(self.panel.windows_codex_sid('cz', 'codex', ''), '')
+
+    def test_two_windows_codex_sessions_in_one_folder_do_not_learn_each_others_id(self):
+        self.windows()
+        self.panel.opt = Mock(side_effect=lambda name, key: {'@cc_runtime': 'windows'}.get(key, ''))
+        def tmux(*args, **kwargs):
+            if args[0] == 'list-sessions':
+                return 'cc-cx\tcodex\twindows\t/mnt/c/Users/me/project\ncc-cy\tcodex\twindows\t/mnt/c/users/ME/PROJECT\n'
+            return '/mnt/c/Users/me/project'
+        self.panel.tmux = Mock(side_effect=tmux)
+        with patch('integrations.windows.codex_conversation', return_value=SID) as find:
+            self.assertEqual(self.panel.windows_codex_sid('cx', 'codex', ''), '')
+            self.assertEqual(self.panel.windows_codex_sid('cy', 'codex', ''), '')
+        find.assert_not_called()
+        self.assertFalse(any(call.args[0] == 'set-option' for call in self.panel.tmux.call_args_list))
 
     def test_moving_to_windows_makes_a_new_session_with_the_summary(self):
         self.windows()

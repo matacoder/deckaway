@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 import stat
 import tempfile
+import threading
+import weakref
 
 MAX_TEXT = 1024 * 1024
 MAX_ENTRIES = 2000
@@ -18,6 +20,14 @@ MAX_PREVIEW = 10 * 1024 * 1024
 # Fits under the gateway's relay limit, so a file on another computer downloads the same way.
 MAX_DOWNLOAD = 40 * 1024 * 1024
 PRIVATE = ('.config/cc-panel',)
+_SAVE_LOCKS = weakref.WeakValueDictionary()
+_SAVE_GUARD = threading.Lock()
+
+
+def _save_lock(path):
+    # Keep a lock alive while any request uses it, without retaining every path ever saved.
+    with _SAVE_GUARD:
+        return _SAVE_LOCKS.setdefault(path, threading.Lock())
 
 
 def _private(home):
@@ -141,6 +151,11 @@ def save_text(home, path, content, expected):
     if len(data) > MAX_TEXT:
         raise ValueError('Файл больше 1 МБ')
     _, real = _resolve(home, path)
+    with _save_lock(real):
+        return _save_text(real, data, expected)
+
+
+def _save_text(real, data, expected):
     if not real.parent.is_dir():
         raise FileNotFoundError('Папка не найдена')
     exists = real.exists()

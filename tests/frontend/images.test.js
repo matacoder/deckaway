@@ -52,3 +52,20 @@ test('a version folder is no ".0" file; a home path without a slash at its end m
  const text='Сборка в /Users/denis/dev/Audopia/mobile/store/1.4.0. Маршрут /api/send, v1.2.3, store/1.4.0 и ~/dev/a.md';
  expect(fileMatches(text).map(m=>(m.folder?m.folder+' ':'')+m.file)).toEqual(['maybe /Users/denis/dev/Audopia/mobile/store/1.4.0','~/dev/a.md']);
 });
+
+test('long hex and base64 lines use a bounded tail and keep image paths intact',()=>{
+ const lines=[runs('a'.repeat(80000)),runs('b'.repeat(80000)+'/tmp/wrapped-  '),runs('shot.png'),runs('done')];
+ const started=performance.now(),joined=joinImageLines(lines);
+ expect(performance.now()-started).toBeLessThan(1000);
+ expect(joined.map(plain)).toEqual(['a'.repeat(80000),'b'.repeat(80000)+'/tmp/wrapped-shot.png','done']);
+ expect(plain(lines[1]).endsWith('  ')).toBe(true);
+});
+
+test('successive wrapped paths keep styles and trim trailing whitespace across runs',()=>{
+ const first=[{text:'prefix /tmp/first-',style:{color:'red'}},{text:'  ',style:{}}];
+ const lines=[first,runs('shot.png and /tmp/second-'),runs('shot.png')];
+ const joined=joinImageLines(lines);
+ expect(joined.map(plain)).toEqual(['prefix /tmp/first-shot.png and /tmp/second-shot.png']);
+ expect(joined[0][0].style).toEqual({color:'red'});
+ expect(first[1].text).toBe('  ');
+});

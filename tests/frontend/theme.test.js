@@ -40,8 +40,8 @@ test('every theme keeps text readable (WCAG AA) on its surfaces',()=>{
   for(const name of Object.keys(THEMES)){
     const own=name==='dark'?'':css.match(new RegExp(':root\\[data-theme='+name+'\\]\\{([\\s\\S]*?)\\n\\}'))[1];
     const t={...base,...tokens(own)};
-    for(const fg of ['--fg','--fg2','--mut','--dim','--acc-text','--link','--bad-text'])
-      for(const bg of ['--bg','--side'])if(contrast(t[fg],t[bg])<4.5)weak.push(`${name} ${fg} on ${bg}: ${contrast(t[fg],t[bg]).toFixed(2)}`);
+    for(const fg of ['--fg','--fg2','--mut','--dim','--acc-text','--link','--bad-text',...Array.from({length:8},(_,i)=>'--author-'+i)])
+      for(const bg of (fg.startsWith('--author-')?['--bg','--side','--side2','--sel']:['--bg','--side']))if(contrast(t[fg],t[bg])<4.5)weak.push(`${name} ${fg} on ${bg}: ${contrast(t[fg],t[bg]).toFixed(2)}`);
     if(contrast(t['--on-acc'],t['--acc-strong'])<4.5)weak.push(`${name} --on-acc on --acc-strong`);
   }
   expect(weak).toEqual([]);

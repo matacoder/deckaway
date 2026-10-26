@@ -158,15 +158,22 @@ function screenEarlier(p,name){
 }
 async function loadScreenHistory(key){
   // Asked at most once a while, also after a failure: the screen is drawn again on every change.
-  if(screenHistory.key!==key){screenHistory.node?.remove();screenHistory.node=null}
+  if(screenHistory.key!==key){screenHistory.node?.remove();screenHistory.node=null;screenHistory.signature=null}
   Object.assign(screenHistory,{key,at:Date.now(),loading:true});
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
     if(key!==sessionInfoKey())return;
+    keepAnswer(conversationKnown,key,data,8);
+    if(conversationOpen())renderConversation(data);
     showRefs(key,data?.supported?data.turns:[]);
     const p=$("pre"),stick=atBottom(p),below=p.scrollHeight-p.scrollTop;
+    const screen=[...p.childNodes].filter(node=>node!==screenHistory.node).map(node=>node.textContent).join("\n");
+    const turns=turnsAboveScreen(data?.supported?data.turns||[]:[],screen);
+    const signature=JSON.stringify(turns);
+    if(screenHistory.signature===signature)return;
+    screenHistory.signature=signature;screenHistory.revision=data.revision;
     screenHistory.node?.remove();
-    screenHistory.node=historyNode(data,p.textContent);
+    screenHistory.node=historyNode({supported:true,turns},"");
     if(!screenHistory.node||screenView.cut)return;
     p.prepend(screenHistory.node);p.scrollTop=stick?p.scrollHeight:p.scrollHeight-below;
   }catch(e){}finally{screenHistory.loading=false}

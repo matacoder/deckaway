@@ -95,7 +95,7 @@ function restoreScreens(){
 // then shows text at once and the fresh screen replaces it.
 const WARM_SCREENS=8;let warmingScreens=false;
 async function warmScreens(){
-  if(warmingScreens||document.hidden)return;
+  if(warmingScreens||document.hidden||curMode()!=="screen")return;
   warmingScreens=true;const epoch=deckEpoch;
   try{
     const rest=sessions.filter(s=>s.name!==active&&!previewCache.has(s.name)).sort((a,b)=>Number(b.activity)-Number(a.activity)).slice(0,WARM_SCREENS);
@@ -110,7 +110,7 @@ async function warmScreens(){
 // A switch made while a list request is on its way would wait for it and then for its own: the new session's
 // screen is asked for at once instead.
 async function screenNow(name){
-  if(!loadingSessions||previewCache.has(name))return;
+  if(curMode()!=="screen"||!loadingSessions||previewCache.has(name))return;
   const epoch=deckEpoch;
   try{
     const got=(await api("/api/sessions?preview="+encodeURIComponent(name))).sessions?.find(x=>x.name===name);

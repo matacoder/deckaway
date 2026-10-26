@@ -115,6 +115,7 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual([call.args for call in service.call_args_list], [("stop",), ("start",)])
         healthy.assert_called_once_with("http://127.0.0.1:8790")
         self.assertEqual((self.target / "VERSION").read_text(), "0.2.0")
+        self.assertFalse((self.stage / 'transaction.json').exists())
 
     def test_failed_health_check_restores_previous_files_and_removes_new_files(self):
         names = updater.unpack(self.archive(), self.stage, "0.2.0")
@@ -168,7 +169,7 @@ class UpdaterTests(unittest.TestCase):
     def test_run_removes_stale_staging_directories_only(self):
         (self.target / "VERSION").write_text("0.2.0")
         stale = self.target / ".update-crashed"
-        (stale / "backup").mkdir(parents=True)
+        stale.mkdir()
         (stale / "panel.py").write_text("# partial")
         outside = self.directory / "outside"
         outside.mkdir()
@@ -182,6 +183,102 @@ class UpdaterTests(unittest.TestCase):
         self.assertTrue((outside / "keep").exists())
         self.assertTrue((self.target / ".update-file").exists())
         self.assertTrue(self.stage.exists())
+
+    def interrupted_install(self, interrupt_at='VERSION'):
+        (self.target / 'VERSION').write_text('0.1.0')
+        (self.target / 'panel.py').write_text('# old panel')
+        (self.target / 'index.html').write_text('old UI')
+        original = updater.os.replace
+
+        def replace(source, destination):
+            original(source, destination)
+            if Path(destination) == self.target / interrupt_at:
+                raise KeyboardInterrupt('power lost during replacement')
+
+        with patch.object(updater, 'service'), patch.object(updater.os, 'replace', side_effect=replace):
+            with self.assertRaises(KeyboardInterrupt):
+                with updater.staging_directory(self.target) as stage:
+                    names = updater.unpack(self.archive(), stage, '0.2.0')
+                    updater.install(stage, self.target, names, self.state, '0.2.0', 'http://127.0.0.1:8790')
+        return next(self.target.glob('.update-*'))
+
+    def test_next_run_recovers_interrupted_install_before_any_network_request(self):
+        stage = self.interrupted_install()
+        updater.remove_stale_stages(self.target)
+        self.assertTrue((stage / 'backup/panel.py').exists())
+        self.assertEqual((self.target / 'VERSION').read_text(), '0.2.0')
+
+        def fetch(*args):
+            self.assertEqual((self.target / 'panel.py').read_text(), '# old panel')
+            self.assertEqual((self.target / 'VERSION').read_text(), '0.1.0')
+            self.assertFalse((self.target / 'updater.py').exists())
+            raise OSError('offline')
+
+        with patch.object(updater, 'available', return_value=True), patch.object(updater, 'service') as service, \
+                patch.object(updater, 'fetch', side_effect=fetch):
+            updater.run('matacoder/deckaway', self.target, self.state, 'http://127.0.0.1:8790')
+        self.assertEqual([c.args for c in service.call_args_list], [('stop',), ('start',)])
+        self.assertFalse(stage.exists())
+
+    def test_interruption_halfway_through_replacement_restores_old_and_removes_new_files(self):
+        self.interrupted_install('login.html')
+        self.assertEqual((self.target / 'VERSION').read_text(), '0.1.0')
+        self.assertNotEqual((self.target / 'index.html').read_text(), 'old UI')
+        with patch.object(updater, 'service'):
+            updater.recover_stages(self.target)
+        self.assertEqual((self.target / 'panel.py').read_text(), '# old panel')
+        self.assertEqual((self.target / 'index.html').read_text(), 'old UI')
+        self.assertEqual((self.target / 'VERSION').read_text(), '0.1.0')
+        self.assertFalse((self.target / 'login.html').exists())
+
+    def test_recovery_can_be_interrupted_and_retried_without_consuming_backup(self):
+        stage = self.interrupted_install()
+        original = updater.restore_file
+
+        def restore(source, destination):
+            original(source, destination)
+            raise KeyboardInterrupt('interrupted rollback')
+
+        with patch.object(updater, 'service'), patch.object(updater, 'restore_file', side_effect=restore):
+            with self.assertRaises(KeyboardInterrupt):
+                updater.recover_stages(self.target)
+        self.assertTrue((stage / 'backup/VERSION').exists())
+        self.assertTrue((stage / 'transaction.json').exists())
+        with patch.object(updater, 'service'):
+            updater.recover_stages(self.target)
+        self.assertEqual((self.target / 'panel.py').read_text(), '# old panel')
+        self.assertEqual((self.target / 'index.html').read_text(), 'old UI')
+        self.assertEqual((self.target / 'VERSION').read_text(), '0.1.0')
+        self.assertFalse((self.target / 'updater.py').exists())
+
+    def test_failed_rollback_keeps_backup_after_ordinary_install_error(self):
+        (self.target / 'VERSION').write_text('0.1.0')
+        with patch.object(updater, 'service'), patch.object(updater, 'healthy', side_effect=RuntimeError('failed')), \
+                patch.object(updater, 'rollback', side_effect=OSError('disk full')):
+            with self.assertRaisesRegex(RuntimeError, 'failed'):
+                with updater.staging_directory(self.target) as stage:
+                    names = updater.unpack(self.archive(), stage, '0.2.0')
+                    updater.install(stage, self.target, names, self.state, '0.2.0', 'http://127.0.0.1:8790')
+        stage = next(self.target.glob('.update-*'))
+        updater.remove_stale_stages(self.target)
+        self.assertTrue((stage / 'backup/VERSION').exists())
+        with patch.object(updater, 'service'):
+            updater.recover_stages(self.target)
+        self.assertEqual((self.target / 'VERSION').read_text(), '0.1.0')
+
+    def test_stale_cleanup_preserves_legacy_backups_and_corrupt_journals(self):
+        legacy = self.target / '.update-legacy'
+        (legacy / 'backup').mkdir(parents=True)
+        (legacy / 'backup/panel.py').write_text('# recover manually')
+        stage = self.target / '.update-invalid'
+        stage.mkdir()
+        updater.write_state(stage / 'transaction.json', 'installing', names=['../escape'], existing=[])
+        updater.remove_stale_stages(self.target)
+        with patch.object(updater, 'service') as service, self.assertRaises(ValueError):
+            updater.recover_stages(self.target)
+        service.assert_not_called()
+        self.assertTrue((legacy / 'backup/panel.py').exists())
+        self.assertTrue((stage / 'transaction.json').exists())
 
     def test_every_tracked_panel_file_is_allowed_in_releases(self):
         # A panel file outside the allow-list would make every one-click update reject the release.

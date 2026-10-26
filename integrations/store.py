@@ -26,12 +26,15 @@ class Store:
                 CREATE UNIQUE INDEX IF NOT EXISTS question_open ON questions(fingerprint)
                     WHERE status IN ('pending', 'sent', 'answering');
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS prompt_replies (
+                    id TEXT PRIMARY KEY, status TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS notices (
                     message_id INTEGER PRIMARY KEY, deck TEXT NOT NULL, session TEXT NOT NULL,
                     session_created INTEGER NOT NULL, created REAL NOT NULL);
             ''')
             # Never replay an answer after a crash between terminal input and acknowledgement.
-            db.execute("UPDATE questions SET status='uncertain' WHERE status='answering'")
+            db.execute("UPDATE questions SET status='uncertain' WHERE status IN ('answering','sending')")
+            db.execute("UPDATE prompt_replies SET status='uncertain' WHERE status='answering'")
 
     @contextmanager
     def connect(self):
@@ -70,6 +73,23 @@ class Store:
             return db.execute("UPDATE questions SET status='answering' WHERE id=? AND status='sent'",
                               (identity,)).rowcount == 1
 
+    def claim_delivery(self, identity):
+        with self.connect() as db:
+            return db.execute("UPDATE questions SET status='sending' WHERE id=? AND status='pending'",
+                              (identity,)).rowcount == 1
+
+    def uncertain_delivery(self):
+        with self.connect() as db:
+            return db.execute("SELECT 1 FROM questions WHERE status='uncertain' AND message_id IS NULL LIMIT 1").fetchone() is not None
+
+    def claim_prompt(self, identity):
+        with self.connect() as db:
+            return db.execute("INSERT OR IGNORE INTO prompt_replies VALUES(?,'answering')", (identity,)).rowcount == 1
+
+    def prompt_status(self, identity, status):
+        with self.connect() as db:
+            db.execute("UPDATE prompt_replies SET status=? WHERE id=?", (status, identity))
+
     def set_status(self, identity, status, message_id=None):
         with self.connect() as db:
             db.execute("UPDATE questions SET status=?, message_id=COALESCE(?,message_id) WHERE id=?",
@@ -92,7 +112,7 @@ class Store:
             rows = db.execute("SELECT id,fingerprint FROM questions WHERE status IN ('answered','expired','uncertain')").fetchall()
             db.executemany("UPDATE questions SET status='retired' WHERE id=?",
                            [(r['id'],) for r in rows if r['fingerprint'] not in present])
-            db.execute("DELETE FROM questions WHERE created < ? AND status NOT IN ('pending','sent')",
+            db.execute("DELETE FROM questions WHERE created < ? AND status NOT IN ('pending','sent','sending','uncertain')",
                        (time.time() - 7 * 86400,))
         return stale
 

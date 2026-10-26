@@ -125,7 +125,7 @@ fi
 systemctl disable --now ttyd 2>/dev/null || true   # the distro unit would listen on 0.0.0.0:7681
 
 TTYD_BIN=/usr/bin/ttyd
-if ! ttyd --help 2>&1 | grep -q -- '--writable'; then
+if ! "$TTYD_BIN" --help 2>&1 | grep -q -- '--writable'; then
     # Ubuntu 22.04 ships ttyd 1.6 (no -W); use the official static build instead
     say "ttyd $TTYD_VERSION (static build)"
     # Pinned like docker/Dockerfile: root installs this binary, so TLS alone is not enough.

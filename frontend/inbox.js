@@ -1,5 +1,5 @@
 // Everything waiting for you on every computer: agent questions (answerable here) and finished work.
-const inbox={questions:[],cards:new Map(),loading:false};
+const inbox={questions:[],cards:new Map(),nodes:new Map(),loading:false};
 
 // Questions plus finished sessions, without listing a session twice; pure for tests.
 function inboxItems(questions,finished){
@@ -37,10 +37,33 @@ function renderInbox(){
   renderInboxBadge();
   if(!$("inbox_dlg").open)return;
   const list=$("inbox_list"),items=inboxItems(openQuestions(),finishedSessions());
-  if(list.querySelector(".q-text textarea:focus"))return;  // Do not wipe a half-typed answer.
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
-  list.replaceChildren(...(items.length?items.map(renderInboxItem):[el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.")))]));
+  const nodes=items.map(item=>{
+    const key=item.kind+"/"+item.key+(item.question?"/"+item.question.id:"");
+    const deck=item.question?item.question.deck||"":item.deck,session=item.question?item.question.session:item.session;
+    const signature=JSON.stringify([item,inboxLabel(item,deck,session),deckDirectory.name]),known=inbox.nodes.get(key);
+    if(known?.signature===signature)return known.node;
+    const node=renderInboxItem(item);node.dataset.inboxKey=key;
+    inbox.nodes.set(key,{signature,node});return node;
+  });
+  for(const [key,entry] of inbox.nodes)if(!nodes.includes(entry.node))inbox.nodes.delete(key);
+  if(!nodes.length)nodes.push(list.querySelector(".inbox-empty")||el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере."))));
+  reconcileInbox(list,nodes);
+}
+// Moving an unchanged focused row also blurs it in browsers, so leave rows already in place alone.
+function reconcileInbox(list,nodes){
+  const focused=document.activeElement,row=focused?.closest(".inbox-item"),index=row?[...row.querySelectorAll('button,textarea,[tabindex="0"]')].indexOf(focused):-1;
+  const selection=focused?.tagName==="TEXTAREA"?[focused.selectionStart,focused.selectionEnd]:null;
+  const rowIndex=row?[...list.children].indexOf(row):-1;
+  nodes.forEach((node,i)=>{if(list.children[i]!==node)list.insertBefore(node,list.children[i]||null)});
+  for(const node of [...list.children])if(!nodes.includes(node))node.remove();
+  if(row&&document.activeElement!==focused){
+    const next=nodes.find(n=>n.dataset.inboxKey===row.dataset.inboxKey)||nodes[Math.min(rowIndex,nodes.length-1)];
+    const control=next?.querySelectorAll('button,textarea,[tabindex="0"]')[Math.max(0,index)];
+    control?.focus({preventScroll:true});
+    if(selection&&control?.tagName==="TEXTAREA")control.setSelectionRange(...selection);
+  }
 }
 // The name the user gave the session, not its technical tmux name.
 function inboxLabel(item,deck,session){

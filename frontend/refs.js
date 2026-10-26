@@ -89,11 +89,16 @@ async function openRefFolder(path){
 // A terminal of its own in the session's folder: the agent's session keeps its screen and its input.
 async function runInTerminal(command){
   const s=cur();if(!s)return;
-  const asked=s.name.slice(0,28)+"-run",made=await post("/api/new",{name:asked,agent:"shell",path:s.path});
-  if(!made)return;
-  const name=made.name||asked;
-  try{await api("/api/send",{name,text:command})}catch(e){toast(e.message)}
-  select(name);
+  if(panelUpdating){toast(tr("Панель обновляется. Дождитесь завершения."));return}
+  const deck=selectedDeck,epoch=deckEpoch,asked=s.name.slice(0,28)+"-run";
+  try{
+    const made=await gatewayApi(instancePath(deck,"/api/new"),{name:asked,agent:"shell",path:s.path});
+    const name=made.name||asked;
+    await gatewayApi(instancePath(deck,"/api/send"),{name,text:command});
+    if(epoch!==deckEpoch)return;
+    await load();
+    if(epoch===deckEpoch)select(name);
+  }catch(e){toast(e.message)}
 }
 
 if(typeof module!=="undefined")module.exports={answerRefs,lastAnswer};

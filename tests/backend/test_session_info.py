@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from support import ROOT
 sys.path.insert(0, str(ROOT))
@@ -165,3 +166,26 @@ class SessionInfoTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ConversationCacheTests(unittest.TestCase):
+    def test_versioned_snapshot_parses_once_and_keeps_callers_independent(self):
+        from integrations import session_info as info
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'conversation.jsonl'
+            path.write_text(json.dumps({'type': 'user', 'message': {'role': 'user', 'content': 'Hello'}}) + '\n')
+            with patch.object(info, 'tail_records', wraps=info.tail_records) as read:
+                first = info.conversation_snapshot('claude', path)
+                first['turns'].clear()
+                second = info.conversation_snapshot('claude', path)
+                self.assertEqual(second['turns'], [{'role': 'user', 'text': 'Hello'}])
+                self.assertEqual(read.call_count, 1)
+                stamp = path.stat().st_mtime_ns
+                path.write_text(json.dumps({'type': 'user', 'message': {'role': 'user', 'content': 'World'}}) + '\n')
+                __import__('os').utime(path, ns=(stamp + 1, stamp + 1))
+                third = info.conversation_snapshot('claude', path)
+                self.assertEqual(read.call_count, 2)
+                self.assertNotEqual(second['revision'], third['revision'])
+                path.write_text(path.read_text() + json.dumps({'type': 'user', 'message': {'role': 'user', 'content': 'More'}}) + '\n')
+                self.assertEqual(len(info.conversation_snapshot('claude', path)['turns']), 2)
+                self.assertEqual(read.call_count, 3)

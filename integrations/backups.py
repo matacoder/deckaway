@@ -33,6 +33,7 @@ FILES = {
     'deck/kimi.json': '.config/cc-panel/kimi.json',
     'deck/network.json': '.config/cc-panel/network.json',
     'deck/projects.json': '.config/cc-panel/projects.json',
+    'deck/providers.json': '.config/cc-panel/providers.json',
     'deck/update.json': '.config/cc-panel/update.json',
     'deck/instance-id': '.config/cc-panel/instance-id',
     'deck/telegram.json': '.config/cc-panel/integrations/telegram.json',

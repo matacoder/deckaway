@@ -75,8 +75,12 @@ def forwarded():
 
 def own_address(address, local):
     """Whether `host:port` a gateway says it dialled is the address its connection really reached: a machine
-    that only passes the question on to the real computer is dialled at another one."""
-    return forwarded() or address.rsplit(':', 1)[0] == local
+    that only passes the question on to the real computer is dialled at another one. Forwarded installs
+    may explicitly name their trusted host:port in AGENT_DECK_PAIR_ADDRESS."""
+    if forwarded():
+        trusted = os.environ.get('AGENT_DECK_PAIR_ADDRESS')
+        return not trusted or address == trusted
+    return address == f'{local[0]}:{local[1]}'
 
 
 def fingerprint(secret):

@@ -20,6 +20,12 @@ def write_private(path, data):
             stream.flush()
             os.fsync(stream.fileno())  # Otherwise a power cut after the rename can leave an empty file.
         os.replace(temporary, path)
+        # The renamed entry must reach disk before a durable claim can permit terminal input.
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         with contextlib.suppress(FileNotFoundError):
             os.unlink(temporary)

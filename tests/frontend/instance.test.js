@@ -576,7 +576,7 @@ test('the ? next to search explains how the panel works',async()=>{
   }finally{window.close()}
 });
 
-test('on the text screen the keyboard drives the agent menu unless a field has the focus',async()=>{
+test('on the focused text screen the keyboard drives the agent menu and Tab keeps browser navigation',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state),sent=[];
   routes['/api/send']=(url,options)=>{sent.push(JSON.parse(options.body).key);return {ok:true}};
@@ -585,12 +585,13 @@ test('on the text screen the keyboard drives the agent menu unless a field has t
   await settle();await settle();
   const doc=window.document;
   window.eval('setMode("screen")');await settle();
-  const press=(code,key,extra={})=>doc.body.dispatchEvent(new window.KeyboardEvent('keydown',{code,key,bubbles:true,cancelable:true,...extra}));
+  const output=doc.getElementById('pre');output.focus();
+  const press=(code,key,extra={})=>output.dispatchEvent(new window.KeyboardEvent('keydown',{code,key,bubbles:true,cancelable:true,...extra}));
   press('Digit2','2');press('ArrowDown','ArrowDown');press('Enter','Enter');press('Tab','Tab',{shiftKey:true});await settle();
-  expect(sent).toEqual(['2','Down','Enter','BTab']);
+  expect(sent).toEqual(['2','Down','Enter']);
   doc.getElementById('msg').focus();
   doc.getElementById('msg').dispatchEvent(new window.KeyboardEvent('keydown',{code:'Digit1',key:'1',bubbles:true,cancelable:true}));await settle();
-  expect(sent).toHaveLength(4);  // Typing a message stays typing.
+  expect(sent).toHaveLength(3);  // Typing a message stays typing.
   }finally{window.close()}
 });
 

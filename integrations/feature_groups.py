@@ -178,16 +178,19 @@ class FeatureGroups:
 
     def status(self, folder, language='en'):
         key, root = self.locate(folder)
-        recent = log_commits(root, ['--branches', '--remotes', f'-n{SEED}'], run=self.run)
         with self.lock:
             self.language = language
             first = 'language' not in self.state.get(key, {})
             state = self.state.setdefault(key, {})
             state.update(language=language, folder=root)
-            running = bool(state.get('running'))
+            recent = state.get('recent')
+            running = bool(state.get('running')) or recent is None
         if first:
             self.wake.set()  # Opened for the first time: group it now, not at the next tick.
-        return view(self.load(key), recent, running, self.clock())
+        store = self.load(key)
+        if recent is None:
+            recent = sorted(store['commits'].values(), key=lambda c: -c['time'])[:SEED]
+        return view(store, recent, running, self.clock())
 
     def refresh(self, folder):
         key, root = self.locate(folder)
@@ -253,6 +256,18 @@ class FeatureGroups:
                 if key in self.state:
                     self.state[key]['running'] = False
 
+    def history_snapshot(self, key, root):
+        # Diff statistics are computed only in the worker, and only when a ref changes.
+        refs = git(root, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads', 'refs/remotes', run=self.run)
+        with self.lock:
+            state = self.state.setdefault(key, {})
+            if state.get('refs') == refs and 'recent' in state:
+                return state['recent']
+        recent = log_commits(root, ['--branches', '--remotes', f'-n{SEED}'], run=self.run)
+        with self.lock:
+            self.state[key].update(refs=refs, recent=recent)
+        return recent
+
     def one_pass(self, key, root, language, forced):
         kept = store = self.load(key)
         # Nobody opened this repository since the panel started: its groups stay in their own language.
@@ -262,7 +277,7 @@ class FeatureGroups:
             # Titles and summaries are written in one language; another panel language sorts again.
             store = empty_store()
         grouped = {sha for g in store['groups'] for sha in g['commits']}
-        pending = [c for c in log_commits(root, ['--branches', '--remotes', f'-n{SEED}'], run=self.run)
+        pending = [c for c in self.history_snapshot(key, root)
                    if c['sha'] not in grouped][::-1]
         now = self.clock()
         if not pending or not (forced or len(pending) >= BACKLOG or now - pending[-1]['time'] >= SETTLE):

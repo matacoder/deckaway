@@ -1,6 +1,6 @@
 // Dictation: the microphone button records, a computer with whisper.cpp turns each piece into text, and the
 // text joins the draft of the session it was spoken to. Pieces wait in IndexedDB until their text is there.
-const voice={doneAt:0,rec:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
+const voice={doneAt:0,rec:null,starting:null,working:false,engine:undefined,engineAt:0,computers:[],retry:null,failures:0,error:"",pending:0,prompts:new Map(),held:false};
 const VOICE_ENGINE_MS=300000,VOICE_ASK_MS=8000,VOICE_RETRY=[5,15,30,60],VOICE_DONE_MS=4000;
 
 // The first ready computer answers the question; a sleeping one is not waited for.
@@ -25,18 +25,30 @@ function voiceEngine(force=false){
 async function toggleVoice(){
   if(voice.held){voice.held=false;return}  // A long press opened the dialog instead.
   if(voice.rec)return stopVoice();
-  if(!active)return;
+  if(voice.starting||!active)return;
   if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast(tr("Микрофон работает только по https: откройте панель по её https-адресу"));return}
-  // Created inside the tap: Safari keeps an audio context made later silent.
-  const context=new (window.AudioContext||window.webkitAudioContext)();
-  const engine=await voiceEngine();
-  if(engine===null){context.close();openVoice();return}
-  let stream;
-  try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
-  catch(e){context.close();toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"));return}
-  // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
-  context.resume().catch(()=>{});
-  startRecording(context,stream);
+  const start={epoch:deckEpoch,session:active};voice.starting=start;
+  let context,stream,recording=false;
+  const current=()=>voice.starting===start&&start.epoch===deckEpoch&&start.session===active;
+  try{
+    // Created inside the tap: Safari keeps an audio context made later silent.
+    context=new (window.AudioContext||window.webkitAudioContext)();
+    const engine=await voiceEngine();
+    if(!current())return;
+    if(engine===null){openVoice();return}
+    stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    if(!current())return;
+    // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
+    context.resume().catch(()=>{});
+    startRecording(context,stream);recording=true;
+  }catch(e){if(current())toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"))}
+  finally{
+    if(voice.starting===start)voice.starting=null;
+    if(!recording){
+      for(const track of stream?.getTracks()||[])track.stop();
+      context?.close().catch(()=>{});
+    }
+  }
 }
 function startRecording(context,stream){
   const source=context.createMediaStreamSource(stream),node=context.createScriptProcessor(4096,1,1);
@@ -77,6 +89,7 @@ function queueSave(rec,seq,samples,open){
   }).catch(()=>{voice.error=tr("Не удалось сохранить запись в браузере");renderVoice()});
 }
 function stopVoice(message){
+  voice.starting=null;
   const rec=voice.rec;if(!rec)return;
   voice.rec=null;clearInterval(rec.tick);
   rec.node.onaudioprocess=null;rec.source.disconnect();rec.node.disconnect();

@@ -53,6 +53,7 @@ async function loadSessionInfo(){
   }
   sessionInfo.doubt=false;
   sessionInfo.data=data;keepAnswer(sessionInfoKnown,key,data);renderSessionInfo();
+  if(conversationOpen())refreshConversation();
   if(curMode()==="screen")screenEarlier($("pre"),active);
   // A summary being written is asked for again soon; otherwise the conversation changes slowly.
   if(!document.hidden)sessionInfo.timer=setTimeout(loadSessionInfo,data?.summary?.updating?8000:SESSION_INFO_POLL);
@@ -69,28 +70,45 @@ function talkTurn(turn){return el("div","talk-turn"+(turn.role==="user"?" mine":
 function renderConversation(data,failed){
   const box=$("talk_list"),stick=!box.querySelector(".talk-turn")||atBottom(box);
   if(!data){box.replaceChildren(failed?el("p","hint",failed):listSkeleton());return}
-  const turns=data.supported?data.turns||[]:[];
+  const turns=data.supported?data.turns||[]:[],selection=getSelection();
+  const range=selection&&!selection.isCollapsed&&box.contains(selection.anchorNode)?selection.getRangeAt(0):null;
+  // New messages can appear during selection; only a change to the selected text waits until the next poll.
+  if(range&&[...box.children].some((node,i)=>node.dataset.turn!==JSON.stringify(turns[i])&&range.intersectsNode(node)))return;
   if(!turns.length){box.replaceChildren(el("p","hint",tr(data.supported?"В этом разговоре пока нет сообщений.":"У этой сессии нет разговора, который можно прочитать.")));return}
-  box.replaceChildren(...turns.map(talkTurn));
-  if(stick)box.scrollTop=box.scrollHeight;
+  const top=box.scrollTop;
+  if(!box.querySelector(".talk-turn"))box.replaceChildren();
+  turns.forEach((turn,i)=>{
+    const signature=JSON.stringify(turn),old=box.children[i];
+    if(old?.dataset.turn===signature)return;
+    const node=talkTurn(turn);node.dataset.turn=signature;
+    if(old)old.replaceWith(node);else box.append(node);
+  });
+  while(box.children.length>turns.length)box.lastChild.remove();
+  box.scrollTop=stick&&!range?box.scrollHeight:top;
 }
 // Drawn in place of the screen, not as a dialog: the message field and the microphone stay usable, so an
 // answer can be read and replied to at once.
+let conversationSeq=0;
 const conversationOpen=()=>!$("talk_view").hidden;
-function closeConversation(){$("talk_view").hidden=true}
+function closeConversation(){conversationSeq++;$("talk_view").hidden=true}
 async function openConversation(){
   if(!active)return;
   if(conversationOpen()){closeConversation();return}
-  const key=sessionInfoKey(),known=knownAnswer(conversationKnown,key);
+  const known=knownAnswer(conversationKnown,sessionInfoKey());
   $("talk_list").replaceChildren();
   if(curMode()!=="screen")setMode("screen");
   $("talk_view").hidden=false;
   renderConversation(known);
+  await refreshConversation();
+}
+async function refreshConversation(){
+  if(document.hidden||!active||!conversationOpen())return;
+  const key=sessionInfoKey(),seq=++conversationSeq,known=knownAnswer(conversationKnown,key);
   try{
     const data=await api("/api/conversation?name="+encodeURIComponent(active));
-    if(key!==sessionInfoKey()||!conversationOpen())return;
+    if(seq!==conversationSeq||key!==sessionInfoKey()||!conversationOpen())return;
     keepAnswer(conversationKnown,key,data,8);renderConversation(data);
-  }catch(e){if(e.message!==STALE&&!known)renderConversation(null,e.message)}
+  }catch(e){if(seq===conversationSeq&&key===sessionInfoKey()&&conversationOpen()&&e.message!==STALE&&!known)renderConversation(null,e.message)}
 }
 function formatTokens(n){return n>=1000?Math.round(n/1000)+"k":String(n)}
 function renderSessionInfo(){

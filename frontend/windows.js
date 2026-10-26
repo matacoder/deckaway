@@ -32,6 +32,7 @@ function renderNewRuntime(){
     :!WINDOWS_AGENTS.includes(newAgent)?tr("В Windows запускаются Claude, Codex и терминал")
     :tr(status.admin?"PowerShell {0}. Установлены в Windows: {1}. Агент работает от имени администратора.":"PowerShell {0}. Установлены в Windows: {1}. Агент работает без прав администратора.",[status.version||"",agents||tr("нет")]);
   $("n_win_hint").classList.toggle("warn",win&&(!status.ready||!WINDOWS_AGENTS.includes(newAgent)));
+  renderNewAgentReadiness();
 }
 // What createSession adds to its request. The account or model and the containers picked for WSL are hidden
 // for Windows and must not be sent with it: the computer refuses a Windows session with a source.

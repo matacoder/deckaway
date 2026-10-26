@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Unprivileged, detached updater for an installed panel; never runs release scripts."""
 import argparse
+from contextlib import contextmanager
 import fcntl
 import io
 import json
@@ -19,7 +20,7 @@ REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 TAG_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 REQUIRED = {"panel.py", "index.html", "login.html", "VERSION", "updater.py", "session_hook.py"}
 PACKAGES = {"integrations/" + name for name in ("__init__.py", "questions.py", "store.py", "telegram.py", "lmstudio.py", "relay.py", "pi.py", "preferences.py", "names.py", "decks.py", "deck_transport.py", "deck_discovery.py", "updates.py", "backups.py",
-                                                              "dependencies.py", "dependency_lock.py", "macos_metrics.py", "sign_outs.py", "push.py", "webpush.py", "images.py", "gateway.py", "usage.py", "files.py", "git.py", "feature_groups.py", "gallery.py", "session_info.py", "scrollback.py", "limits.py", "schedule.py", "quick_prompts.py", "containers.py", "lan.py", "here.py", "agents.py", "providers.py", "pictures.py", "direct.py", "private_files.py", "voice.py", "windows.py")}
+                                                              "dependencies.py", "dependency_lock.py", "macos_metrics.py", "sign_outs.py", "push.py", "webpush.py", "images.py", "gateway.py", "usage.py", "files.py", "git.py", "feature_groups.py", "gallery.py", "session_info.py", "page_delivery.py", "scrollback.py", "limits.py", "schedule.py", "quick_prompts.py", "containers.py", "lan.py", "here.py", "agents.py", "providers.py", "pictures.py", "direct.py", "private_files.py", "voice.py", "windows.py")}
 LOCALES = {"locales/__init__.py", "locales/en.json", "locales/ru.json"}
 REQUIRED |= PACKAGES | LOCALES
 ALLOWED = REQUIRED | {"icon-180.png", "icon-192.png", "icon-512.png", "manifest.webmanifest", "make_icons.py"}
@@ -43,10 +44,21 @@ def write_state(path, phase, **fields):
     try:
         with os.fdopen(fd, "w") as stream:
             json.dump({"phase": phase, "at": time.time(), **fields}, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, path)
+        sync_directory(path.parent)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+
+
+def sync_directory(path):
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def lock(path):
@@ -196,8 +208,7 @@ def wait_for_local_requests(directory=None, timeout=660):
         time.sleep(1)
 
 
-def install(stage, target, names, state, version, url):
-    wait_for_local_requests(Path(state).parent/'integrations/live-requests')
+def backup_files(stage, target, names):
     backup = stage / "backup"
     backup.mkdir()
     existing = set()
@@ -208,7 +219,22 @@ def install(stage, target, names, state, version, url):
         if destination.exists():
             (backup / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(destination, backup / name)
+            with (backup / name).open('rb') as stream:
+                os.fsync(stream.fileno())
             existing.add(name)
+    for directory in sorted((p for p in backup.rglob('*') if p.is_dir()), reverse=True):
+        sync_directory(directory)
+    sync_directory(backup)
+    # Persist the complete undo plan before stopping the panel or replacing the first file.
+    journal = stage / 'transaction.json'
+    write_state(journal, 'installing', names=sorted(names), existing=sorted(existing))
+    sync_directory(target)
+    return backup, existing
+
+
+def install(stage, target, names, state, version, url):
+    wait_for_local_requests(Path(state).parent/'integrations/live-requests')
+    backup, existing = backup_files(stage, target, names)
     write_state(state, "installing", version=version, message="Устанавливаю файлы панели…")
     # VERSION goes last: a crash mid-swap must not leave mixed files reported as up to date.
     ordered = sorted(names - {"VERSION"}) + (["VERSION"] if "VERSION" in names else [])
@@ -219,6 +245,9 @@ def install(stage, target, names, state, version, url):
         for name in ordered:
             (target / name).parent.mkdir(parents=True, exist_ok=True)
             os.replace(stage / name, target / name)
+            with (target / name).open('rb') as stream:
+                os.fsync(stream.fileno())
+            sync_directory((target / name).parent)
         write_state(state, "restarting", version=version, message="Перезапускаю панель…")
         service("start")
         healthy(url)
@@ -226,9 +255,32 @@ def install(stage, target, names, state, version, url):
         if stopped:
             try:
                 rollback(backup, target, ordered, existing)
+                finish_transaction(stage)
             except Exception:
                 pass  # Report the update failure itself; it explains why the rollback ran.
         raise
+    finish_transaction(stage)
+
+
+def finish_transaction(stage):
+    (stage / 'transaction.json').unlink()
+    sync_directory(stage)
+
+
+def restore_file(source, destination):
+    # Keep the backup intact so recovery can restart after another interruption.
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=destination.parent)
+    os.close(fd)
+    try:
+        shutil.copy2(source, temporary)
+        with open(temporary, 'rb') as stream:
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination)
+        sync_directory(destination.parent)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def rollback(backup, target, ordered, existing):
@@ -241,18 +293,50 @@ def rollback(backup, target, ordered, existing):
         # Old VERSION first, so an interrupted rollback is retried by the next update.
         for name in reversed(ordered):
             if name in existing:
-                os.replace(backup / name, target / name)
+                restore_file(backup / name, target / name)
             else:
                 (target / name).unlink(missing_ok=True)
+                if (target / name).parent.exists():
+                    sync_directory((target / name).parent)
     finally:
         service("start")
+
+
+def recover_stages(target):
+    for stage in sorted(target.glob('.update-*')):
+        if stage.is_symlink() or not stage.is_dir() or not (stage / 'transaction.json').exists():
+            continue
+        data = json.loads((stage / 'transaction.json').read_text())
+        names, existing = set(data['names']), set(data['existing'])
+        # A corrupt journal must leave its backup available for manual recovery.
+        for name in names | existing:
+            parts = Path(name).parts
+            if not parts or Path(name).is_absolute() or '..' in parts or name.startswith('.update-'):
+                raise ValueError('Invalid update recovery path')
+        if not existing <= names:
+            raise ValueError('Invalid update recovery journal')
+        rollback(stage / 'backup', target, sorted(names - {'VERSION'}) + (['VERSION'] if 'VERSION' in names else []), existing)
+        finish_transaction(stage)
+        shutil.rmtree(stage)
 
 
 def remove_stale_stages(target):
     # The flock makes this job the only writer, so any staging directory left here is from a crash.
     for entry in target.iterdir():
         if entry.name.startswith(".update-") and entry.is_dir() and not entry.is_symlink():
-            shutil.rmtree(entry, ignore_errors=True)
+            if not (entry / 'transaction.json').exists() and not (entry / 'backup').exists():
+                shutil.rmtree(entry, ignore_errors=True)
+
+
+@contextmanager
+def staging_directory(target):
+    stage = Path(tempfile.mkdtemp(prefix='.update-', dir=target))
+    try:
+        yield stage
+    finally:
+        # A failed rollback must outlive this process, including ordinary exceptions.
+        if not (stage / 'transaction.json').exists():
+            shutil.rmtree(stage)
 
 
 def run(repo, target, state, url):
@@ -261,6 +345,7 @@ def run(repo, target, state, url):
         if not available(target, repo):
             raise ValueError("Обновление доступно только для установленной панели без root")
         target = Path(target)
+        recover_stages(target)
         remove_stale_stages(target)
         write_state(state, "checking", message="Проверяю последний релиз…")
         release = json.loads(fetch(f"https://api.github.com/repos/{repo}/releases/latest", 1024 * 1024))
@@ -277,8 +362,7 @@ def run(repo, target, state, url):
             return
         write_state(state, "downloading", version=version, message=f"Скачиваю v{version}…")
         data = fetch(f"https://api.github.com/repos/{repo}/tarball/{tag}", 32 * 1024 * 1024)
-        with tempfile.TemporaryDirectory(prefix=".update-", dir=target) as directory:
-            stage = Path(directory)
+        with staging_directory(target) as stage:
             names = unpack(data, stage, version)
             installing = version
             install(stage, target, names, state, version, url)

@@ -50,4 +50,27 @@ function cliAgentCard(spec){
   return card;
 }
 
+// Readiness is advisory: an older computer may not report its agents yet.
+function newAgentReadiness(agent,status,source){
+  if(agent==="shell")return {text:"Готов к запуску"};
+  const state=status[agent];
+  if(!state)return {text:"Готовность агента ещё не проверена",section:"agents",step:"Проверить агента"};
+  if(!state.installed)return {text:"Агент не установлен",section:"agents",step:"Установить"};
+  if(agent==="pi"&&!source)return {text:"Для Pi подключите локальную модель",section:"models",step:"Настроить модели"};
+  if(agent==="kimi"&&!status.kimi_config?.configured)return {text:"Сохраните ключ Kimi в настройках",section:"agents",step:"Настроить"};
+  if(!["pi","opencode"].includes(agent)&&!(agent==="claude"&&source&&source.kind!=="default")&&!state.logged_in)
+    return {text:"Агенту нужен вход",section:"agents",step:"Войти"};
+  return {text:"Готов к запуску"};
+}
+function renderNewAgentReadiness(){
+  const box=$("n_readiness");
+  box.hidden=windowsOffered()&&newRuntime==="windows";
+  if(box.hidden)return;  // Windows has its own installation and readiness line.
+  const value=$("n_source").value,source=value?JSON.parse(value):null;
+  const ready=newAgentReadiness(newAgent,lastAg,source);
+  $("n_agent_status").textContent=tr(ready.text);
+  const step=$("n_agent_step");step.hidden=!ready.section;step.textContent=ready.step?tr(ready.step):"";
+  step.onclick=()=>{returnToNew=true;$("dlg").close();openSettings(ready.section)};
+}
+
 if(typeof module!=="undefined")module.exports={AGENT_LIST,agentCommands,pickableAgents};

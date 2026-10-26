@@ -476,7 +476,10 @@ class RemoteDeckTests(PanelCase):
         with patch.object(self.panel,'session_exists',return_value=True),patch.object(self.panel,'opt',side_effect=lambda name,key:options[key]),\
              patch.object(self.panel,'transcript_path',return_value=transcript):
             handler=self.handler();handler.path='/api/conversation?name=demo';handler.get_request()
-            self.assertEqual(handler.send_json.call_args.args,(200,{'supported':True,'turns':[{'role':'user','text':'Fix payments'}]}))
+            code, payload = handler.send_json.call_args.args
+            self.assertEqual((code, payload['supported'], payload['turns']),
+                             (200, True, [{'role': 'user', 'text': 'Fix payments'}]))
+            self.assertRegex(payload['revision'], r'^[0-9a-f]{64}$')
             options['@cc_agent']='shell'
             handler=self.handler();handler.path='/api/conversation?name=demo';handler.get_request()
             self.assertEqual(handler.send_json.call_args.args[1],{'supported':False})

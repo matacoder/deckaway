@@ -420,6 +420,20 @@ class LanHTTPTests(PanelCase):
                       f"/api/pair_challenge?id={pair['id']}&nonce=short"):
             self.assertEqual(self.request('GET', wrong)[0], 404)
 
+    def test_pair_proof_rejects_another_port_on_the_same_host(self):
+        pair = self.panel.pairs.create()
+        port = self.server.server_address[1] % 65535 + 1
+        query = f"id={pair['id']}&nonce={'1' * 32}&at=127.0.0.1:{port}"
+        with patch.object(lan, 'forwarded', return_value=False):
+            self.assertEqual(self.request('GET', '/api/pair_challenge?' + query)[0], 404)
+
+    def test_forwarded_pairing_checks_only_an_explicit_trusted_address(self):
+        with patch.object(lan, 'forwarded', return_value=True), patch.dict(lan.os.environ, {}, clear=True):
+            self.assertTrue(lan.own_address('192.168.1.5:8790', ('172.17.0.2', 8790)))  # The host's address.
+            with patch.dict(lan.os.environ, {'AGENT_DECK_PAIR_ADDRESS': '192.168.1.5:8790'}):
+                self.assertTrue(lan.own_address('192.168.1.5:8790', ('172.17.0.2', 8790)))
+                self.assertFalse(lan.own_address('192.168.1.5:8791', ('172.17.0.2', 8790)))
+
     def test_neighbours_of_a_panel_installed_on_its_local_address_are_not_its_proxy(self):
         seen = lambda client: self.panel.Handler.via_proxy(Mock(client_address=(client, 1), server=Mock(lan=False)))
         self.assertTrue(seen('192.168.1.9'))            # Bound to Tailscale: a private client is Docker's proxy.

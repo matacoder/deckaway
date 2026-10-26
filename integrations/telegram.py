@@ -28,9 +28,10 @@ FREE_TEXT = re.compile(r'(?:Other\b|Type something|Другое\b|Свой от�
 
 
 class TelegramError(RuntimeError):
-    def __init__(self, message, delay=5):
+    def __init__(self, message, delay=5, uncertain=True):
         super().__init__(message)
         self.delay = min(120, max(1, delay))
+        self.uncertain = uncertain
 
 
 class API:
@@ -51,12 +52,15 @@ class API:
             message = {401: 'Telegram: неверный токен', 403: 'Telegram: откройте чат с ботом и нажмите Start',
                        409: 'Telegram: этот бот уже получает обновления на другом DeckAway. Отключите Telegram там и подключите тот DeckAway в «Сеть → Другие DeckAway»: его вопросы придут в этот бот',
                        429: 'Telegram: слишком много запросов'}.get(code, 'Telegram: запрос не выполнен')
-            raise TelegramError(message, payload.get('parameters', {}).get('retry_after', 5)) from None
+            raise TelegramError(message, payload.get('parameters', {}).get('retry_after', 5), uncertain=code >= 500) from None
+        except urllib.error.URLError:
+            # urllib raises URLError only while the request is still being sent: Telegram never saw it.
+            raise TelegramError('Telegram: нет соединения, повторю автоматически', uncertain=False) from None
         except (OSError, ValueError):
             # Never surface urllib's exception: it can contain the token in its URL.
             raise TelegramError('Telegram: нет соединения, повторю автоматически') from None
         if not isinstance(payload, dict) or not payload.get('ok'):
-            raise TelegramError('Telegram: запрос не выполнен')
+            raise TelegramError('Telegram: запрос не выполнен', uncertain=not isinstance(payload, dict) or payload.get('ok') is not False)
         return payload.get('result')
 
 
@@ -113,9 +117,11 @@ class Telegram:
     def status(self):
         with self.lock:
             c = self.config
+            uncertain = bool(c.get('token')) and self.database().uncertain_delivery()
+            error = 'Проверьте сессию в панели: повторная отправка отключена' if uncertain else self.error
             return {'available': True, 'configured': bool(c.get('token')), 'enabled': c.get('enabled', False),
                     'paired': bool(c.get('user_id')), 'bot': c.get('bot', ''),
-                    'account': c.get('account', ''), 'error': self.error, 'finished': c.get('finished', True),
+                    'account': c.get('account', ''), 'error': error, 'finished': c.get('finished', True),
                     'pair_url': f"https://t.me/{c['bot']}?start=deck_{self.pair_code}"
                     if self.pair_code and time.time() < self.pair_deadline else None}
 
@@ -260,19 +266,31 @@ class Telegram:
             self.api.call(token, 'editMessageReplyMarkup', chat_id=chat, message_id=message_id,
                           reply_markup={'inline_keyboard': []})
         for row_id, q in waiting:
-            options = [f'{i + 1}. {label[:180]}' for i, label in enumerate(q.options)]
-            keyboard = [[{'text': f'{i + 1}. {label[:90]}', 'callback_data': f"q:{row_id}:{i}"}]
-                        for i, label in enumerate(q.options)
-                        if not FREE_TEXT.match(label)]
-            hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
-                    if any(FREE_TEXT.match(label) for label in q.options) else '')
-            result = self.api.call(token, 'sendMessage', chat_id=chat,
-                # The chat list shows only the first words: the question, then where it comes from.
-                text=f'{q.title}\n\n' + '\n'.join(options) + '\n\n' + ' · '.join(filter(None, (q.label or q.session, q.origin, q.agent))) + hint,
-                reply_markup={'inline_keyboard': keyboard})
+            if not db.claim_delivery(row_id):
+                continue
+            try:
+                result = self.send_question(token, chat, row_id, q)
+                message_id = result['message_id']
+            except Exception as error:
+                # A lost response may hide a successful send; only an explicit rejection is safe to retry.
+                retry = isinstance(error, TelegramError) and not error.uncertain
+                db.set_status(row_id, 'pending' if retry else 'uncertain')
+                raise
             with self.lock:
-                if self.config.get('token') == token:  # Not a bot that was replaced meanwhile.
-                    self.database().set_status(row_id, 'sent', result['message_id'])
+                if self.config.get('token') == token:
+                    db.set_status(row_id, 'sent', message_id)
+
+    def send_question(self, token, chat, row_id, q):
+        options = [f'{i + 1}. {label[:180]}' for i, label in enumerate(q.options)]
+        keyboard = [[{'text': f'{i + 1}. {label[:90]}', 'callback_data': f"q:{row_id}:{i}"}]
+                    for i, label in enumerate(q.options)
+                    if not FREE_TEXT.match(label)]
+        hint = ('\n\n' + self.translate('Свой ответ: ответьте на это сообщение текстом')
+                if any(FREE_TEXT.match(label) for label in q.options) else '')
+        return self.api.call(token, 'sendMessage', chat_id=chat,
+            # The chat list shows only the first words: the question, then where it comes from.
+            text=f'{q.title}\n\n' + '\n'.join(options) + '\n\n' + ' · '.join(filter(None, (q.label or q.session, q.origin, q.agent))) + hint,
+            reply_markup={'inline_keyboard': keyboard})
 
     def wants_finished(self):
         with self.lock:
@@ -376,7 +394,7 @@ class Telegram:
             return
         notice = self.database().notice_by_message(message['reply_to_message'].get('message_id'))
         if notice:
-            return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(self.send_prompt(notice, text)),
+            return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(self.send_prompt(notice, text, c, message)),
                                reply_to_message_id=message.get('message_id'))
         row = self.database().by_message(message['reply_to_message'].get('message_id'))
         reply = 'Этот вопрос не найден или уже закрыт'
@@ -396,18 +414,29 @@ class Telegram:
         return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(reply),
                            reply_to_message_id=message.get('message_id'))
 
-    def send_prompt(self, notice, text):
-        # Each Telegram update is handled once, so an unknown failure is reported and never typed again.
+    def send_prompt(self, notice, text, config, message):
         if self.prompt is None:
             return 'Отправка сообщений из Telegram недоступна'
         if len(text) > 4000:
             return 'Сообщение длиннее 4000 символов'
+        message_id = message.get('message_id')
+        if not isinstance(message_id, int):
+            return 'Проверьте сессию в панели: повторная отправка отключена'
+        # Message ids belong to one bot/chat; the claim survives a crash before the polling offset saves.
+        bot = hashlib.sha256(config['token'].encode()).hexdigest()
+        identity = f"{bot}:{config['chat_id']}:{message_id}"
+        db = self.database()
+        if not db.claim_prompt(identity):
+            return 'Проверьте сессию в панели: повторная отправка отключена'
         try:
             self.prompt(notice['deck'], notice['session'], notice['session_created'], text)
         except ValueError as error:
+            db.prompt_status(identity, 'expired')
             return str(error)
         except Exception:
+            db.prompt_status(identity, 'uncertain')
             return 'Проверьте сессию в панели: повторная отправка отключена'
+        db.prompt_status(identity, 'answered')
         return 'Сообщение передано агенту'
 
     def answer_claimed(self, row, q, index, text=None):

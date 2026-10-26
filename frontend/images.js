@@ -14,14 +14,17 @@ function imageMatches(text,taken=[]){
 }
 // Agents hard-wrap long paths ("…/padel-w1-cashier-" + "preview/shot.png"); glue such lines back.
 function joinImageLines(lines){
-  const text=runs=>runs.map(r=>r.text).join(""),out=[];
+  const text=lines.map(runs=>runs.map(r=>r.text).join("")),out=[];
   for(let i=0;i<lines.length;i++){
     const runs=lines[i].slice();
+    // Only a path at the end can wrap; scanning long base64 output would block the page.
+    let tail=text[i].trimEnd().slice(-300);
     while(i+1<lines.length){
-      const tail=text(runs).trimEnd().match(/[\w.~@+-]*\/[\w./@+-]*$/);
-      if(!tail||/\.(?:png|jpe?g|webp|gif)$/i.test(tail[0])||!IMAGE_HEAD_RE.test(text(lines[i+1])))break;
+      const path=tail.match(/[\w.~@+-]*\/[\w./@+-]*$/);
+      if(!path||/\.(?:png|jpe?g|webp|gif)$/i.test(path[0])||!IMAGE_HEAD_RE.test(text[i+1]))break;
       for(let j=runs.length-1;j>=0&&/\s$/.test(runs[j].text);j--)runs[j]={...runs[j],text:runs[j].text.trimEnd()};
       runs.push(...lines[++i]);
+      tail=(tail+text[i]).trimEnd().slice(-300);
     }
     out.push(runs);
   }

@@ -2,12 +2,15 @@
 
 git runs without a shell and with explicit arguments; patches are size-limited.
 """
+import ast
+import copy
 import os
 from pathlib import Path
 import re
 import stat
 import subprocess
 import threading
+import time
 
 SHA = re.compile(r'[0-9a-f]{7,40}')
 PAGE = 50
@@ -193,9 +196,15 @@ def split_patch(text):
         if not chunk.startswith('diff --git '):
             continue
         header = chunk.split('\n', 1)[0]
-        match = re.match(r'diff --git a/(.*) b/(.*)$', header)
-        path = match.group(2) if match else header[11:]
-        old = match.group(1) if match else path
+        match = re.match(r'diff --git ("a/(?:[^"\\]|\\.)*"|a/.*) ("b/(?:[^"\\]|\\.)*"|b/.*)$', header)
+        names = [(ast.literal_eval(p) if p.startswith('"') else p)[2:] for p in match.groups()] if match else []
+        old, path = names if names else (header[11:], header[11:])
+        # Rename headers are unambiguous even when a filename contains the diff header's " b/" separator.
+        for line in chunk.split('\n@@', 1)[0].splitlines():
+            if line.startswith('rename from '):
+                old = ast.literal_eval(line[12:]) if line[12:].startswith('"') else line[12:]
+            elif line.startswith('rename to '):
+                path = ast.literal_eval(line[10:]) if line[10:].startswith('"') else line[10:]
         status = ('added' if '\nnew file mode' in chunk else 'deleted' if '\ndeleted file mode' in chunk
                   else 'renamed' if old != path else 'modified')
         lines = chunk.split('\n')
@@ -216,8 +225,12 @@ def commit(folder, sha, run=subprocess.run):
                             '--no-textconv', '--diff-merges=first-parent', sha], MAX_PATCH * 2) \
         if run is subprocess.run else git(folder, 'show', '--format=', '--patch', '--find-renames', '--no-color',
                                           '--no-ext-diff', '--no-textconv', '--diff-merges=first-parent', sha, run=run)
+    root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
+    private = private_parts(root)
     files, size = [], 0
     for item in split_patch(patch):
+        if is_private(root, item['path'], private) or is_private(root, item['old_path'], private):
+            continue
         size += len(item['patch'])
         if size > MAX_PATCH:
             item.update(patch='', truncated=True)
@@ -235,11 +248,15 @@ def group_diff(folder, shas, run=subprocess.run):
     args = ['log', '--no-walk=unsorted', '--patch', '--find-renames', '--no-color', '--no-ext-diff', '--no-textconv',
             '--diff-merges=first-parent', f'--format={REC}%H{SEP}%h{SEP}%s', *ordered, '--']
     raw = capped(folder, args, MAX_PATCH * 2) if run is subprocess.run else git(folder, *args, run=run)
+    root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
+    private = private_parts(root)
     by_path, size = {}, 0
     for record in raw.split(REC)[1:]:
         head, _, patch = record.partition('\n')
         full, short, subject = (head.split(SEP) + ['', '', ''])[:3]
         for item in split_patch(patch):
+            if is_private(root, item['path'], private) or is_private(root, item['old_path'], private):
+                continue
             size += len(item['patch'])
             entry = by_path.setdefault(item['path'], {'path': item['path'], 'added': 0, 'removed': 0, 'changes': []})
             entry['added'] += item['added']
@@ -251,6 +268,19 @@ def group_diff(folder, shas, run=subprocess.run):
 
 
 MAX_UNTRACKED = 50
+CHANGES_SECONDS = 10
+_untracked = {}
+_untracked_lock = threading.Lock()
+
+
+def budget_run(run, deadline):
+    def execute(command, **kwargs):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, CHANGES_SECONDS)
+        kwargs['timeout'] = min(kwargs.get('timeout', CHANGES_SECONDS), remaining)
+        return run(command, **kwargs)
+    return execute
 
 
 def private_parts(root):
@@ -273,27 +303,58 @@ def is_private(root, path, parts):
 
 
 def untracked_patch(root, path, run=subprocess.run):
-    """A new file as a diff against nothing. `diff --no-index` exits 1 when files differ, which is the point."""
+    """Render a bounded new-file diff without a git process; cache by the file's version."""
+    full = os.path.join(root, path)
     try:
-        info = os.lstat(os.path.join(root, path))
+        info = os.lstat(full)
+        if not stat.S_ISREG(info.st_mode):
+            return None  # Never follow a symlink into the panel's secrets.
+        key = (full, info.st_mtime_ns, info.st_ctime_ns, info.st_size, info.st_ino)
+        with _untracked_lock:
+            if key not in _untracked:
+                item = new_file_patch(full, path, info)
+                for old in list(_untracked):
+                    if old[0] == full or len(_untracked) >= 128:
+                        del _untracked[old]
+                _untracked[key] = item
+            return copy.deepcopy(_untracked[key])
     except OSError:
         return None
-    if not stat.S_ISREG(info.st_mode):
-        return None  # A new symlink could point at the panel's own secrets; git would read through it.
-    if info.st_size > MAX_FILE_PATCH:
-        return {'path': path, 'old_path': path, 'status': 'added', 'added': 0, 'removed': 0, 'binary': False,
-                'truncated': True, 'patch': ''}
-    result = run(['git', '-C', str(root), *BASE, 'diff', '--no-index', '--no-color',
-                  '--no-ext-diff', '--no-textconv', '--', '/dev/null', path], input=b'', capture_output=True, timeout=20)
-    if result.returncode not in (0, 1):
-        return None
-    files = split_patch(result.stdout.decode('utf-8', 'replace'))
-    return files[0] if files else None
+
+
+def new_file_patch(full, path, info):
+    item = {'path': path, 'old_path': path, 'status': 'added', 'added': 0, 'removed': 0,
+            'binary': False, 'truncated': info.st_size > MAX_FILE_PATCH, 'patch': ''}
+    if item['truncated']:
+        return item
+    fd = os.open(full, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if not stat.S_ISREG(opened.st_mode) or (opened.st_ino, opened.st_dev) != (info.st_ino, info.st_dev):
+            return None
+        raw = stream.read(MAX_FILE_PATCH + 1)
+    if len(raw) > MAX_FILE_PATCH:
+        return {**item, 'truncated': True}
+    if b'\0' in raw[:8000]:
+        return {**item, 'binary': True}
+    text = raw.decode('utf-8', 'replace')
+    lines = text.split('\n')
+    if lines[-1] == '':
+        lines.pop()
+    patch = f'diff --git a/{path} b/{path}\nnew file mode {stat.S_IMODE(info.st_mode) | stat.S_IFREG:06o}\n'
+    if lines:
+        patch += f'--- /dev/null\n+++ b/{path}\n@@ -0,0 +1,{len(lines)} @@\n'
+        patch += ''.join('+' + line + '\n' for line in lines)
+        if not raw.endswith(b'\n'):
+            patch += '\\ No newline at end of file\n'
+    return {**item, 'added': len(lines), 'truncated': len(patch) > MAX_FILE_PATCH, 'patch': patch[:MAX_FILE_PATCH]}
 
 
 def changes(folder, run=subprocess.run):
     """What the agent changed and has not committed yet: tracked files against HEAD (staged and not), and new
     files git does not ignore. Read-only: the index is never touched."""
+    deadline, original_run = time.monotonic() + CHANGES_SECONDS, run
+    run = budget_run(run, deadline)
     root = git(folder, 'rev-parse', '--show-toplevel', run=run).strip()
     try:
         branch = git(root, 'symbolic-ref', '--quiet', '--short', 'HEAD', run=run).strip()
@@ -308,7 +369,8 @@ def changes(folder, run=subprocess.run):
     private = private_parts(root)
     exclude = [f':(exclude,top){p}' for p in sorted(private)]
     args = ['diff', base, '--patch', '--find-renames', '--no-color', '--no-ext-diff', '--no-textconv', '--', *exclude]
-    patch = capped(root, args, MAX_PATCH * 2) if run is subprocess.run else git(root, *args, run=run)
+    patch = capped(root, args, MAX_PATCH * 2, timeout=max(0.01, deadline - time.monotonic())) \
+        if original_run is subprocess.run else git(root, *args, run=run)
     files, size = [], 0
     for item in split_patch(patch):
         if is_private(root, item['path'], private) or is_private(root, item['old_path'], private):
@@ -319,7 +381,11 @@ def changes(folder, run=subprocess.run):
         files.append(item)
     status = git(root, 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', *exclude, run=run)
     untracked = [entry[3:] for entry in status.split('\0') if entry.startswith('?? ') and not is_private(root, entry[3:], private)]
+    visited = 0
     for path in untracked[:MAX_UNTRACKED]:
+        if time.monotonic() >= deadline:
+            break
+        visited += 1
         item = untracked_patch(root, path, run=run)
         if not item:
             continue
@@ -328,4 +394,4 @@ def changes(folder, run=subprocess.run):
             item.update(patch='', truncated=True)
         files.append(item)
     return {'repo': root, 'name': os.path.basename(root), 'branch': branch, 'head': head,
-            'files': sorted(files, key=lambda f: f['path']), 'skipped': max(0, len(untracked) - MAX_UNTRACKED)}
+            'files': sorted(files, key=lambda f: f['path']), 'skipped': max(0, len(untracked) - visited)}

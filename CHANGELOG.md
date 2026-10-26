@@ -2,6 +2,46 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.67.0
+
+A review of the whole product from five sides (speed, reliability, backend, frontend, UX) and the fixes it led to.
+
+**Nothing is typed twice or into the wrong place**
+- Held prompts go one at a time: each is taken from the file just before it is typed, the open question is checked again before each one, and the next waits for the session to go quiet. A failed send no longer drops the prompts after it, a cancelled prompt is never sent, and a save that failed (full disk) leaves nothing behind to send twice.
+- A Telegram reply to a "finished" message is recorded before it is typed, so a restart in between never types it again. A question whose sending may have reached Telegram without an answer is marked uncertain and shown, instead of being sent twice; a request that never left (no connection) is still sent later.
+- Settings files reach the disk with their folder, so a power cut cannot bring back a prompt that was already sent.
+- A command chip runs on the computer it was tapped on, even if another one is chosen meanwhile.
+- A session whose Docker computer is not available does not start against the local Docker silently; it says what to do.
+- Two Windows Codex sessions in one folder no longer take each other's conversation.
+
+**Edits are not lost**
+- Text typed while a file is being saved stays marked unsaved; a new interface version never reloads the page over an unsaved file.
+- "Send review" sends only the review: the message being written and its attachments stay.
+- Review comments are kept per computer and file, never mixed between two computers with the same path; two devices saving one file at once cannot silently overwrite each other.
+
+**Updates and installs**
+- An update cut off half-way (power, kill) is put back on the next run instead of losing its backup.
+- A session that could not be restored after a reboot is tried again instead of being forgotten.
+- The macOS installer waits for a running update and its rollback restores the previous settings and launch agents. `install.sh` checks the same `ttyd` it writes into the service.
+- Backups include the Anthropic-compatible providers and their keys.
+
+**Faster**
+- The page is sent compressed (about a quarter of the size) and built once per version and language.
+- The session screen is sent only when it changed; the conversation file is read again only when it changed; new files in Changes no longer start a git process each; feature groups and the GitHub check are cached.
+- One computer that does not answer no longer holds back the lists of the others. At most six terminals stay open.
+- Very long lines (base64, hex) no longer freeze the screen; a large text file opens page by page.
+
+**Interface**
+- The new session form says whether the chosen agent is installed and signed in, with the step to take.
+- On a phone the send state and errors stay visible with the keyboard open; an unreachable computer keeps its heading, says it is unreachable and retries on a tap.
+- The open conversation view follows new messages; the inbox keeps keyboard focus; Tab moves through the page again on the screen view; review comments can be added from the keyboard; the quick switcher announces the chosen result to screen readers.
+- Author colours in History are readable on light themes. "All computers are up to date" is said only when every version is confirmed.
+- Fixed: turning Telegram off on another computer, dictation started twice by a double tap, dictation install hanging on a second tap, a folder link of a remote session checked on the wrong computer, search results left from another computer.
+
+**Security**
+- A pair proof must name this panel's own port, not only its address (outside containers and WSL).
+- History and group diffs never show files from `~/.config/cc-panel`, as the file browser already did.
+
 ## 1.66.0
 
 - Three more themes in the settings beside dark and warm light: **Black** (true black for OLED phone screens), **Dusk** (a calm blue-grey night with a lavender accent) and **Mint** (a fresh, cool light page with a teal accent). The sign-in page follows the chosen one; a test keeps text contrast at WCAG AA in every theme.

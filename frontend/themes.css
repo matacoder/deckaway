@@ -3,6 +3,7 @@
    surface (tests/frontend/theme.test.js). Light is a warm, homely look: cream paper, white cards, a coral accent,
    rounder corners, a rounded font where the device has one and softer shadows. */
 :root[data-theme=light]{
+  --author-0:#00658a;--author-1:#914c00;--author-2:#8540a0;--author-3:#756000;--author-4:#a32e6a;--author-5:#006b67;--author-6:#5142b0;--author-7:#80532b;
   --scheme:light;--scrollbar:#d3c8ba;
   --bg:#fbf7f1;--side:#fffdf9;--side2:#f4ede3;--sel:#efe4d6;--bd:#e9dfd2;--bd-soft:#5a3c1e14;
   --fg:#3b332c;--fg2:#231d18;--mut:#6a5f55;--dim:#6f645a;
@@ -51,6 +52,7 @@
 }
 /* Mint: a fresh, cool light page: white cards on a pale green-grey, a teal accent. */
 :root[data-theme=mint]{
+  --author-0:#00658a;--author-1:#914c00;--author-2:#8540a0;--author-3:#756000;--author-4:#a32e6a;--author-5:#006b67;--author-6:#5142b0;--author-7:#80532b;
   --scheme:light;--scrollbar:#c3d3d0;
   --bg:#f2f7f6;--side:#fff;--side2:#e7f0ee;--sel:#d6ebe5;--bd:#dae7e4;--bd-soft:#1e4a4214;
   --fg:#2b3a37;--fg2:#152320;--mut:#53635f;--dim:#5a6a66;

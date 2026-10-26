@@ -163,10 +163,11 @@ class Voice:
 
     def install(self):
         with self.lock:
-            if self.job['phase'] in ('binary', 'model'):
-                return self.status()
-            self.job = {'phase': 'binary'}
-        threading.Thread(target=self.install_job, name='agent-deck-voice', daemon=True).start()
+            start = self.job['phase'] not in ('binary', 'model')
+            if start:
+                self.job = {'phase': 'binary'}
+        if start:
+            threading.Thread(target=self.install_job, name='agent-deck-voice', daemon=True).start()
         return self.status()
 
     def install_job(self):

@@ -393,9 +393,13 @@ class Containers:
 
     def environment(self, choice=None):
         """Variables for an agent started now: Docker commands go to the chosen machine."""
-        machine = self.target(choice)
+        with self.lock:
+            identity = self.use if choice is None else choice
+            if not identity or identity == 'local':
+                return {}
+            machine = self.target(identity)
         if not machine:
-            return {}
+            raise ValueError('The selected Docker computer is unavailable; reconnect it or select local Docker')
         path = self.socket_path(machine['id'])
         local = self.engine()[0]
         # The session hook reads this next to the socket: who runs the containers and how to run one here.

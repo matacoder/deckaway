@@ -85,6 +85,30 @@ class TerminalCommandTests(unittest.TestCase):
 
 
 class TtydPinTests(unittest.TestCase):
+    def test_probe_uses_the_absolute_binary_selected_for_the_unit(self):
+        source = block('install.sh', 'TTYD_BIN=/usr/bin/ttyd', '\nfi\n')
+        for distro, path_help in ((None, '--writable'), ('old ttyd', '--writable'), ('--writable', 'old ttyd')):
+            with self.subTest(distro=distro), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                distro_bin, static_bin = root / 'distro-ttyd', root / 'static-ttyd'
+                path_bin = root / 'ttyd'
+                path_bin.write_text('#!/bin/sh\necho "' + path_help + '"\n')
+                path_bin.chmod(0o755)
+                if distro:
+                    distro_bin.write_text('#!/bin/sh\necho "' + distro + '"\n')
+                    distro_bin.chmod(0o755)
+                script = source.replace('/usr/bin/ttyd', str(distro_bin)).replace('/usr/local/bin/ttyd', str(static_bin))
+                helpers = ('say() { :; }\ndie() { exit 1; }\nuname() { echo x86_64; }\n'
+                           'curl() { printf "%s\\n" "#!/bin/sh" "echo --writable" > "$3"; }\n'
+                           'sha256sum() { cat >/dev/null; }\n')
+                result = subprocess.run(['bash', '-c', 'set -euo pipefail\n' + helpers + script + '\necho "$TTYD_BIN"'],
+                                        input='', capture_output=True, text=True,
+                                        env={**os.environ, 'PATH': str(root) + ':' + os.environ['PATH'], 'TTYD_VERSION': 'test'})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                expected = distro_bin if distro == '--writable' else static_bin
+                self.assertEqual(result.stdout.strip(), str(expected))
+                self.assertTrue(expected.is_file())
+
     def test_the_installer_and_the_image_pin_the_same_ttyd(self):
         # Two copies of the version and hashes: a bump in one file only would fail every fresh root install.
         import re

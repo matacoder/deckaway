@@ -121,9 +121,10 @@ def script(agent, folder, sid=None, resume=False, skip=False):
         lines.append("$env:CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN = '1'")
         args = ['--resume' if resume else '--session-id', sid] if sid else []
     else:
-        # No hook reports a Windows Codex conversation; until its file is found, the folder's latest one.
+        if resume and not sid:
+            raise ValueError('Windows Codex conversation is unknown; start a new conversation to continue safely')
         # As in WSL, without the background server: an elevated Codex refuses to start one.
-        args = ['--no-daemon', '--no-alt-screen', *((['resume', sid] if sid else ['resume', '--last']) if resume else [])]
+        args = ['--no-daemon', '--no-alt-screen', *(['resume', sid] if resume else [])]
     args += [flag] if skip else []
     lines += [f'$agent = (Get-Command {program} -CommandType Application -ErrorAction Stop | {RUNNABLE} | Select-Object -First 1).Source',
               f"if (-not $agent) {{ throw '{program} is not installed in Windows as a program (.exe or .cmd)' }}",
@@ -133,6 +134,16 @@ def script(agent, folder, sid=None, resume=False, skip=False):
 
 CODEX_META = re.compile(r'"timestamp":\s*"([^"]+)".*?"type":\s*"session_meta".*?"id":\s*"([0-9a-f-]{36})"'
                         r'.*?"cwd":\s*"((?:[^"\\]|\\.)*)"')
+
+
+def codex_shared_folder(sessions, name, folder):
+    # A rollout can appear before either agent reports its id, so even one matching file is unsafe here.
+    for line in sessions.splitlines():
+        other, agent, runtime, path = (line.split('\t') + [''] * 4)[:4]
+        if other.startswith('cc-') and other != name and agent == 'codex' and runtime == 'windows':
+            if (to_windows(path) or '').rstrip('\\').lower() == folder.rstrip('\\').lower():
+                return True
+    return False
 
 
 def codex_conversation(home, folder, since, days=3):

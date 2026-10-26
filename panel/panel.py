@@ -514,15 +514,15 @@ def session_group(path):
     return 'другое'
 
 
-def list_sessions(preview_name=None):
+def list_sessions(preview_name=None, preview_revision=None, question_metadata=False):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
-           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}")
+           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}\t#{pane_id}:#{pane_pid}:#{@cc_sid}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     named = network_settings.get().get('auto_titles') is not False
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime = (line.split("\t") + [""] * 15)[:15]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance = (line.split("\t") + [""] * 16)[:16]
         title = title or (auto if named else "")  # The name its owner gave outranks the one a model keeps up to date.
         if not sname.startswith(PREFIX):
             continue
@@ -544,12 +544,17 @@ def list_sessions(preview_name=None):
                 item['source'] = {k:v for k,v in model_source.items() if k in ('kind','profile','provider','model','binding','label')}
         except ValueError:
             pass
+        if question_metadata:
+            item["instance"] = instance
         if name == preview_name:
             if model := session_model(agent, sid):
                 item["model"] = model
             preview_ansi = tmux("capture-pane", "-p", "-e", "-J", "-t", f"={sname}:", "-S", "-2000", check=False)
             # Only the coloured copy: every page since 0.1.0 reads it first, and a plain one doubled each answer.
-            item.update(preview_ansi=preview_ansi)
+            revision = hashlib.sha256(preview_ansi.encode()).hexdigest()
+            item["preview_revision"] = revision
+            if revision != preview_revision:
+                item["preview_ansi"] = preview_ansi
         result.append(item)
     return sorted(result, key=lambda s: (s["group"], s["name"]))
 
@@ -698,8 +703,8 @@ def with_containers(command, choice=None):
         return command
     try:
         extra = containers_service().environment(choice)
-    except (OSError, ValueError):
-        return command
+    except OSError:
+        raise ValueError('Docker settings could not be read; check the selected computer and retry') from None
     return ''.join(f'{key}={shlex.quote(value)} ' for key, value in extra.items()) + command
 
 
@@ -918,10 +923,14 @@ def windows_codex_sid(name, agent, sid):
         if time.monotonic() - _windows_looks.get(name, -60) < 15:
             return sid
         _windows_looks[name] = time.monotonic()
-    from integrations.windows import codex_conversation
+    from integrations.windows import codex_conversation, codex_shared_folder
+    folder = windows_service_folder(name)
+    fmt = '#{session_name}\t#{@cc_agent}\t#{@cc_runtime}\t#{pane_current_path}'
+    if codex_shared_folder(tmux('list-sessions', '-F', fmt, check=False), PREFIX + name, folder):
+        return sid
     since = opt(name, '@cc_since') or tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{session_created}').strip()
     try:
-        found = codex_conversation(windows_service().home(), windows_service_folder(name), float(since or 0) - 5)
+        found = codex_conversation(windows_service().home(), folder, float(since or 0) - 5)
     except (OSError, ValueError):
         return sid
     if found:
@@ -1248,6 +1257,10 @@ def gh(*args, timeout=30):
 
 
 def github_status():
+    return cached("github-status", 15, _github_status)
+
+
+def _github_status():
     r = gh("api", "user", "--jq", ".login", timeout=15)
     return {"connected": r.returncode == 0, "login": r.stdout.strip() if r.returncode == 0 else None}
 
@@ -1587,19 +1600,25 @@ ACTIONS = {
     "transcribe": lambda d: {"text": voice_service().transcribe(d.get("audio"), d.get("language"), d.get("prompt"))}}
 
 
-def current_question(name):
-    if not session_exists(name):
-        return None
-    agent = opt(name, "@cc_agent") or "claude"
-    instance = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:",
-                    "#{pane_id}:#{pane_pid}:#{@cc_sid}").strip()
+def current_question(name, session=None):
+    if session is None:
+        if not session_exists(name):
+            return None
+        agent = opt(name, "@cc_agent") or "claude"
+        instance = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:",
+                        "#{pane_id}:#{pane_pid}:#{@cc_sid}").strip()
+    else:
+        agent, instance = session.get("agent", "claude"), session.get("instance")
+        if instance is None:
+            instance = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:",
+                            "#{pane_id}:#{pane_pid}:#{@cc_sid}").strip()
     screen = tmux("capture-pane", "-p", "-t", f"={PREFIX}{name}:")
     return parse_question(name, agent, instance, screen)
 
 
 def scan_questions():
     result = []
-    for session in list_sessions():
+    for session in list_sessions(question_metadata=True):
         if session['agent'] == 'shell' or not session['running']:
             continue
         with input_locks_lock:
@@ -1607,11 +1626,11 @@ def scan_questions():
         with lock:
             # Notifications, Telegram and the inbox show the name the user gave the session.
             label = session.get('title') or session['name']
-            structured = pending_questions(session['name'], session['agent'], session.get('sid'))
+            structured = pending_questions(session['name'], session['agent'], session.get('sid') or '', session.get('instance'))
             if structured:
                 result.extend(dataclasses.replace(q, label=label) for q in structured)
                 continue
-            question = current_question(session['name'])
+            question = current_question(session['name'], session)
             if question:
                 result.append(dataclasses.replace(question, label=label))
     return result
@@ -1675,16 +1694,21 @@ transcript_answers = {}  # (path, name, agent, instance) -> ((mtime, size), ques
 transcript_answers_lock = threading.Lock()
 
 
-def pending_questions(name, agent=None, sid=None):
+def pending_questions(name, agent=None, sid=None, instance=None, metadata=None):
     """agent and sid: as the session list just read them, so the 2 s scan does not ask tmux again."""
     agent = agent or opt(name, '@cc_agent') or 'claude'
     sid = sid if sid is not None else opt(name, '@cc_sid')
+    if metadata is not None:
+        metadata.update(agent=agent, sid=sid)
     if agent not in ('codex', *CLAUDE_FAMILY) or not valid_sid(sid):
         return []
     path = transcript_path(agent, sid)
     if not path:
         return []
-    instance = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_id}:#{pane_pid}:#{@cc_sid}').strip()
+    if instance is None:
+        instance = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_id}:#{pane_pid}:#{@cc_sid}').strip()
+    if metadata is not None:
+        metadata['instance'] = instance
     try:
         # The tail of a conversation file is megabytes of JSON: parsed again only when the file changed.
         stat, key = path.stat(), (path, name, agent, instance)
@@ -1712,13 +1736,14 @@ def session_question(name):
     with input_locks_lock:
         lock = input_locks.setdefault(name, threading.Lock())
     with lock:
-        pending = pending_questions(name)
+        metadata = {}
+        pending = pending_questions(name, metadata=metadata)
         if len(pending) > 1:
             # A form of several questions is answered only at Submit: the conversation file lists them all
             # as pending until then, so the one on screen is the one to answer, its Submit tab included.
-            current = current_question(name)
+            current = current_question(name, metadata)
             return next((q for q in pending if matches_screen(q, current)), current or pending[0])
-        return pending[0] if pending else current_question(name)
+        return pending[0] if pending else current_question(name, metadata)
 
 
 def question_payload(question):
@@ -1728,7 +1753,7 @@ def question_payload(question):
 
 
 def questions_payload():
-    return {'questions': [{**question_payload(q), 'session': q.session, 'label': q.label, 'agent': q.agent} for q in scan_questions()]}
+    return {'questions': [{**question_payload(q), 'session': q.session, 'label': q.label, 'agent': q.agent} for q in local_questions()]}
 
 
 def remote_questions():
@@ -1737,7 +1762,15 @@ def remote_questions():
 
 
 def all_questions():
-    return scan_questions() + remote_questions()
+    return local_questions() + remote_questions()
+
+
+_local_questions_cache = {'at': -10.0, 'items': [], 'refreshing': False}
+_local_questions_lock = threading.Condition()
+
+
+def local_questions():
+    return question_snapshot(_local_questions_cache, _local_questions_lock, scan_questions)
 
 
 _questions_cache = {'at': -10.0, 'items': [], 'refreshing': False}
@@ -1747,21 +1780,25 @@ _questions_lock = threading.Condition()
 def shared_questions():
     """One scan every 2 s serves Telegram, notifications and the inbox instead of one each.
     While one thread refreshes, the others get the previous result instead of waiting on slow computers."""
-    with _questions_lock:
-        while _questions_cache['refreshing'] and _questions_cache['at'] < 0:
-            _questions_lock.wait()  # No result yet: an empty list would look like everything was answered.
-        if _questions_cache['refreshing'] or time.monotonic() - _questions_cache['at'] < 2:
-            return list(_questions_cache['items'])
-        _questions_cache['refreshing'] = True
+    return question_snapshot(_questions_cache, _questions_lock, all_questions)
+
+
+def question_snapshot(cache, lock, scan):
+    with lock:
+        while cache['refreshing'] and cache['at'] < 0:
+            lock.wait()  # No result yet: an empty list would look like everything was answered.
+        if cache['refreshing'] or time.monotonic() - cache['at'] < 2:
+            return list(cache['items'])
+        cache['refreshing'] = True
     items = None
     try:
-        items = all_questions()
+        items = scan()
     finally:
-        with _questions_lock:
+        with lock:
             if items is not None:
-                _questions_cache.update(items=items, at=time.monotonic())
-            _questions_cache['refreshing'] = False
-            _questions_lock.notify_all()
+                cache.update(items=items, at=time.monotonic())
+            cache['refreshing'] = False
+            lock.notify_all()
     return list(items)
 
 
@@ -2101,6 +2138,11 @@ def limit_window_reset(agent):
     return min(resets) if resets else None
 
 
+def schedule_input_lock(name):
+    with input_locks_lock:
+        return input_locks.setdefault(name, threading.Lock())
+
+
 def schedule_service():
     global _schedule
     from integrations.schedule import Schedule
@@ -2108,8 +2150,9 @@ def schedule_service():
         if _schedule is None:
             _schedule = Schedule(os.path.expanduser('~/.config/cc-panel/integrations'), list_sessions,
                                  lambda name: tmux('capture-pane', '-p', '-t', f'={PREFIX}{name}:', check=False),
-                                 lambda name: session_question(name) is not None,
-                                 lambda name, text: action_send({'name': name, 'text': text}), limit_window_reset)
+                                 lambda name: bool(pending_questions(name) or current_question(name)),
+                                 lambda name, text: send_input({'name': name, 'text': text}), limit_window_reset,
+                                 input_lock=schedule_input_lock)
         return _schedule
 
 
@@ -2322,12 +2365,13 @@ def session_info(name, language, fresh=False):
 
 def session_conversation(name):
     """What was said in the open conversation, from the agent's own file: more than the terminal still holds."""
-    from integrations.session_info import conversation
+    from integrations.session_info import conversation_snapshot
     agent, sid = opt(name, "@cc_agent") or "claude", opt(name, "@cc_sid")
     if agent not in (*CLAUDE_FAMILY, "codex") or not valid_sid(sid):
         return {"supported": False}
     path = transcript_path(agent, sid)
-    return {"supported": True, "turns": conversation("codex" if agent == "codex" else "claude", path) if path else []}
+    return {"supported": True, **(conversation_snapshot("codex" if agent == "codex" else "claude", path)
+                                  if path else {"turns": [], "revision": ""})}
 
 
 def gallery_loop():
@@ -2627,7 +2671,7 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(urlsplit(self.path).query)
         identity, nonce, address = (query.get(k, [''])[0] for k in ('id', 'nonce', 'at'))
         asked = (re.fullmatch(lan.KEY_ID, identity) and re.fullmatch(lan.NONCE, nonce) and re.fullmatch(lan.ADDRESS, address)
-                 and lan.own_address(address, self.connection.getsockname()[0]))
+                 and lan.own_address(address, self.connection.getsockname()))
         answer = pairs.challenge(identity, nonce, address) if asked else None
         return self.send_json(200, answer) if answer else self.send_json(404, {'error': 'unknown pair key'})
 
@@ -2793,12 +2837,21 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def send_body(self, code, body, ctype):
+    def serve_panel(self):
+        from integrations.page_delivery import pages, accepts_gzip
+        plain, compressed, _ = pages.get(PAGE_FILE, (self.language(), locales is not None), self.localized_page)
+        encoded = accepts_gzip(self.headers.get('Accept-Encoding', ''))
+        return self.send_body(200, compressed if encoded else plain, 'text/html; charset=utf-8',
+                              {'Vary': 'Accept-Encoding, Cookie', **({'Content-Encoding': 'gzip'} if encoded else {})})
+
+    def send_body(self, code, body, ctype, headers=None):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         if ctype.startswith("text/html"):
             for name, value in FRAME_HEADERS:
                 self.send_header(name, value)
@@ -2883,12 +2936,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.docker_tunnel()
         # Notification links open the page as /?deck=<id>#<session>.
         if urlsplit(self.path).path in ("/", "/index.html"):
-            with open(PAGE_FILE, "rb") as f:
-                page = f.read()
-            revision = hashlib.sha256(page).hexdigest().encode()
-            page = self.localized_page(page.decode()).encode()
-            page = page.replace(b"__PANEL_REVISION__", revision)
-            return self.send_body(200, page, "text/html; charset=utf-8")
+            return self.serve_panel()
         if self.path == "/api/ui-version":
             with open(PAGE_FILE, "rb") as f:
                 revision = hashlib.sha256(f.read()).hexdigest()
@@ -2896,7 +2944,8 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         if parsed.path == "/api/sessions":
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
-            return self.send_json(200, {"sessions": list_sessions(preview_name)})
+            revision = parse_qs(parsed.query).get("preview_revision", [None])[0]
+            return self.send_json(200, {"sessions": list_sessions(preview_name, revision)})
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
         if parsed.path == "/api/session_info":
@@ -3408,17 +3457,30 @@ def sync_state():
         if not pid:
             return
         state = load_state()
+        pending = {}
         if state.get("server_pid") and state["server_pid"] != pid:
+            pending = dict(state.get("sessions") or {})
+        else:
+            pending = {name: state["sessions"][name] for name in state.get("pending_restore", [])
+                       if name in (state.get("sessions") or {})}
+        failed = {}
+        if pending:
             live = live_sessions()
-            if any(name not in live for name in state.get("sessions") or {}):
+            if any(name not in live for name in pending):
                 containers_ready()
-            for name, info in (state.get("sessions") or {}).items():
+            for name, info in pending.items():
                 if name not in live:
                     try:
                         restore_session(name, info)
                     except Exception as e:  # One session must not keep the others from coming back.
-                        print(f"restore {name} failed: {type(e).__name__}: {e}", flush=True)
-        new = {"server_pid": pid, "sessions": live_sessions()}
+                        failed[name] = info
+                        print(f"restore {name} failed: {type(e).__name__}", flush=True)
+        live = live_sessions()
+        failed = {name: info for name, info in failed.items() if name not in live}
+        new = {"server_pid": pid, "sessions": {**failed, **live}}
+        if failed:
+            # Only failed restores survive disappearance; intentionally closed live sessions stay closed.
+            new["pending_restore"] = sorted(failed)
         for info in new["sessions"].values():
             info.pop("created", None)
         if new != state:

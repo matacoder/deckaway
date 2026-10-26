@@ -5,6 +5,8 @@ because these files grow to tens of megabytes. The summary is written by a model
 the session (the caller picks it), in the background, at most every few minutes while someone looks.
 """
 from datetime import datetime
+import copy
+import hashlib
 import json
 import os
 import re
@@ -27,6 +29,8 @@ TITLE, TITLE_CHARS = re.compile(r'[a-z0-9]+(?:-[a-z0-9]+){0,3}\Z'), 28
 SHOWN_CHARS, SHOWN_TURN, SHOWN_TAIL = 200_000, 8000, 32 * 1024 * 1024
 # Quality drops long before the window is full, so the levels are sizes, not shares of the window.
 HEAVY, FULL = 80_000, 150_000  # Defaults; the browser colours by the user's own limits.
+_conversations = {}
+_conversation_lock = threading.Lock()
 
 
 def tail_records(path, size=TAIL, most=TAIL_MAX):
@@ -140,9 +144,25 @@ def dialogue(agent, records, turn=TURN_CHARS, most=SUMMARY_CHARS):
 def conversation(agent, path):
     """The end of the conversation for reading: a restarted or shortened one leaves little in the terminal,
     while its file still has what was said before."""
-    # The agent's own retelling after a compaction is written as the person's message; nobody said it.
-    said = [record for record in tail_records(path, SHOWN_TAIL) if not record.get('isCompactSummary')]
-    return [{'role': role, 'text': text} for role, text in dialogue(agent, said, SHOWN_TURN, SHOWN_CHARS)]
+    return conversation_snapshot(agent, path)['turns']
+
+
+def conversation_snapshot(agent, path):
+    """One bounded, shared parse per file version; callers cannot mutate the kept turns."""
+    path = Path(path).resolve()
+    with _conversation_lock:
+        info = path.stat()
+        key = (agent, str(path), info.st_mtime_ns, info.st_size)
+        if key not in _conversations:
+            # Compaction retellings were not said by the person.
+            said = [r for r in tail_records(path, SHOWN_TAIL) if not r.get('isCompactSummary')]
+            turns = [{'role': role, 'text': text} for role, text in dialogue(agent, said, SHOWN_TURN, SHOWN_CHARS)]
+            revision = hashlib.sha256(json.dumps(turns, ensure_ascii=False).encode()).hexdigest()
+            for old in list(_conversations):
+                if old[:2] == key[:2] or len(_conversations) >= 64:
+                    del _conversations[old]
+            _conversations[key] = {'turns': turns, 'revision': revision}
+        return copy.deepcopy(_conversations[key])
 
 
 def summary_prompt(turns, language, title=''):
