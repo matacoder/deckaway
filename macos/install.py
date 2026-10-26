@@ -316,9 +316,13 @@ def replace_and_start(home, target, config, agents, definitions, settings, pytho
             run('launchctl', 'enable', domain + '/' + label)
             run('launchctl', 'bootstrap', domain, agents / (label + '.plist'))
         url = wait_for_panel(settings, logs)
-        print(f'DeckAway is ready: {url}\nLogin: {settings["PANEL_USER"]}\nPassword: {settings["PANEL_PASSWORD"]}')
+        print(f'DeckAway is ready: {url}')
         print(f'Projects: {settings["PROJECTS_DIR"]}')
         print('Log into Claude/Codex from the sidebar. Your sessions use a separate tmux server.')
+        # Last, so it is what stays on the screen; the same command is offered on the sign-in page.
+        print(f'\n  Sign in with\n    login:     {settings["PANEL_USER"]}\n    password:  {settings["PANEL_PASSWORD"]}\n'
+              '  Window closed? Show them again with:\n'
+              "    grep -e '\"PANEL_USER\"' -e '\"PANEL_PASSWORD\"' ~/.config/cc-panel/macos.json")
         if open_browser:
             run('open', url, check=False)
     return definitions

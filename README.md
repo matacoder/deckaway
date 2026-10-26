@@ -53,7 +53,7 @@ One command on a Linux server. [macOS, Windows, Docker, SteamOS](#install-anywhe
 | **Docker** | `git clone https://github.com/matacoder/deckaway.git && cd deckaway && docker compose up -d --build` |
 | **SteamOS** | `git clone https://github.com/matacoder/deckaway.git ~/agent-deck && ~/agent-deck/install-steamos.sh` |
 
-The installer prints the address, login and password. Then:
+The installer prints the address, login and password last. Closed the window? The sign-in page ("Where are the login and password?") gives the command that prints them again on that computer. Then:
 
 1. Open the address and log in.
 2. Sign in to your agents in **Settings → Agents**.

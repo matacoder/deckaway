@@ -2630,7 +2630,9 @@ class Handler(BaseHTTPRequestHandler):
             html = login_file.read()
         html = self.localized_page(html)
         error = locales.translate(error, self.language()) if locales is not None else error
+        from integrations.sign_in_help import show_again_command
         html = html.replace("{{ERROR}}", escape_html(error)).replace("{{USER}}", escape_html(typed[:100]))  # Never the real name: it is half of the sign-in.
+        html = html.replace("{{SHOW_AGAIN}}", escape_html(show_again_command()))
         self.send_body(200 if not error else 401, html.encode(), "text/html; charset=utf-8")
 
     def do_login(self):

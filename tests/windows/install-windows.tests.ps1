@@ -32,6 +32,10 @@ Check 'non-tailnet addresses are ignored' ($null -eq (Select-TailscaleIPv4 @('19
 $options = @{ Language = 'pt-BR'; Distro = 'Ubuntu-24.04'; Port = 8790; WithDocker = $false; GetSh = 'https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh' }
 Test-InstallOptions $options
 Check 'linux command carries only validated values' ((Get-LinuxCommand $options '100.64.0.9') -eq 'set -o pipefail; curl -fsSL https://raw.githubusercontent.com/matacoder/deckaway/main/get.sh | BIND_HOST=100.64.0.9 PANEL_PORT=8790 PANEL_LANGUAGE=pt-BR WITH_DOCKER=0 bash')
+Check 'the show-again command names the distribution and never an account' ((Get-ShowLoginCommand $options) -eq "wsl -d Ubuntu-24.04 -u root -- sh -c 'grep -h -e ^PANEL_USER= -e ^PANEL_PASSWORD= /home/*/.config/cc-panel/env'")
+$login = Read-PanelLogin "PANEL_USER=dev`r`nPANEL_PASSWORD=Abc-123_x`nother"
+Check 'login and password are read from the env lines' ($login['USER'] -eq 'dev' -and $login['PASSWORD'] -eq 'Abc-123_x')
+Check 'nothing is invented when the file was not read' ((Read-PanelLogin '').Count -eq 0)
 $elevated = [pscustomobject]@{ Principal = [pscustomobject]@{ RunLevel = 'Highest' } }
 Check 'the keep-alive task is unelevated unless asked' ((Get-KeepAliveRunLevel $options $null) -eq 'Limited')
 Check 'asking runs it with the highest rights' ((Get-KeepAliveRunLevel @{ WindowsAdmin = $true } $null) -eq 'Highest')

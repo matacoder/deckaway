@@ -960,6 +960,8 @@
     "Обновление не подтверждено на всех компьютерах. Проверьте версии и повторите попытку.": "Updates could not be confirmed on every computer. Check versions and try again.",
     "Последнее число сессий: {0}": "Last known sessions: {0}",
     "Вывод сессии": "Session output",
-    "Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.": "Use Tab to choose a paragraph or line and Enter to comment. You can also click it."
+    "Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.": "Use Tab to choose a paragraph or line and Enter to comment. You can also click it.",
+    "Где взять логин и пароль?": "로그인과 비밀번호는 어디에 있나요?",
+    "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "설치 프로그램이 마지막에 터미널 창에 표시했습니다. 창을 닫았다면 DeckAway 컴퓨터의 터미널에서 다음을 실행하세요(Windows에서는 PowerShell):"
   }
 }

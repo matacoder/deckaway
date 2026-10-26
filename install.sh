@@ -431,12 +431,20 @@ fi
 write_conf   # again: BIND_HOST and PUBLIC_PROXY may have been resolved above
 
 echo
-say "DeckAway v$NEW_VERSION — done: http://$BIND_HOST:$PANEL_PORT  (user: $DEV_USER)"
+say "DeckAway v$NEW_VERSION — done: http://$BIND_HOST:$PANEL_PORT"
 [ -z "$PUBLIC_DOMAIN" ] || echo "    public: https://$PUBLIC_DOMAIN"
-if [ -n "$NEW_PASS" ]; then
-    echo "    password: $NEW_PASS"
-else
-    echo "    password: grep PANEL_PASSWORD $ENV"
-fi
-echo "    first run: sign in to your agents in Settings -> Agents, connect GitHub in Settings -> Connections"
 for note in ${LATER[@]+"${LATER[@]}"}; do echo "    not done: $note"; done
+echo "    first run: sign in to your agents in Settings -> Agents, connect GitHub in Settings -> Connections"
+# Last, so it is what stays on the screen: the first user missed it among the lines above.
+echo
+echo "    ========================================================"
+echo "      Sign in to DeckAway with"
+echo "        login:     $(as_user sed -n 's/^PANEL_USER=//p' "$ENV" | head -1)"
+if [ -n "$NEW_PASS" ]; then
+    echo "        password:  $NEW_PASS"
+else
+    echo "        password:  unchanged (the one you already use)"
+fi
+echo "      Window closed? Show them again with:"
+echo "        sudo grep -h -e ^PANEL_USER= -e ^PANEL_PASSWORD= $ENV"
+echo "    ========================================================"

@@ -315,6 +315,13 @@ class HTTPTests(PanelCase):
         self.assertIn(b'value="guess"', body)
         self.assertNotIn(b"test-user", body)
 
+    def test_the_login_page_says_how_to_show_the_login_and_password_again(self):
+        with patch("integrations.sign_in_help.show_again_command", return_value="sudo sh -c 'grep <x>'"):
+            body = self.request("GET", "/login")[2].decode()
+        self.assertIn("<code>sudo sh -c &#x27;grep &lt;x&gt;&#x27;</code>", body)
+        self.assertNotIn("{{SHOW_AGAIN}}", body)
+        self.assertNotIn("test-user", body)
+
     def test_logout_without_a_cookie_does_not_end_isolated_terminal_links(self):
         epoch = self.panel.terminal_epoch()
         self.assertEqual(self.request("POST", "/logout")[0], 303)

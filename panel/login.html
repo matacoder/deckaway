@@ -29,6 +29,11 @@ input:focus{border-color:var(--acc)}
 button{width:100%;font:inherit;font-size:16px;font-weight:600;padding:13px;border:0;border-radius:var(--r);background:var(--acc-strong);color:#fff;margin-top:6px;cursor:pointer}
 button:active{opacity:.85}
 .err{min-height:20px;color:var(--bad);font-size:13px;text-align:center;margin-bottom:10px}
+.help{margin-top:22px;font-size:13px;color:var(--mut)}
+.help summary{cursor:pointer;text-align:center;list-style:none}
+.help summary::-webkit-details-marker{display:none}
+.help p{margin:10px 0 8px}
+.help code{display:block;padding:10px 12px;border-radius:var(--r);border:1px solid var(--bd);background:var(--field);color:var(--fg2);font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all;user-select:all;-webkit-user-select:all}
 </style></head><body>
 <form class="box" method="post" action="/login">
   <img class="logo" src="/icon-180.png" alt="">
@@ -39,5 +44,8 @@ button:active{opacity:.85}
   <label for="p">Пароль</label>
   <input id="p" name="password" type="password" autocomplete="current-password" required>
   <button type="submit">Войти</button>
+  <details class="help"><summary>Где взять логин и пароль?</summary>
+    <p>Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):</p>
+    <code>{{SHOW_AGAIN}}</code></details>
 </form>
 </body></html>

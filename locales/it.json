@@ -960,6 +960,8 @@
     "Обновление не подтверждено на всех компьютерах. Проверьте версии и повторите попытку.": "Updates could not be confirmed on every computer. Check versions and try again.",
     "Последнее число сессий: {0}": "Last known sessions: {0}",
     "Вывод сессии": "Session output",
-    "Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.": "Use Tab to choose a paragraph or line and Enter to comment. You can also click it."
+    "Выберите абзац или строку клавишей Tab и нажмите Enter, чтобы оставить комментарий. Можно также нажать мышью.": "Use Tab to choose a paragraph or line and Enter to comment. You can also click it.",
+    "Где взять логин и пароль?": "Dove trovo nome utente e password?",
+    "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "Il programma di installazione li ha mostrati alla fine, nella finestra del terminale. Se la finestra è chiusa, esegui questo in un terminale del computer con DeckAway (su Windows, in PowerShell):"
   }
 }

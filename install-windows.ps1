@@ -241,6 +241,39 @@ function Add-StartMenuShortcut([string]$Url) {
     [IO.File]::WriteAllText($path, "[InternetShortcut]`r`nURL=$Url`r`n")
 }
 
+# The same words the sign-in page offers (integrations/sign_in_help.py), so either way leads to them.
+$ShowLoginGrep = 'grep -h -e ^PANEL_USER= -e ^PANEL_PASSWORD= /home/*/.config/cc-panel/env'
+
+function Get-ShowLoginCommand($Options) {
+    return "wsl -d $($Options.Distro) -u root -- sh -c '$ShowLoginGrep'"
+}
+
+function Read-PanelLogin([string]$Text) {
+    $login = @{}
+    foreach ($line in ($Text -split "`n")) {
+        if ($line -match '^PANEL_(USER|PASSWORD)=(.+)$') { $login[$Matches[1]] = $Matches[2].Trim() }
+    }
+    return $login
+}
+
+# Printed last: the WSL installer's own lines scroll the first ones away, and the first user missed them.
+function Show-PanelLogin($Options) {
+    $found = Invoke-Wsl @('-d', $Options.Distro, '-u', 'root', '--', 'sh', '-c', $ShowLoginGrep)
+    $login = if ($found.Code -eq 0) { Read-PanelLogin $found.Output } else { @{} }
+    Write-Host ''
+    Write-Host '  ========================================================' -ForegroundColor Green
+    Write-Host '    Sign in to Agent Deck with'
+    if ($login['USER'] -and $login['PASSWORD']) {
+        Write-Host "      login:     $($login['USER'])" -ForegroundColor Yellow
+        Write-Host "      password:  $($login['PASSWORD'])" -ForegroundColor Yellow
+    } else {
+        Write-Host '      (they could not be read just now; the command below shows them)'
+    }
+    Write-Host '    Window closed? Show them again in PowerShell with:'
+    Write-Host "      $(Get-ShowLoginCommand $Options)"
+    Write-Host '  ========================================================' -ForegroundColor Green
+}
+
 function Install-AgentDeck($Options) {
     Write-Step 'Agent Deck for Windows 11 (WSL2)'
     Test-InstallOptions $Options
@@ -262,7 +295,8 @@ function Install-AgentDeck($Options) {
     Add-StartMenuShortcut $url
     Write-Host ''
     Write-Host "Agent Deck is running: $url" -ForegroundColor Green
-    Write-Host 'Login and password are printed above. Open it from the Start menu (Agent Deck) or on your phone over Tailscale.'
+    Write-Host 'Open it from the Start menu (Agent Deck) or on your phone over Tailscale.'
+    Show-PanelLogin $Options
     Start-Process $url
 }
 
