@@ -300,6 +300,23 @@ class SessionTests(PanelCase):
         self.assertEqual(self.panel.load_state(), {})
 
 
+class TerminalLinkTests(PanelCase):
+    def test_the_tmux_server_is_told_once_that_terminals_take_links(self):
+        features = ['terminal-features[0] xterm*:clipboard\n']
+        calls = []
+
+        def tmux(*args, check=True):
+            calls.append(args)
+            if args[0] == 'set-option':
+                features.append('terminal-features[1] xterm*:hyperlinks\n')
+            return ''.join(features) if args[0] == 'show-options' else ''
+        self.panel.tmux = tmux
+        self.panel.enable_terminal_links()
+        self.panel.enable_terminal_links()
+        self.assertEqual([c for c in calls if c[0] == 'set-option'],
+                         [('set-option', '-as', 'terminal-features', ',xterm*:hyperlinks')])
+
+
 class CacheTests(PanelCase):
     def test_success_is_cached_until_ttl(self):
         fetch = Mock(return_value={"value": 1})

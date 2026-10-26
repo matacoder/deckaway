@@ -1413,3 +1413,50 @@ test('a photo copied with its caption is offered, not lost, when pasted by the m
   expect([...doc.querySelectorAll('button')].some(b=>b.textContent==='Приложить')).toBe(false);
   }finally{window.close()}
 });
+
+test('links an agent prints with a hidden address (OSC 8) open from the screen; unsafe ones stay text',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const doc=window.document,draw=ansi=>window.eval(`updateScreen({name:'alpha',preview_ansi:${JSON.stringify(ansi)}},true)`);
+  const link=(url,text)=>`\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
+  draw(`Buy: \x1b[34m${link('https://www.ozon.ru/category/x?q=teyes','Провода Teyes на Ozon')}\x1b[39m or ${link('javascript:alert(1)','this')} and https://ya.ru/a\nnext ${link('https://drive2.ru/l/1','DRIVE2')}.`);
+  const anchors=[...doc.querySelectorAll('#pre a')];
+  expect(anchors.map(a=>[a.textContent,a.getAttribute('href')])).toEqual([
+    ['Провода Teyes на Ozon','https://www.ozon.ru/category/x?q=teyes'],['https://ya.ru/a','https://ya.ru/a'],['DRIVE2','https://drive2.ru/l/1']]);
+  expect(anchors[0].target).toBe('_blank');expect(anchors[0].rel).toBe('noopener');
+  expect(doc.getElementById('pre').textContent).toContain('or this and');
+  }finally{window.close()}
+});
+
+test('paths and agent links are clickable in the terminal itself',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const opened=[],asked=[];
+  const window=boot({...routesFor(state),'/api/files':url=>{asked.push(url.searchParams.get('path'));return {path:'/home/demo/app',home:'/home/demo',parent:'/home/demo',entries:[]}}});
+  try{
+  await settle();await settle();
+  window.eval("activate('alpha')");await settle();
+  const rows=['Saved in /home/demo/reports/ and ~/notes.md','see https://ya.ru'];
+  let provider;
+  const term={buffer:{active:{getLine:i=>rows[i]===undefined?undefined:{translateToString:()=>rows[i]}}},options:{},
+    registerLinkProvider:p=>{provider=p}};
+  window.open=(url,target,features)=>{opened.push([url,target,features])};
+  window.hookTerminalLinks({term},'alpha');
+  let links;provider.provideLinks(1,found=>{links=found});
+  expect(links.map(l=>[l.text,l.range.start.x,l.range.end.x])).toEqual([['/home/demo/reports/',10,28],['~/notes.md',34,43]]);
+  links[0].activate();await settle();await settle();
+  expect(asked).toContain('/home/demo/reports');
+  // OSC 8 links: web ones open in a tab, a file:// folder in the file browser, anything else nowhere.
+  term.options.linkHandler.activate(null,'https://www.ozon.ru/x');
+  term.options.linkHandler.activate(null,'javascript:alert(1)');
+  expect(opened).toEqual([['https://www.ozon.ru/x','_blank','noopener']]);
+  asked.length=0;term.options.linkHandler.activate(null,'file:///home/demo/app/');await settle();await settle();
+  expect(asked).toContain('/home/demo/app');
+  // A terminal of another session opens nothing.
+  const other={buffer:term.buffer,options:{},registerLinkProvider:p=>{provider=p}};
+  window.hookTerminalLinks({term:other},'beta');await settle();await settle();asked.length=0;
+  provider.provideLinks(1,found=>{links=found});links[0].activate();await settle();
+  expect(asked).toEqual([]);
+  }finally{window.close()}
+});

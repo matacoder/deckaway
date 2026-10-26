@@ -3536,11 +3536,22 @@ def keep_sessions_on_oom(home=None, run=subprocess.run):
             print("Could not reload systemd user units", flush=True)
 
 
+def enable_terminal_links():
+    """Agents' links (OSC 8) reach the browser terminal only when tmux knows it takes them. An in-panel
+    update does not rewrite ~/.tmux.conf, so the running server is told once, for clients attached from now."""
+    try:
+        if "hyperlinks" not in tmux("show-options", "-s", "terminal-features", check=False):
+            tmux("set-option", "-as", "terminal-features", ",xterm*:hyperlinks", check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        print("Could not turn on terminal links in tmux", flush=True)
+
+
 def main():
     keep_sessions_on_oom()
     if sys.platform == "darwin" and os.environ.get("TMUX_SOCKET_NAME") and not tmux_server_pid():
         config = os.path.expanduser("~/.config/cc-panel/tmux.conf")
         tmux("-f", config, "new-session", "-d", "-s", "_keep")
+    enable_terminal_links()
     if LMStudio:
         try:
             model_service()

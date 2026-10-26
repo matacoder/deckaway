@@ -40,6 +40,24 @@ function ansiColor(n){
   n-=16;const level=v=>v===0?0:55+40*v;
   return screenRgb([level(Math.floor(n/36)),level(Math.floor(n/6)%6),level(n%6)]);
 }
+// Only addresses a page may open on a tap; an empty one ends the link. Pure for tests.
+function safeHyperlink(target){
+  if(!/^(https?:\/\/|mailto:)/i.test(target||"")||target.length>2048)return false;
+  try{new URL(target);return true}catch(e){return false}
+}
+// [start,end) of each stretch of a line's runs that carries one link. Pure for tests.
+function hyperlinkRanges(runs,length){
+  const ranges=[];let offset=0;
+  for(const run of runs){
+    const end=Math.min(offset+run.text.length,length),last=ranges[ranges.length-1];
+    if(run.style.link&&end>offset){
+      if(last&&last.url===run.style.link&&last.end===offset)last.end=end;
+      else ranges.push({index:offset,end,url:run.style.link});
+    }
+    offset+=run.text.length;if(offset>=length)break;
+  }
+  return ranges;
+}
 function ansiLines(text,depth=SCREEN_LINES){
   let style={},line=[],lines=[];
   const write=t=>{
@@ -83,11 +101,17 @@ function ansiLines(text,depth=SCREEN_LINES){
       }
     }
   };
+  // OSC 8 (agents print a link's text and hide its address): kept on the runs, drawn as a link.
+  const hyperlink=osc=>{
+    const target=osc.replace(/^\x1b\]8;[^;]*;/,"").replace(/(?:\x07|\x1b\\)$/,"");
+    if(safeHyperlink(target))style.link=target;else delete style.link;
+  };
   const escapes=/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
   let start=0;
   for(const m of text.matchAll(escapes)){
     write(text.slice(start,m.index));
     if(m[0].startsWith("\x1b[")&&m[0].endsWith("m"))sgr(m[0].slice(2,-1));
+    else if(m[0].startsWith("\x1b]8;"))hyperlink(m[0]);
     start=m.index+m[0].length;
   }
   write(text.slice(start));lines.push(line);
@@ -234,14 +258,18 @@ function updateScreen(s,force){
       if(line.length>=8&&boxN&&BOX_LINE.test(line)){if(!(p.lastChild&&p.lastChild.className==="hr"))p.append(el("div","hr"));continue}
       if(line.length>=20&&boxN/line.length>=0.8){p.append(el("div","hrl",line.replace(BOX_CHARS,"").trim()));continue}
       const d=el("div","ln");let i=0;
-      const urls=[...line.matchAll(URL_RE)].map(m=>({index:m.index,url:cleanUrl(m[0])}));
-      const images=imageMatches(line,urls.map(u=>[u.index,u.index+u.url.length]));
-      const paths=fileMatches(line,[...urls.map(u=>[u.index,u.index+u.url.length]),...images.map(m=>[m.index,m.index+m.path.length])]);
-      for(const m of [...urls,...images,...paths].sort((x,y)=>x.index-y.index)){
+      const linked=hyperlinkRanges(runs,line.length),inLink=(from,to)=>linked.some(r=>from<r.end&&to>r.index);
+      const urls=[...line.matchAll(URL_RE)].map(m=>({index:m.index,url:cleanUrl(m[0])})).filter(u=>!inLink(u.index,u.index+u.url.length));
+      const taken=[...linked.map(r=>[r.index,r.end]),...urls.map(u=>[u.index,u.index+u.url.length])];
+      const images=imageMatches(line,taken);
+      const paths=fileMatches(line,[...taken,...images.map(m=>[m.index,m.index+m.path.length])]);
+      for(const m of [...linked,...urls,...images,...paths].sort((x,y)=>x.index-y.index)){
         appendStyledRange(d,runs,i,m.index);
         if(m.url){
-          const a=document.createElement("a");a.href=resolvePanelLink(m.url);a.target="_blank";a.rel="noopener";
-          appendStyledRange(a,runs,m.index,m.index+m.url.length);d.append(a);i=m.index+m.url.length;
+          const end=m.end??m.index+m.url.length;
+          const a=document.createElement("a");a.href=m.end?m.url:resolvePanelLink(m.url);a.target="_blank";a.rel="noopener";
+          if(m.end)a.title=m.url;
+          appendStyledRange(a,runs,m.index,end);d.append(a);i=end;
         }else if(m.file){d.append(fileLink(s.name,m.file,runs,m.index,m.index+m.file.length,m.folder));i=m.index+m.file.length}
         else{d.append(imageLink(s.name,m.path,runs,m.index,m.index+m.path.length));i=m.index+m.path.length}
       }

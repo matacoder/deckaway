@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.69.0
+
+- Links an agent prints with their address hidden behind the text (Claude Code's "Ozon" or "DRIVE2" links) open on a tap, in the Screen view and in the terminal: tmux now passes them to the browser terminal (`hyperlinks` in `tmux.conf`, and the panel turns it on in a running tmux after an in-panel update), and the Screen view draws them as links. Only http, https and mailto addresses open; a `file://` one opens the file browser.
+- Folders and files printed in the terminal are links too, as they already were in the Screen view: a folder opens in the file browser, a Markdown file in the viewer, anything else downloads.
+
 ## 1.68.0
 
 - The installers end with the login and password in a box of their own, as the last thing on the screen, with the command that shows them again. On Windows they are read from WSL and printed after the Linux installer's lines, before the browser opens.

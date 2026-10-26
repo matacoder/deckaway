@@ -86,6 +86,32 @@ async function openRefFolder(path){
   files.session=active;files.key=sessionInfoKey();
   await loadFolder(sessionRelative(path).replace(/(.)\/+$/,"$1"));
 }
+// The terminal itself (ttyd's xterm) gets the paths the Screen view links, and an agent's own links (OSC 8)
+// open in a new tab, a file:// one in the file browser. Retried until ttyd has made its terminal.
+function hookTerminalLinks(w,name,tries=0){
+  const t=w.term;
+  if(!t?.registerLinkProvider||!t.buffer){if(tries<100)setTimeout(()=>hookTerminalLinks(w,name,tries+1),100);return}
+  if(t._ccLinks)return;t._ccLinks=true;
+  const open=(path,folder)=>{
+    if(name!==active)return;
+    if(folder===true)openRefFolder(path);else if(folder)openScreenPath(path);
+    else if(isMarkdown(path))openScreenFile(path);else downloadFile(name,path);
+  };
+  t.registerLinkProvider({provideLinks(y,callback){
+    const line=t.buffer.active.getLine(y-1),text=line?line.translateToString(true):"";
+    callback(fileMatches(text).map(m=>({range:{start:{x:m.index+1,y},end:{x:m.index+m.file.length,y}},text:m.file,
+      decorations:{pointerCursor:true,underline:true},activate:()=>open(m.file,m.folder)})));
+  }});
+  try{t.options.linkHandler={allowNonHttpProtocols:true,activate:(event,uri)=>terminalLink(uri,open)}}catch(e){}
+}
+// An address behind an OSC 8 link. Pure apart from what it calls.
+function terminalLink(uri,open){
+  if(/^file:\/\//i.test(uri)){
+    let path;try{path=decodeURIComponent(new URL(uri).pathname)}catch(e){return}
+    open(path,path.endsWith("/")?true:/\.(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{1,10}$/.test(path)?false:"maybe");return;
+  }
+  if(safeHyperlink(uri))window.open(uri,"_blank","noopener");
+}
 // A terminal of its own in the session's folder: the agent's session keeps its screen and its input.
 async function runInTerminal(command){
   const s=cur();if(!s)return;

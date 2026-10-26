@@ -357,7 +357,7 @@ function frameFor(name){
     f=document.createElement("iframe");f.src=activePath("/t/?arg="+encodeURIComponent("=cc-"+name));
     // Only the overlay reacts: a full show() would scroll the Screen view or move focus into the terminal.
     f.dataset.loading="1";f.addEventListener("load",()=>{delete f.dataset.loading;if(frames.get(active)===f&&curMode()==="term")$("term_loading").hidden=true},{once:true});
-    f.onload=()=>{try{keepPageFocus(f.contentWindow);f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
+    f.onload=()=>{try{keepPageFocus(f.contentWindow);f.contentWindow.addEventListener("keydown",hotkeys,true);watchFileDrops(f.contentWindow);hookClipboard(f.contentWindow);hookTerminalLinks(f.contentWindow,name);darkScrollbars(f.contentDocument);attachDrawerSwipe(f.contentDocument,drawerSwipe);attachDrawerSwipe(f.contentDocument,projectSwipe)}catch(e){}};
     $("stage").append(f);frames.set(name,f);
   }
   // Map order is visit order, so capacity eviction always removes the least recently used client.
