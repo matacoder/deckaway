@@ -2826,7 +2826,7 @@ async function loadScreenHistory(key){
     if(key!==sessionInfoKey())return;
     keepAnswer(conversationKnown,key,data,8);
     if(conversationOpen())renderConversation(data);
-    showRefs(key,data?.supported?data.turns:[]);
+    showRefs(key,data?.supported?data.turns:[]);rememberAgentText(key,data?.supported?data.turns:[]);
     const p=$("pre"),stick=atBottom(p),below=p.scrollHeight-p.scrollTop;
     const screen=[...p.childNodes].filter(node=>node!==screenHistory.node).map(node=>node.textContent).join("\n");
     const turns=turnsAboveScreen(data?.supported?data.turns||[]:[],screen);
@@ -6298,6 +6298,37 @@ function watchRichPaste(){
 }
 
 if(typeof module!=="undefined")module.exports={pastedImageSources,isPasteKey,mentionsPictures,pastedText,richPasteText};
+// The agent hard-wraps what it prints to the terminal's width: a newline and an indent inside a command or a
+// sentence, and spaces up to the edge. Text copied from the screen is looked up in what the agent wrote
+// (its conversation file, whitespace aside) and the original goes to the clipboard; tool output is not in
+// that file, so there only the padding is dropped. Bundled before app.js; nothing runs at load time.
+const agentText={key:"",text:""};
+function rememberAgentText(key,turns){agentText.key=key;agentText.text=(Array.isArray(turns)?turns:[]).map(t=>t?.text||"").join("\n\n")}
+const SCREEN_MARKS=/^[⏺●⎿│▐▌❯>•·-]+$/;
+// The one place in the source the selection is, whitespace aside; null when absent or ambiguous. Pure for tests.
+function sourceOf(selected,source){
+  if(!source||!selected.trim()||selected.length>8000)return null;
+  const words=selected.split(/\s+/).filter(word=>word&&!SCREEN_MARKS.test(word));
+  if(!words.length||words.length>1500)return null;
+  const pattern=new RegExp(words.map(word=>word.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s*"),"g");
+  const found=new Set([...source.matchAll(pattern)].map(match=>match[0]));
+  return found.size===1?[...found][0]:null;
+}
+function cleanCopied(selected,source){
+  return sourceOf(selected,source)??selected.replace(/[ \t ]+$/gm,"");
+}
+function copiedFromScreen(text){
+  return cleanCopied(text,agentText.key===sessionInfoKey()?agentText.text:"");
+}
+function watchScreenCopy(){
+  $("pre").addEventListener("copy",event=>{
+    const text=String(getSelection()),clean=text&&copiedFromScreen(text);
+    if(!text||clean===text||!event.clipboardData)return;
+    event.clipboardData.setData("text/plain",clean);event.preventDefault();
+  });
+}
+
+if(typeof module!=="undefined")module.exports={sourceOf,cleanCopied};
 // Speech is recorded as plain 16 kHz samples and cut into pieces at pauses, so a piece never splits a word,
 // fits one request to the computer that recognises it, and a long dictation is never one fragile upload.
 const VOICE_RATE=16000,VOICE_PIECE_MIN=10,VOICE_PIECE_MAX=18,VOICE_WINDOW=VOICE_RATE/10;
@@ -6819,7 +6850,7 @@ function hookClipboard(w,tries=0){
   t.parser.registerOscHandler(52,data=>{
     const b64=data.slice(data.indexOf(";")+1);
     if(!b64||b64==="?")return true;
-    try{copyToClipboard(new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0))),w)}catch(e){}
+    try{copyToClipboard(copiedFromScreen(new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)))),w)}catch(e){}
     return true;
   });
 }
@@ -7929,7 +7960,7 @@ loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 applyTheme();showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
-addEventListener("pagehide",keepScreens);watchRichPaste();watchVoice();
+addEventListener("pagehide",keepScreens);watchRichPaste();watchScreenCopy();watchVoice();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.
 {

@@ -189,7 +189,7 @@ async function loadScreenHistory(key){
     if(key!==sessionInfoKey())return;
     keepAnswer(conversationKnown,key,data,8);
     if(conversationOpen())renderConversation(data);
-    showRefs(key,data?.supported?data.turns:[]);
+    showRefs(key,data?.supported?data.turns:[]);rememberAgentText(key,data?.supported?data.turns:[]);
     const p=$("pre"),stick=atBottom(p),below=p.scrollHeight-p.scrollTop;
     const screen=[...p.childNodes].filter(node=>node!==screenHistory.node).map(node=>node.textContent).join("\n");
     const turns=turnsAboveScreen(data?.supported?data.turns||[]:[],screen);

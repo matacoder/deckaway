@@ -1497,3 +1497,21 @@ test('a computer that sends folder names only still gets the list',async()=>{
   expect(window.document.getElementById('n_folders_state').textContent).toBe('Папки проектов');
   }finally{window.close()}
 });
+
+test('copying from the screen puts the agent\'s own text on the clipboard, not its wrapping',async()=>{
+  const state={local:()=>({sessions:[session('alpha')]})};
+  const window=boot(routesFor(state));
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval(`updateScreen({name:'alpha',preview:${JSON.stringify("  npm run test:all && python3 scripts/bu\n  ild-panel.py --check   ")}},true)`);
+  window.eval(`rememberAgentText(sessionInfoKey(),[{role:'assistant',text:'Run:\\n\\n\`\`\`bash\\nnpm run test:all && python3 scripts/build-panel.py --check\\n\`\`\`'}])`);
+  const range=doc.createRange();range.selectNodeContents(doc.getElementById('pre'));
+  window.getSelection().removeAllRanges();window.getSelection().addRange(range);
+  const data={},event=new window.Event('copy',{bubbles:true,cancelable:true});
+  event.clipboardData={setData:(type,value)=>{data[type]=value}};
+  doc.getElementById('pre').dispatchEvent(event);
+  expect(data['text/plain']).toBe('npm run test:all && python3 scripts/build-panel.py --check');
+  expect(event.defaultPrevented).toBe(true);
+  }finally{window.close()}
+});

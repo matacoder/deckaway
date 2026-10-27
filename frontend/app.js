@@ -175,7 +175,7 @@ function hookClipboard(w,tries=0){
   t.parser.registerOscHandler(52,data=>{
     const b64=data.slice(data.indexOf(";")+1);
     if(!b64||b64==="?")return true;
-    try{copyToClipboard(new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0))),w)}catch(e){}
+    try{copyToClipboard(copiedFromScreen(new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)))),w)}catch(e){}
     return true;
   });
 }
@@ -1285,7 +1285,7 @@ loadInbox();setInterval(loadInbox,5000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 applyTheme();showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
-addEventListener("pagehide",keepScreens);watchRichPaste();watchVoice();
+addEventListener("pagehide",keepScreens);watchRichPaste();watchScreenCopy();watchVoice();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.
 {

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.71.0
+
+- Text copied from a session (the Screen view, or a selection in the terminal) no longer brings the agent's own wrapping: Claude Code breaks long lines at the screen's width with a newline and an indent, and pads them with spaces. The copied piece is found in what the agent wrote (its conversation file, whitespace aside) and the original goes to the clipboard, so a command wrapped on a phone pastes as one line. Tool output is not in that file; there the padding at line ends is dropped.
+
 ## 1.70.1
 
 - A Mac's terminal opened through a gateway connects again. A phone's page asks one computer for many things at once; the panel listened with a queue of 5, and macOS resets the connections beyond it, so the terminal page and other answers failed with 502 and the terminal kept "connecting". The panel now queues 128 connections, and a gateway keeps at most 4 requests in flight to one computer, which helps a Mac not yet updated too.

@@ -46,6 +46,7 @@ SCRIPTS = (
     "here.js",
     "remember.js",
     "richpaste.js",
+    "copytext.js",
     "voice-audio.js",
     "voice.js",
 )
