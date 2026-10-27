@@ -4,7 +4,9 @@ A connection may know several addresses of one computer. The saved password goes
 Tailscale address its owner entered; every other address must first prove the key agreed at sign-in
 (`lan.py`), so a local address that belongs to someone else in another network gets nothing."""
 import copy
+import gzip
 import http.client
+import io
 from http.cookies import SimpleCookie
 import json
 import re
@@ -29,9 +31,26 @@ from .relay import private_write, read_json
 PUBLIC = ('id', 'name', 'url', 'username')
 IDENTITY = re.compile(r'[0-9a-f]{24}\Z')
 MAX_ADDRESSES = 4
+# A panel on macOS resets connections beyond its listen queue (5 before 1.71): a phone's page asks one
+# computer for many things at once through the gateway, so the gateway keeps only a few in flight.
+PER_DECK = 4
 CONNECT_TIMEOUT = 4   # With another address to try, a sleeping one must not hold the request for the whole timeout.
 RETRY_AFTER = 60      # An address that did not answer is left alone this long while another one works.
 PROOF_TTL = 60        # A local address is asked for the pair key again this often, and after every failure.
+
+
+def unpacked(result, limit):
+    status, headers, payload = result
+    if next((v for k, v in headers.items() if k.lower() == 'content-encoding'), '').lower() != 'gzip':
+        return result
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(payload)) as stream:
+            plain = stream.read(limit + 1)
+    except (OSError, EOFError):
+        raise ValueError('Remote DeckAway sent a damaged packed answer') from None
+    if len(plain) > limit:
+        raise ValueError('Remote response is too large')
+    return status, {k: v for k, v in headers.items() if k.lower() not in ('content-encoding', 'content-length')}, plain
 
 
 class RemoteDecks(Discovery):
@@ -46,6 +65,7 @@ class RemoteDecks(Discovery):
         self.routes = {}    # deck -> address of its last answered request
         self.unpaired = set()  # Decks before pairing existed: asked once per run, not on every sign-in.
         self.lock = threading.RLock()
+        self.slots = {}     # deck -> semaphore of its requests in flight
         if self.directory.is_symlink() or self.path.is_symlink():
             raise ValueError('Deck configuration must not be a symlink')
         self.profiles = read_json(self.path, {})
@@ -327,8 +347,13 @@ class RemoteDecks(Discovery):
                     self.profiles[profile['id']] = {k: v for k, v in profile.items()}
         return cookie
 
+    def slot(self, identity):
+        with self.lock:
+            return self.slots.setdefault(identity, threading.BoundedSemaphore(PER_DECK))
+
     def request(self, identity, method, path, body=None, language='en', timeout=30, content_type='application/json',
-                limit=PROXY_LIMIT):
+                limit=PROXY_LIMIT, compressed=False):
+        """compressed: the deck may send gzip (ttyd's page is 730 KB, 190 KB packed); the body comes back plain."""
         path = remote_path(path)
         if method not in ('GET','POST'):
             raise ValueError('Unsupported remote method')
@@ -336,9 +361,12 @@ class RemoteDecks(Discovery):
         for _ in range(2 + MAX_ADDRESSES):
             profile, cookie = self.authentication(identity, language, stale)
             try:
-                result = transport.http_request(profile['url'], method, path, body,
-                    {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type, 'Accept-Encoding': 'identity'},
-                    timeout=timeout, limit=limit, connect=CONNECT_TIMEOUT if profile.get('urls') else None)
+                with self.slot(identity):
+                    result = transport.http_request(profile['url'], method, path, body,
+                        {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type,
+                         'Accept-Encoding': 'gzip' if compressed else 'identity'},
+                        timeout=timeout, limit=limit, connect=CONNECT_TIMEOUT if profile.get('urls') else None)
+                result = unpacked(result, limit)
             except Unreachable:
                 # Nothing was sent, so the request may go to the computer's other address.
                 self.fail(identity, profile['url'])

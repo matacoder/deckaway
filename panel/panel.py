@@ -9,6 +9,7 @@
 import base64
 import binascii
 import dataclasses
+import gzip
 import hashlib
 import hmac
 import ipaddress
@@ -2517,6 +2518,9 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
 
 
 class PanelHTTPServer(ThreadingHTTPServer):
+    # The default of 5 makes macOS reset connections when a gateway relays a phone's burst of requests.
+    request_queue_size = 128
+
     def server_bind(self):
         # HTTPServer normally reverse-resolves the bind address here. On macOS
         # this can block startup (including update recovery) waiting on DNS.
@@ -3163,7 +3167,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Recognising a long piece of speech on a computer without a GPU takes longer than a page answer.
                 slow = {'timeout': 120} if urlsplit(path).path == '/api/transcribe' else {}
                 status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language(),
-                    content_type='application/json', **slow)
+                    content_type='application/json', compressed=path.startswith('/t'), **slow)
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
             # Remote HTML/JS under /api/* would run with the gateway origin; only JSON, and raster
             # images from the screenshot endpoint, are passed through.
@@ -3180,6 +3184,11 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/t') and 'text/html' in ctype:
                 prefix = '/deck/'+identity+'/t/'
                 payload = payload.replace(b'/t/', prefix.encode())
+                from integrations.page_delivery import accepts_gzip
+                if accepts_gzip(self.headers.get('Accept-Encoding', '')):
+                    # The phone gets ttyd's page packed too: 730 KB on every terminal opened over a mobile link.
+                    return self.send_body(status, gzip.compress(payload, 6), ctype,
+                                          {'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding'})
             return self.send_body(status,payload,ctype)
         except (ValueError,OSError,RuntimeError) as error:
             self.close_connection = True

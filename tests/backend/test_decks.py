@@ -189,7 +189,7 @@ class RemoteDeckTests(PanelCase):
         service.request.return_value=(200,{'Content-Type':'application/json'},b'{"sessions":[]}')
         handler=self.handler()
         handler.get_request()
-        service.request.assert_called_once_with(ID,'GET','/api/sessions',None,'ru',content_type='application/json')
+        service.request.assert_called_once_with(ID,'GET','/api/sessions',None,'ru',content_type='application/json',compressed=False)
         self.assertNotIn('GATEWAY_SECRET',str(service.request.call_args))
         handler.send_body.assert_called_once_with(200,b'{"sessions":[]}','application/json')
 
@@ -207,6 +207,40 @@ class RemoteDeckTests(PanelCase):
         handler.post_request()
         self.assertEqual(handler.send_json.call_args.args[0],403)
         service.request.assert_not_called()
+
+    def test_a_computer_gets_a_few_requests_at_a_time_and_a_packed_page_comes_back_plain(self):
+        import gzip as gz
+        import threading
+        from integrations import decks as module
+        busy, most, lock = [0], [0], threading.Lock()
+        gate = threading.Event()
+
+        def fake(url, method, path, body=None, headers=None, **kwargs):
+            with lock:
+                busy[0] += 1;most[0] = max(most[0], busy[0])
+            gate.wait(2)
+            with lock:
+                busy[0] -= 1
+            if headers['Accept-Encoding'] == 'gzip':
+                return 200, {'Content-Type': 'text/html', 'Content-Encoding': 'gzip', 'Content-Length': '9'}, gz.compress(b'<p>ttyd</p>')
+            return 200, {'Content-Type': 'application/json'}, b'{}'
+        self.transport.side_effect = fake
+        with patch.object(self.decks, 'authentication', return_value=(dict(PROFILE), 'cc_auth=signed.cookie')):
+            threads = [threading.Thread(target=self.decks.request, args=(ID, 'GET', '/api/version')) for _ in range(10)]
+            [t.start() for t in threads]
+            for _ in range(50):
+                if busy[0] >= module.PER_DECK:
+                    break
+                threading.Event().wait(.02)
+            gate.set();[t.join() for t in threads]
+            self.assertEqual(most[0], module.PER_DECK)
+            status, headers, payload = self.decks.request(ID, 'GET', '/t/?arg=%3Dcc-demo', compressed=True)
+        self.assertEqual((status, payload), (200, b'<p>ttyd</p>'))
+        self.assertNotIn('Content-Encoding', headers)
+        self.transport.side_effect = lambda *a, **k: (200, {'Content-Encoding': 'gzip'}, b'not gzip')
+        with patch.object(self.decks, 'authentication', return_value=(dict(PROFILE), 'cc_auth=signed.cookie')), \
+                self.assertRaisesRegex(ValueError, 'damaged'):
+            self.decks.request(ID, 'GET', '/t/', compressed=True)
 
     def test_streamed_upload_refreshes_the_login_first_and_never_replays(self):
         from integrations import deck_transport as module
@@ -321,6 +355,24 @@ class RemoteDeckTests(PanelCase):
         body=handler.send_body.call_args.args[1]
         self.assertIn(('/deck/'+ID+'/t/').encode(),body)
         self.assertNotIn(b'REMOTE_SECRET',body)
+
+    def test_the_remote_terminal_page_is_asked_packed_and_sent_packed_to_a_browser_that_takes_it(self):
+        import gzip as gz
+        service=self.enterContext(patch.object(self.panel,'remote_decks'))
+        service.request.return_value=(200,{'Content-Type':'text/html'},b'<script src="/t/app.js"></script>')
+        handler=self.handler();handler.path='/deck/'+ID+'/t/';handler.headers['Accept-Encoding']='gzip, br'
+        handler.get_request()
+        self.assertTrue(service.request.call_args.kwargs['compressed'])
+        code,body,ctype,headers=handler.send_body.call_args.args
+        self.assertEqual(headers['Content-Encoding'],'gzip')
+        self.assertIn(('/deck/'+ID+'/t/app.js').encode(),gz.decompress(body))
+        handler=self.handler();handler.path='/deck/'+ID+'/api/version'
+        service.request.return_value=(200,{'Content-Type':'application/json'},b'{}')
+        handler.get_request()
+        self.assertFalse(service.request.call_args.kwargs['compressed'])
+
+    def test_the_panel_server_queues_a_burst_of_connections(self):
+        self.assertGreaterEqual(self.panel.PanelHTTPServer.request_queue_size, 64)
 
     def test_terminal_websocket_uses_remote_cookie_and_strips_response_cookie(self):
         handler=self.handler();handler.path='/deck/'+ID+'/t/ws';handler.headers.update({'Upgrade':'websocket','Sec-WebSocket-Key':'key','Sec-WebSocket-Version':'13'})

@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.70.1
+
+- A Mac's terminal opened through a gateway connects again. A phone's page asks one computer for many things at once; the panel listened with a queue of 5, and macOS resets the connections beyond it, so the terminal page and other answers failed with 502 and the terminal kept "connecting". The panel now queues 128 connections, and a gateway keeps at most 4 requests in flight to one computer, which helps a Mac not yet updated too.
+- A remote terminal opens faster: the gateway asks for ttyd's page packed (190 KB instead of 730 KB) and sends it packed to the browser.
+
 ## 1.70.0
 
 - The new session form lists the folders of the projects directory (`~/dev`), the ones worked in last at the top with when that was, and a search over their names: a tap fills in the folder and the session name, for when the folder's name is forgotten. A folder picked after a GitHub repository is used as it is, not cloned into. A computer on an earlier version gives the names only.
