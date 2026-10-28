@@ -69,3 +69,11 @@ test('successive wrapped paths keep styles and trim trailing whitespace across r
  expect(joined[0][0].style).toEqual({color:'red'});
  expect(first[1].text).toBe('  ');
 });
+
+test('viewer controls follow the visible part of a pinch-zoomed page at their normal size', () => {
+  const {viewerChromeStyle}=require('../../frontend/images');
+  expect(viewerChromeStyle({scale:1,offsetLeft:0,offsetTop:0,width:390,height:844}).transform).toBe('');
+  expect(viewerChromeStyle(undefined).left).toBe('');
+  expect(viewerChromeStyle({scale:2,offsetLeft:100,offsetTop:300,width:195,height:422}))
+    .toEqual({left:'100px',top:'300px',width:'390px',height:'844px',transform:'scale(0.5)'});
+});

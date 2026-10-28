@@ -219,6 +219,8 @@ iframe[inert]{pointer-events:none}
 .viewer{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(10,10,12,.94);padding:calc(var(--sat) + 56px) 12px calc(var(--sab) + 64px)}
 .viewer[hidden]{display:none}
 .viewer img{flex:none;width:auto;height:auto;max-width:min(100%,calc(100vw - 24px));max-height:min(100%,calc(var(--app-h) - var(--sat) - var(--sab) - 120px));object-fit:contain;border-radius:6px;box-shadow:0 10px 40px #000a;touch-action:pinch-zoom;background:#fff1}
+/* The controls follow the visible part of a pinch-zoomed page at their own size: a zoomed picture hid them past the edge. */
+.viewer-chrome{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;transform-origin:0 0}.viewer-chrome>*{pointer-events:auto}
 .viewer-close{position:absolute;top:calc(var(--sat) + 10px);right:12px;display:grid;place-items:center;width:var(--tap);height:var(--tap);border-radius:50%;background:#ffffff1a;color:#fff}
 .viewer-close svg,.viewer-step svg{width:20px;height:20px}
 .viewer-step{position:absolute;top:50%;display:grid;place-items:center;width:var(--tap);height:var(--tap);margin-top:-22px;border-radius:50%;background:#ffffff1a;color:#fff}

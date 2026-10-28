@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.71.1
+
+- A picture opened on an iPhone can be closed again after zooming into it. A pinch zooms the whole page there, and the close button and the bottom bar were left past the edge of the screen; they now stay over the visible part at their usual size, closing returns the page to its normal size, and a swipe down closes the picture too.
+
 ## 1.71.0
 
 - Text copied from a session (the Screen view, or a selection in the terminal) no longer brings the agent's own wrapping: Claude Code breaks long lines at the screen's width with a newline and an indent, and pads them with spaces. The copied piece is found in what the agent wrote (its conversation file, whitespace aside) and the original goes to the clipboard, so a command wrapped on a phone pastes as one line. Tool output is not in that file; there the padding at line ends is dropped.

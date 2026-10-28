@@ -85,7 +85,21 @@ function showViewer(items,index){
   // A modal dialog (the project panel on a phone) covers everything outside it: the viewer opens inside.
   const modal=[...document.querySelectorAll("dialog[open]")].find(d=>{try{return d.matches(":modal")}catch(e){return false}});
   (modal||document.body).append($("viewer"));
-  renderViewer();$("viewer").hidden=false;$("viewer_close").focus();
+  renderViewer();$("viewer").hidden=false;fitViewerChrome();$("viewer_close").focus();
+}
+// A pinch on the picture zooms the whole page on an iPhone: the controls are kept over the part still on screen.
+function viewerChromeStyle(vv){
+  const scale=vv?.scale||1;
+  if(scale<=1.01)return {left:"",top:"",width:"",height:"",transform:""};
+  return {left:vv.offsetLeft+"px",top:vv.offsetTop+"px",width:vv.width*scale+"px",height:vv.height*scale+"px",transform:"scale("+1/scale+")"};
+}
+function fitViewerChrome(){Object.assign($("viewer_chrome").style,viewerChromeStyle(window.visualViewport))}
+// Briefly capping the zoom is the only way a page can return Safari to its normal size.
+function resetPageZoom(){
+  const meta=document.querySelector("meta[name=viewport]");
+  if(!meta||(window.visualViewport?.scale||1)<=1.01)return;
+  const was=meta.content;meta.content=was+",maximum-scale=1";
+  setTimeout(()=>{meta.content=was},300);
 }
 function renderViewer(){
   const item=viewerItems[viewerIndex];
@@ -98,7 +112,7 @@ function stepViewer(delta){viewerIndex=(viewerIndex+delta+viewerItems.length)%vi
 let viewerReturn=null;
 function closeViewer(){
   if($("viewer").hidden)return;
-  $("viewer").hidden=true;$("viewer_img").removeAttribute("src");
+  $("viewer").hidden=true;$("viewer_img").removeAttribute("src");resetPageZoom();
   if(viewerReturn?.isConnected)viewerReturn.focus({preventScroll:true});viewerReturn=null;
 }
 if(typeof document!=="undefined"&&document.getElementById("viewer")){
@@ -113,15 +127,17 @@ if(typeof document!=="undefined"&&document.getElementById("viewer")){
     if(e.key==="Escape")closeViewer();else if(e.key==="ArrowRight")stepViewer(1);else if(e.key==="ArrowLeft")stepViewer(-1);else return;
     e.preventDefault();e.stopPropagation();
   },true);
-  // Horizontal swipe flips between screenshots on a phone.
-  // Runs before app.js defines $, so the element is looked up directly.
-  const viewer=document.getElementById("viewer");let touchX=null;
-  viewer.addEventListener("touchstart",e=>{touchX=e.touches.length===1?e.touches[0].clientX:null},{passive:true});
+  // Horizontal swipe flips between screenshots on a phone, a swipe down closes the viewer; not while zoomed in,
+  // where a finger moves the page. Runs before app.js defines $, so the element is looked up directly.
+  const viewer=document.getElementById("viewer");let touch=null;
+  viewer.addEventListener("touchstart",e=>{touch=e.touches.length===1?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null},{passive:true});
   viewer.addEventListener("touchend",e=>{
-    if(touchX===null||viewerItems.length<2)return;
-    const dx=e.changedTouches[0].clientX-touchX;touchX=null;
-    if(Math.abs(dx)>60)stepViewer(dx<0?1:-1);
+    if(!touch||(window.visualViewport?.scale||1)>1.01){touch=null;return}
+    const dx=e.changedTouches[0].clientX-touch.x,dy=e.changedTouches[0].clientY-touch.y;touch=null;
+    if(dy>90&&Math.abs(dx)<60)closeViewer();
+    else if(Math.abs(dx)>60&&viewerItems.length>1)stepViewer(dx<0?1:-1);
   },{passive:true});
+  for(const event of ["resize","scroll"])window.visualViewport?.addEventListener(event,()=>{if(!viewer.hidden)fitViewerChrome()});
 }
 
-if(typeof module!=="undefined")module.exports={stripKey,imageMatches,joinImageLines,IMAGE_PATH_RE,imageMissing,missingImages};
+if(typeof module!=="undefined")module.exports={viewerChromeStyle,stripKey,imageMatches,joinImageLines,IMAGE_PATH_RE,imageMissing,missingImages};
