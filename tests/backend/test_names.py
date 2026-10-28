@@ -63,6 +63,22 @@ class NamingTests(PanelCase):
         self.panel.tmux.assert_called_once_with('set-option','-t','=cc-demo:','@cc_title','Новая работа')
         self.panel.tmux.return_value=f'cc-demo\t{self.home}\tbash\t\t0\t1\tshell\t\tНовая работа\n'
         self.assertEqual(self.panel.live_sessions()['demo']['title'], 'Новая работа')
+        self.panel.tmux.return_value=f'cc-demo\t{self.home}\tbash\t\t0\t1\tshell\t\t\t\t\tFix login\n'
+        self.assertEqual({k: v for k, v in self.panel.live_sessions()['demo'].items() if 'title' in k}, {'auto_title': 'Fix login'})
         for invalid in ('', 'x\ny', 'x'*101):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 self.panel.action_rename({'name':'demo','title':invalid})
+
+    def test_a_model_title_comes_back_after_a_reboot_and_a_pinned_own_name_is_no_rename(self):
+        self.panel.create_session = Mock()
+        self.panel.tmux = Mock(return_value='')
+        self.panel.restore_session('demo', {'path': str(self.home), 'agent': 'shell', 'title': 'demo', 'auto_title': 'Fix login'})
+        self.panel.tmux.assert_called_once_with('set-option', '-t', '=cc-demo:', '@cc_auto_title', 'Fix login')
+        # A session an earlier version restored with its own name as the owner's title takes a model's title again.
+        self.panel.network_settings.get = Mock(return_value={})
+        self.panel.opt = Mock(side_effect=lambda name, option: {'@cc_title': 'demo'}.get(option, ''))
+        self.panel.tmux.reset_mock()
+        self.assertEqual(self.panel.keep_auto_title('demo', 'Fix login'), 'fix-login')
+        self.panel.tmux.assert_called_once_with('set-option', '-t', '=cc-demo:', '@cc_auto_title', 'fix-login', check=False)
+        self.panel.opt = Mock(side_effect=lambda name, option: {'@cc_title': 'Моя работа'}.get(option, ''))
+        self.assertEqual(self.panel.keep_auto_title('demo', 'Fix login'), '')

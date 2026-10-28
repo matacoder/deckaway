@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.71.2
+
+- Session titles come back after a reboot. The title a model keeps for a session was not saved with the session list, and a restored session got its own name as the owner's title, which kept the model's title away for good. Both titles are saved and restored now, and a session already restored that way takes the model's title again the next time its summary is read.
+
 ## 1.71.1
 
 - A picture opened on an iPhone can be closed again after zooming into it. A pinch zooms the whole page there, and the close button and the bottom bar were left past the edge of the screen; they now stay over the visible part at their usual size, closing returns the page to its normal size, and a swipe down closes the picture too.

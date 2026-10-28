@@ -524,10 +524,11 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
     named = network_settings.get().get('auto_titles') is not False
     for line in out.splitlines():
         sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance = (line.split("\t") + [""] * 16)[:16]
-        title = title or (auto if named else "")  # The name its owner gave outranks the one a model keeps up to date.
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
+        # The name its owner gave outranks the one a model keeps up to date.
+        title = owner_title(name, title) or (auto if named else "")
         group = session_group(path)
         agent = agent or "claude"
         item = {
@@ -2324,11 +2325,17 @@ def summary_model(name, agent):
     return cli_model(cli) if agent_status(cli)["logged_in"] else None
 
 
+def owner_title(name, title):
+    """A title its owner gave. Restores before 1.71.2 pinned the session's own name there, which kept the
+    model's title away for good; that one is no rename."""
+    return '' if title == name else title
+
+
 def keep_auto_title(name, title):
     """The summary's title becomes the session's shown name, unless its owner named it or switched this off.
     Returns the title in use, '' when the session goes by its own name."""
     from integrations.session_info import clean_title
-    wanted = clean_title(title) if network_settings.get().get('auto_titles') is not False and not opt(name, "@cc_title") else ''
+    wanted = clean_title(title) if network_settings.get().get('auto_titles') is not False and not owner_title(name, opt(name, "@cc_title")) else ''
     if wanted and wanted != opt(name, "@cc_auto_title"):
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_auto_title', wanted, check=False)
     return wanted
@@ -3360,10 +3367,10 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}\t#{@cc_auto_title}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime = (line.split("\t") + [""] * 11)[:11]
+        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime, auto = (line.split("\t") + [""] * 12)[:12]
         agent = agent or "claude"
         try:
             source = json.loads(raw_source or "null")
@@ -3372,7 +3379,9 @@ def live_sessions():
         if sname.startswith(PREFIX):
             live[sname[len(PREFIX):]] = {"path": path, "sid": sid or None, "skip": skip == "1", "agent": agent,
                                          "running": is_running(agent, cmd, runtime) if agent != "shell" else False,
-                                         "created": int(created or 0), "source": source, "title": title or sname[len(PREFIX):],
+                                         "created": int(created or 0), "source": source,
+                                         **({"title": title} if owner_title(sname[len(PREFIX):], title) else {}),
+                                         **({"auto_title": auto} if auto else {}),
                                          **({"containers": containers} if containers else {}),
                                          **({"runtime": runtime} if runtime else {})}
     return live
@@ -3431,13 +3440,18 @@ def restore_session(name, info):
         create_session(name, path, agent, skip, sid, resume)
     else:
         create_session(name, path, agent, skip, sid, resume, source)
-    if info.get('title'):
-        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', info['title'])
+    restore_titles(name, info)
     if choice:
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_containers', choice, check=False)
     if resume:
         note_containers(name, choice)
     print(f"restored {name} ({agent}{', resumed' if resume else ', shell only'})", flush=True)
+
+
+def restore_titles(name, info):
+    for key, option in (('title', '@cc_title'), ('auto_title', '@cc_auto_title')):
+        if isinstance(value := info.get(key), str) and owner_title(name, value):
+            tmux('set-option', '-t', f'={PREFIX}{name}:', option, value)
 
 
 def restore_windows_session(name, path, info):
@@ -3449,8 +3463,7 @@ def restore_windows_session(name, path, info):
         resume = None
     create_session(name, path, agent, skip, sid, resume)
     tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_runtime', 'windows')
-    if info.get('title'):
-        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', info['title'])
+    restore_titles(name, info)
     print(f"restored {name} ({agent} in Windows{', resumed' if resume else ', shell only'})", flush=True)
 
 
