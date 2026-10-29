@@ -16,6 +16,7 @@ test('state: a question first, then work, then finished, then a summary that wai
  expect(tileState({...s,summary:{asks:true}},{running:true})).toBe('asks');
  expect(tileState({...s,summary:{asks:true}},{running:false})).toBe('off');
  expect(tileState(s,{running:true})).toBe('idle');
+ expect(tileState({...s,summary:{asks:true}},{running:true,quiet:true})).toBe('idle');
 });
 
 test('questions and finished marks are matched by computer and session',()=>{
@@ -24,6 +25,13 @@ test('questions and finished marks are matched by computer and session',()=>{
  expect(tiles.map(t=>[t.key,t.state,t.machine,t.offline])).toEqual([
   ['/api@1','idle','gw',false],['/web@1','done','gw',false],['m/api@1','asks','mac',true]]);
  expect(tiles[2].question.id).toBe('q1');
+});
+
+test('a summary marked "no reply needed" stops asking until the next summary',()=>{
+ const computers=[{id:'',name:'gw',sessions:[session('api',{summary:{asks:true,at:7}})]}];
+ expect(boardTiles(computers,[],[],stateOf,{'/api@1':7})[0].state).toBe('idle');
+ expect(boardTiles(computers,[],[],stateOf,{'/api@1':6})[0].state).toBe('asks');
+ expect(boardTiles(computers,[{deck:'',session:'api',id:'q'}],[],stateOf,{'/api@1':7})[0].state).toBe('asks');
 });
 
 test('waiting tiles lead, questions before finished; the rest keep the owner\'s order, then creation order',()=>{

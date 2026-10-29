@@ -61,3 +61,18 @@ test('tiles move by drag or arrow keys, change size, and keep it after a reload'
   await expect(page.locator('.tile', { hasText: 'other' })).toHaveClass(/size-l/);
   await expect(page.locator('.tile', { hasText: 'other' }).locator('.tile-reply textarea')).toHaveValue('Черновик');
 });
+
+test('"no reply needed" takes a tile out of the waiting group and stays after a reload', async ({ app, page }) => {
+  app.board = { ...BOARD, tmux: { ...BOARD.tmux, summary: { ...BOARD.tmux.summary, asks: true } } };
+  await app.open();
+  await page.locator('#b_board').click();
+  const waiting = page.locator('.board-group.waiting .tile');
+  await expect(waiting).toHaveCount(1);
+  await expect(page.locator('.tile', { hasText: 'shell' }).locator('.tile-quiet')).toHaveCount(0);
+  await waiting.locator('.tile-quiet').click();
+  await expect(waiting).toHaveCount(0);
+  await expect(page.locator('.tile', { hasText: 'tmux' }).locator('.tile-state')).toHaveText('свободен');
+  await page.reload();
+  await expect(page.locator('.tile', { hasText: 'tmux' })).toBeVisible();
+  await expect(waiting).toHaveCount(0);
+});

@@ -8,21 +8,23 @@ const board={on:false,decks:new Map(),pending:new Set(),nodes:new Map(),groups:n
 /* ---------- pure: tests require these ---------- */
 const tileKey=(deck,session)=>(deck||"")+"/"+session.name+"@"+session.created;
 // asks: an open question, or a summary that says the agent waits while it is idle; done: finished, not yet seen.
-function tileState(session,{question,finished,busy,running}){
+// quiet: the owner said this summary needs no answer; a new summary asks again.
+function tileState(session,{question,finished,busy,running,quiet}){
   if(question)return "asks";
   if(busy)return "busy";
   if(finished)return "done";
-  if(session.summary?.asks&&running)return "asks";
+  if(session.summary?.asks&&running&&!quiet)return "asks";
   return running?"idle":"off";
 }
 // One tile per session; questions and "finished" marks come from the inbox, keyed by computer + session.
-function boardTiles(computers,questions,finished,stateOf){
+function boardTiles(computers,questions,finished,stateOf,quiet={}){
   const asked=new Map(questions.map(q=>[(q.deck||"")+"/"+q.session,q])),seen=new Set(finished.map(f=>(f.deck||"")+"/"+f.session));
   const tiles=[];
   for(const c of computers)for(const s of c.sessions||[]){
-    const where=(c.id||"")+"/"+s.name,question=asked.get(where)||null,{busy,running}=stateOf(s);
-    tiles.push({key:tileKey(c.id,s),deck:c.id||"",machine:c.name,offline:Boolean(c.error),session:s,question,
-      state:tileState(s,{question,finished:seen.has(where),busy,running})});
+    const where=(c.id||"")+"/"+s.name,question=asked.get(where)||null,{busy,running}=stateOf(s),key=tileKey(c.id,s);
+    const hushed=s.summary?.at!=null&&quiet[key]===s.summary.at;
+    tiles.push({key,deck:c.id||"",machine:c.name,offline:Boolean(c.error),session:s,question,
+      state:tileState(s,{question,finished:seen.has(where),busy,running,quiet:hushed})});
   }
   return tiles;
 }
@@ -91,7 +93,16 @@ async function loadBoard(){
 }
 function boardTileList(){
   const stateOf=s=>{const st=state(s);return {busy:st==="busy",running:st!=="off"}};
-  return boardTiles(boardComputers(),openQuestions(),finishedSessions(),stateOf);
+  return boardTiles(boardComputers(),openQuestions(),finishedSessions(),stateOf,boardStored("quiet",{}));
+}
+// "No answer needed": the finished mark goes as if the session was opened, and a summary that asks is
+// muted until the next one. An open question stays: the agent is really stopped on it.
+function quietTile(t){
+  if(t.deck===selectedDeck)attention.delete(t.session.name);else otherAttention.delete(t.deck+"/"+t.session.name);
+  const live=new Set(boardTileList().map(x=>x.key)),quiet=Object.fromEntries(Object.entries(boardStored("quiet",{})).filter(([key])=>live.has(key)));
+  if(t.session.summary?.asks&&t.session.summary.at!=null)quiet[t.key]=t.session.summary.at;
+  boardStore("quiet",quiet);
+  renderTabs();renderInboxBadge();renderBoard(true);
 }
 
 /* ---------- view ---------- */
@@ -197,6 +208,10 @@ function tileInfo(t,view,size){
   if(s.context?.tokens)parts.push(el("span","tile-ctx "+(s.context.level||"fine"),Math.round(s.context.tokens/1000)+"k"));
   const tail=size==="s"?[]:(s.tail||[]).slice(-TAIL_SHOWN[size]);
   if(tail.length)parts.push(el("pre","tile-tail",tail.join("\n")));
+  if((t.state==="done"||t.state==="asks")&&!t.question){
+    const quiet=el("button","tile-quiet",svgIcon("check"),el("span","",tr("Ответ не требуется")));
+    quiet.type="button";quiet.onclick=()=>quietTile(t);parts.push(quiet);
+  }
   return parts;
 }
 // The digest says what the screen shows now; without one, the summary's latest result or its topic line.

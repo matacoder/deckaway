@@ -38,6 +38,7 @@ FOOTER = re.compile(r"(?:enter|return|⏎)\s+(?:to\s+)?(?:submit(?: (?:answer|al
 SOLID = re.compile(r"^[─━═╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
 RULE = re.compile(r"^[─━═╌┄╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
 # The last tab of Claude Code's form of several questions names no keys under its options.
+ASKS = re.compile(r"\?|would you|do you|allow|proceed|choose|выберите|разрешить", re.I)
 READY = re.compile(r"^Ready to submit your answers\?$", re.I)
 
 
@@ -99,12 +100,16 @@ def parse_question(session, agent, instance, screen):
         # it frame the command a permission dialog asks about, which the answer must not be given without.
         solid = [i for i in range(start, first) if SOLID.match(lines[i])]
         dashed = [i for i in range(start, first) if RULE.match(lines[i])]
-        start = solid[-1] + 1 if solid else dashed[-1] + 1 if dashed else max(start, first - 6)
+        near = max(start, first - 6)
+        # Codex asks above the command it wants to run, which can be longer than the usual few lines.
+        asked = [i for i in range(start, near) if ASKS.search(lines[i])]
+        far = asked[-1] if asked and not any(ASKS.search(line) for line in lines[near:first]) else near
+        start = solid[-1] + 1 if solid else dashed[-1] + 1 if dashed else far
     title = "\n".join(line for line in lines[start:first] if line and not RULE.match(line)
                       and not line.startswith("Tip: ")).strip()
     if not title:
         return None
-    if not headers and not async_form and not re.search(r"\?|would you|do you|allow|proceed|choose|выберите|разрешить", title, re.I):
+    if not headers and not async_form and not ASKS.search(title):
         return None
     options = tuple(match[3].strip() for _, match in rows)
     if any(re.match(r'\[[ xX✓]\]', label) for label in options) or any('space to toggle' in line.lower() for line in lines[start:end + 2]):

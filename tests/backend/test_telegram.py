@@ -72,6 +72,19 @@ enter submit   ctrl+] skip   shift+→ main prompt
         # Generic settings menu without a question is not a notification.
         self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen.replace('Choose', 'Model:')))
 
+    def test_codex_approval_asks_above_a_long_command(self):
+        # Shape of Codex's approval dialog: the question, then a command longer than the usual few lines.
+        command = '\n'.join(f"  Get-Content 'C:\\Users\\demo\\logs\\{i}.log' -Tail 12" for i in range(12))
+        screen = ('  Would you like to run the following command?\n\n  Environment: local\n\n  Reason: check the backup task\n\n'
+                  f'  $ $sid=1\n{command}\n\n› 1. Yes, proceed (y)\n  2. Yes, and don\'t ask again (p)\n'
+                  '  3. No, and tell Codex what to do differently (esc)\n\n  Press enter to confirm or esc to cancel\n')
+        parsed = parse_question('demo', 'codex', '%1:123', screen)
+        self.assertEqual(parsed.options[0], 'Yes, proceed (y)')
+        self.assertTrue(parsed.title.startswith('Would you like to run the following command?'))
+        self.assertIn('11.log', parsed.title)
+        # Without a question anywhere above, a numbered list is still ordinary output.
+        self.assertIsNone(parse_question('demo', 'codex', '%1:123', screen.replace('Would you like to run the following command?', 'Plan')))
+
     def test_claude_form_submit_tab_names_no_keys_and_is_still_a_question(self):
         screen = ('────────\n←  ☒ Landing  ☒ Button  ✔ Submit  →\n\nReview your answers\n\n● Which page?\n  → Landing\n\n'
                   'Ready to submit your answers?\n\n❯ 1. Submit answers\n  2. Cancel\n──────── demo-1\n')

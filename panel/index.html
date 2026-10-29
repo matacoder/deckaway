@@ -1220,12 +1220,14 @@ body.board-dragging .tile-grip{cursor:grabbing}
 .tile-ctx{align-self:flex-start;padding:0 6px;border-radius:var(--r-sm);font:11px/18px var(--mono);color:var(--ok);background:var(--hover-tint)}
 .tile-ctx.heavy{color:var(--heavy)}.tile-ctx.full{color:var(--bad-text)}
 .tile-tail{margin:0;padding:6px 8px;overflow:hidden;white-space:pre;font:11px/1.35 var(--mono);color:var(--dim);background:var(--bg);border-radius:var(--r-sm)}
+.tile-quiet{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;font-size:13px;color:var(--fg2);border:1px solid var(--bd);border-radius:var(--r-sm)}
+.tile-quiet .ui-icon{width:14px;height:14px}
 .tile-question:empty{display:none}
 .tile-reply{display:flex;align-items:flex-end;gap:6px}
 .tile-reply textarea{flex:1;min-width:0;min-height:32px;max-height:120px;resize:none;padding:6px 9px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm)}
 .tile-reply textarea:focus{outline:none;border-color:var(--acc)}
 .tile-send{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--on-acc);background:var(--acc)}
-@media (hover:hover){.tile-head:hover .tile-title{color:var(--acc-text)}.tile-grip:hover,.tile-size:hover{background:var(--side2);color:var(--fg)}}
+@media (hover:hover){.tile-head:hover .tile-title{color:var(--acc-text)}.tile-grip:hover,.tile-size:hover,.tile-quiet:hover{background:var(--side2);color:var(--fg)}}
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   body.board-on .board{padding:10px 10px calc(16px + var(--sab))}
   .board-tiles{grid-template-columns:1fr}
@@ -1233,6 +1235,7 @@ body.board-dragging .tile-grip{cursor:grabbing}
   .tile-title{font-size:16px}
   .tile-reply textarea,.board-group-pick select{font-size:16px}
   .tile-size,.tile-send{width:var(--tap);height:var(--tap)}
+  .tile-quiet{min-height:var(--tap);font-size:15px}
   .tile-grip{width:36px;height:var(--tap)}
   .tile.size-l{grid-column:auto}
   .tile.has-now .tile-tail{display:none}
@@ -1345,6 +1348,7 @@ body.board-dragging .tile-grip{cursor:grabbing}
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-grip" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></g></symbol>
   <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a6 6 0 0 1-8.5-8.5L13 3a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.5-8.5"/></symbol>
   <symbol id="i-keyboard-hide" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></symbol>
@@ -5025,21 +5029,23 @@ const board={on:false,decks:new Map(),pending:new Set(),nodes:new Map(),groups:n
 /* ---------- pure: tests require these ---------- */
 const tileKey=(deck,session)=>(deck||"")+"/"+session.name+"@"+session.created;
 // asks: an open question, or a summary that says the agent waits while it is idle; done: finished, not yet seen.
-function tileState(session,{question,finished,busy,running}){
+// quiet: the owner said this summary needs no answer; a new summary asks again.
+function tileState(session,{question,finished,busy,running,quiet}){
   if(question)return "asks";
   if(busy)return "busy";
   if(finished)return "done";
-  if(session.summary?.asks&&running)return "asks";
+  if(session.summary?.asks&&running&&!quiet)return "asks";
   return running?"idle":"off";
 }
 // One tile per session; questions and "finished" marks come from the inbox, keyed by computer + session.
-function boardTiles(computers,questions,finished,stateOf){
+function boardTiles(computers,questions,finished,stateOf,quiet={}){
   const asked=new Map(questions.map(q=>[(q.deck||"")+"/"+q.session,q])),seen=new Set(finished.map(f=>(f.deck||"")+"/"+f.session));
   const tiles=[];
   for(const c of computers)for(const s of c.sessions||[]){
-    const where=(c.id||"")+"/"+s.name,question=asked.get(where)||null,{busy,running}=stateOf(s);
-    tiles.push({key:tileKey(c.id,s),deck:c.id||"",machine:c.name,offline:Boolean(c.error),session:s,question,
-      state:tileState(s,{question,finished:seen.has(where),busy,running})});
+    const where=(c.id||"")+"/"+s.name,question=asked.get(where)||null,{busy,running}=stateOf(s),key=tileKey(c.id,s);
+    const hushed=s.summary?.at!=null&&quiet[key]===s.summary.at;
+    tiles.push({key,deck:c.id||"",machine:c.name,offline:Boolean(c.error),session:s,question,
+      state:tileState(s,{question,finished:seen.has(where),busy,running,quiet:hushed})});
   }
   return tiles;
 }
@@ -5108,7 +5114,16 @@ async function loadBoard(){
 }
 function boardTileList(){
   const stateOf=s=>{const st=state(s);return {busy:st==="busy",running:st!=="off"}};
-  return boardTiles(boardComputers(),openQuestions(),finishedSessions(),stateOf);
+  return boardTiles(boardComputers(),openQuestions(),finishedSessions(),stateOf,boardStored("quiet",{}));
+}
+// "No answer needed": the finished mark goes as if the session was opened, and a summary that asks is
+// muted until the next one. An open question stays: the agent is really stopped on it.
+function quietTile(t){
+  if(t.deck===selectedDeck)attention.delete(t.session.name);else otherAttention.delete(t.deck+"/"+t.session.name);
+  const live=new Set(boardTileList().map(x=>x.key)),quiet=Object.fromEntries(Object.entries(boardStored("quiet",{})).filter(([key])=>live.has(key)));
+  if(t.session.summary?.asks&&t.session.summary.at!=null)quiet[t.key]=t.session.summary.at;
+  boardStore("quiet",quiet);
+  renderTabs();renderInboxBadge();renderBoard(true);
 }
 
 /* ---------- view ---------- */
@@ -5214,6 +5229,10 @@ function tileInfo(t,view,size){
   if(s.context?.tokens)parts.push(el("span","tile-ctx "+(s.context.level||"fine"),Math.round(s.context.tokens/1000)+"k"));
   const tail=size==="s"?[]:(s.tail||[]).slice(-TAIL_SHOWN[size]);
   if(tail.length)parts.push(el("pre","tile-tail",tail.join("\n")));
+  if((t.state==="done"||t.state==="asks")&&!t.question){
+    const quiet=el("button","tile-quiet",svgIcon("check"),el("span","",tr("Ответ не требуется")));
+    quiet.type="button";quiet.onclick=()=>quietTile(t);parts.push(quiet);
+  }
   return parts;
 }
 // The digest says what the screen shows now; without one, the summary's latest result or its topic line.

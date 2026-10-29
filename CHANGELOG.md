@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.74.0
+
+- A board tile that waits for you because the agent finished or its summary says it waits has a "No reply needed" button: the tile leaves "Waiting for you", the finished mark goes as if the session was opened, and the summary does not ask again until the next one. Kept in this browser. A real question on the screen stays until it is answered.
+- Codex's approval dialog with a long command above its options ("Would you like to run the following command?") is recognised as a question again, so it reaches the board, the inbox and Telegram instead of the session looking busy.
+
 ## 1.73.0
 
 - Board tiles can be arranged by hand: drag a tile by its handle (the six dots) to another place in its group, with a mouse or a finger, or focus the handle and press the arrow keys. The order stays in this browser; tiles pinned in 1.72.0 keep their place at the top.
