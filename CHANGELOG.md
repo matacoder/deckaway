@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.73.0
+
+- Board tiles can be arranged by hand: drag a tile by its handle (the six dots) to another place in its group, with a mouse or a finger, or focus the handle and press the arrow keys. The order stays in this browser; tiles pinned in 1.72.0 keep their place at the top.
+- Each tile has a size, S, M or L (the letter at its top right): S keeps the name, state and one line; L takes two columns on a wide screen and shows twice as much of the screen.
+- The pin button is gone: dragging a tile to the front of its group does the same.
+
 ## 1.72.0
 
 - Board (the grid button at the top, ⌥B): every session of every connected computer at once, as tiles grouped by project, by computer or not at all. A tile shows the agent's state, what it last did (its summary), how full the conversation is and the bottom of its screen; a question is answered in the tile and a short message is sent from it, without opening the session. Sessions that ask or have finished come first under "Waiting for you"; the rest keep their place, pinned tiles first. The grouping, pins and drafts stay in this browser, and a tap on a tile's name opens the session.

@@ -968,7 +968,6 @@
     "Поиск папки…": "Ordner suchen…",
     "Без проекта": "Ohne Projekt",
     "Ждут вас": "Warten auf Sie",
-    "Закрепить первой в группе": "Zuerst in der Gruppe anheften",
     "Открыть сессию": "Sitzung öffnen",
     "ждут ответа: {0}": "warten auf Antwort: {0}",
     "закончили: {0}": "fertig: {0}",
@@ -983,6 +982,11 @@
     "по компьютерам": "nach Computer",
     "без групп": "ohne Gruppen",
     "Выжимка экрана через Codex": "Bildschirm-Kurzfassung durch Codex",
-    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Solange die Übersicht offen ist, schreibt Codex (Modell Sol) auf dem Computer der Sitzung alle paar Minuten eine Zeile darüber, was ihr Bildschirm gerade zeigt. Der Bildschirmtext geht über das Codex-Abo dieses Computers an OpenAI. Ohne Codex zeigt die Kachel die Zusammenfassung und das Ende des Bildschirms."
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Solange die Übersicht offen ist, schreibt Codex (Modell Sol) auf dem Computer der Sitzung alle paar Minuten eine Zeile darüber, was ihr Bildschirm gerade zeigt. Der Bildschirmtext geht über das Codex-Abo dieses Computers an OpenAI. Ohne Codex zeigt die Kachel die Zusammenfassung und das Ende des Bildschirms.",
+    "Переместить: перетащите или нажимайте стрелки": "Verschieben: ziehen oder Pfeiltasten drücken",
+    "Размер плитки: {0}": "Kachelgröße: {0}",
+    "маленькая": "klein",
+    "средняя": "mittel",
+    "большая": "groß"
   }
 }

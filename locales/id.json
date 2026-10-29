@@ -968,7 +968,6 @@
     "Поиск папки…": "Cari folder…",
     "Без проекта": "Tanpa proyek",
     "Ждут вас": "Menunggu Anda",
-    "Закрепить первой в группе": "Sematkan pertama di grupnya",
     "Открыть сессию": "Buka sesi",
     "ждут ответа: {0}": "menunggu jawaban: {0}",
     "закончили: {0}": "selesai: {0}",
@@ -983,6 +982,11 @@
     "по компьютерам": "per komputer",
     "без групп": "tanpa grup",
     "Выжимка экрана через Codex": "Ringkasan layar oleh Codex",
-    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Selama papan terbuka, Codex (model Sol) di komputer sesi menulis satu baris setiap beberapa menit tentang apa yang sedang ditampilkan layarnya. Teks layar dikirim ke OpenAI melalui langganan Codex komputer itu. Tanpa Codex, kartu menampilkan ringkasan dan akhir layar."
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Selama papan terbuka, Codex (model Sol) di komputer sesi menulis satu baris setiap beberapa menit tentang apa yang sedang ditampilkan layarnya. Teks layar dikirim ke OpenAI melalui langganan Codex komputer itu. Tanpa Codex, kartu menampilkan ringkasan dan akhir layar.",
+    "Переместить: перетащите или нажимайте стрелки": "Pindahkan: seret atau tekan tombol panah",
+    "Размер плитки: {0}": "Ukuran kartu: {0}",
+    "маленькая": "kecil",
+    "средняя": "sedang",
+    "большая": "besar"
   }
 }

@@ -35,15 +35,29 @@ test('the board shows every session as a tile, takes a reply and keeps its choic
   await expect(page.locator('#title b')).toHaveText('other');
 });
 
-test('a pinned tile goes first in its group and a draft survives a reload', async ({ app, page }) => {
+test('tiles move by drag or arrow keys, change size, and keep it after a reload', async ({ app, page }) => {
   app.board = BOARD;
-  await app.open();
+  await app.open({ width: 1280, height: 900 });
   await page.locator('#b_board').click();
   const titles = () => page.locator('.board-group:not(.waiting) .tile-title').allTextContents();
   await expect.poll(titles).toEqual(['other', 'shell', 'tmux']);
-  await page.locator('.tile', { hasText: 'shell' }).locator('.tile-pin').click();
-  await expect.poll(titles).toEqual(['shell', 'other', 'tmux']);
+  const grip = name => page.locator('.tile', { hasText: name }).locator('.tile-grip');
+  const from = await grip('tmux').boundingBox(), to = await page.locator('.tile', { hasText: 'other' }).boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + 40, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(titles).toEqual(['tmux', 'other', 'shell']);
+  await grip('shell').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(titles).toEqual(['tmux', 'shell', 'other']);
+  await expect(grip('shell')).toBeFocused();
+  const size = page.locator('.tile', { hasText: 'other' }).locator('.tile-size');
+  await size.click();
+  await expect(page.locator('.tile', { hasText: 'other' })).toHaveClass(/size-l/);
   await page.locator('.tile', { hasText: 'other' }).locator('.tile-reply textarea').fill('Черновик');
   await page.reload();
+  await expect.poll(titles).toEqual(['tmux', 'shell', 'other']);
+  await expect(page.locator('.tile', { hasText: 'other' })).toHaveClass(/size-l/);
   await expect(page.locator('.tile', { hasText: 'other' }).locator('.tile-reply textarea')).toHaveValue('Черновик');
 });

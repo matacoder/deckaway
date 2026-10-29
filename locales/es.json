@@ -968,7 +968,6 @@
     "Поиск папки…": "Buscar carpeta…",
     "Без проекта": "Sin proyecto",
     "Ждут вас": "Te esperan",
-    "Закрепить первой в группе": "Fijar primero en su grupo",
     "Открыть сессию": "Abrir sesión",
     "ждут ответа: {0}": "esperan respuesta: {0}",
     "закончили: {0}": "terminaron: {0}",
@@ -983,6 +982,11 @@
     "по компьютерам": "por ordenador",
     "без групп": "sin grupos",
     "Выжимка экрана через Codex": "Resumen de pantalla con Codex",
-    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Mientras el panel está abierto, Codex (modelo Sol) en el ordenador de la sesión escribe cada pocos minutos una línea sobre lo que muestra ahora su pantalla. El texto de la pantalla va a OpenAI con la suscripción de Codex de ese ordenador. Sin Codex, la tarjeta muestra el resumen y el final de la pantalla."
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Mientras el panel está abierto, Codex (modelo Sol) en el ordenador de la sesión escribe cada pocos minutos una línea sobre lo que muestra ahora su pantalla. El texto de la pantalla va a OpenAI con la suscripción de Codex de ese ordenador. Sin Codex, la tarjeta muestra el resumen y el final de la pantalla.",
+    "Переместить: перетащите или нажимайте стрелки": "Mover: arrastra o pulsa las flechas",
+    "Размер плитки: {0}": "Tamaño de la tarjeta: {0}",
+    "маленькая": "pequeña",
+    "средняя": "mediana",
+    "большая": "grande"
   }
 }

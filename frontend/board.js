@@ -26,9 +26,9 @@ function boardTiles(computers,questions,finished,stateOf){
   }
   return tiles;
 }
-// Waiting tiles go to the top, the rest stay in a stable order: pinned first, then by creation time.
-function boardGroups(tiles,mode,pins,noProject){
-  const order=t=>{const i=pins.indexOf(t.key);return i<0?pins.length:i};
+// Waiting tiles go to the top, the rest stay in a stable order: the owner's (dragged) order, then by creation time.
+function boardGroups(tiles,mode,owned,noProject){
+  const order=t=>{const i=owned.indexOf(t.key);return i<0?owned.length:i};
   const asksFirst=(a,b)=>(a.state==="asks"?0:1)-(b.state==="asks"?0:1);
   const sort=(list,first=()=>0)=>list.sort((a,b)=>first(a,b)||order(a)-order(b)||Number(a.session.created)-Number(b.session.created)||a.key.localeCompare(b.key));
   const waiting=tiles.filter(t=>t.state==="asks"||t.state==="done"),rest=tiles.filter(t=>!waiting.includes(t));
@@ -51,7 +51,17 @@ function boardGroups(tiles,mode,pins,noProject){
 function boardStored(name,fallback){try{return JSON.parse(localStore.getItem("cc.board."+name))??fallback}catch(e){return fallback}}
 function boardStore(name,value){try{localStore.setItem("cc.board."+name,JSON.stringify(value))}catch(e){}}
 const boardGroup=()=>{const g=boardStored("group","project");return BOARD_GROUPS.includes(g)?g:"project"};
-const boardPins=()=>{const p=boardStored("pins",[]);return Array.isArray(p)?p.filter(x=>typeof x==="string"):[]};
+// The owner's order of tiles; pins of 1.72.0 were the start of it.
+const boardOrder=()=>{const p=boardStored("order",null)??boardStored("pins",[]);return Array.isArray(p)?p.filter(x=>typeof x==="string"):[]};
+const TILE_SIZES=["s","m","l"];
+const tileSize=key=>{const size=boardStored("sizes",{})[key];return TILE_SIZES.includes(size)?size:"m"};
+// One group's new sequence replaces its tiles in the whole order, where the first of them stood; other
+// groups' tiles keep their relative order (a tile is only ever sorted against its own group).
+function reorder(order,keys){
+  const moved=new Set(keys),first=order.findIndex(key=>moved.has(key)),rest=order.filter(key=>!moved.has(key));
+  const at=first<0?rest.length:order.slice(0,first).filter(key=>!moved.has(key)).length;
+  return [...rest.slice(0,at),...keys,...rest.slice(at)];
+}
 const digestsOn=()=>deckDirectory.network?.screen_digests===true;
 
 /* ---------- data ---------- */
@@ -85,7 +95,7 @@ function boardTileList(){
 }
 
 /* ---------- view ---------- */
-const TAIL_SHOWN=6;
+const TAIL_SHOWN={m:6,l:12};
 function setBoard(on){
   board.on=on;document.body.classList.toggle("board-on",on);boardStore("on",on);
   $("b_board").setAttribute("aria-pressed",String(on));
@@ -96,25 +106,30 @@ function setBoard(on){
 }
 function toggleBoard(){setBoard(!board.on)}
 function setBoardGroup(value){boardStore("group",BOARD_GROUPS.includes(value)?value:"project");renderBoard(true)}
-function togglePin(key){
-  const pins=boardPins(),i=pins.indexOf(key);
-  if(i<0)pins.push(key);else pins.splice(i,1);
-  boardStore("pins",pins);renderBoard(true);
+// Sessions that are gone leave the order, so it does not grow with every session ever made.
+function saveGroupOrder(keys){
+  const live=new Set(boardTileList().map(t=>t.key));
+  boardStore("order",reorder(boardOrder().filter(key=>live.has(key)),keys));renderBoard(true);
+}
+function cycleSize(key){
+  const sizes=boardStored("sizes",{}),next=TILE_SIZES[(TILE_SIZES.indexOf(tileSize(key))+1)%TILE_SIZES.length];
+  if(next==="m")delete sizes[key];else sizes[key]=next;
+  boardStore("sizes",sizes);renderBoard(true);
 }
 // Leaving the board for the session itself; another computer's session switches the computer as the list does.
 function openTile(t){
   setBoard(false);
   if(t.deck===selectedDeck)select(t.session.name);else openDeckSession(t.deck,t.session.name);
 }
-// moved: the owner asked for a new order (grouping, a pin), so it applies even while a field has focus.
+// moved: the owner asked for a new order (grouping, a drag), so it applies even while a field has focus.
 function renderBoard(moved=false){
   if(!board.on)return;
-  const mode=boardGroup(),pins=boardPins(),tiles=boardTileList(),multi=boardComputers().length>1;
+  const mode=boardGroup(),order=boardOrder(),tiles=boardTileList(),multi=boardComputers().length>1;
   const live=new Set(tiles.map(t=>t.key));
   for(const key of [...board.nodes.keys()])if(!live.has(key))board.nodes.delete(key);
   // Someone is typing in a tile: its contents update, but nothing moves until the field is left.
-  const typing=!moved&&Boolean(document.activeElement?.matches?.("#board_grid textarea"));
-  const sections=boardGroups(tiles,mode,pins,tr("Без проекта")).map(g=>boardSection(g,{mode,multi,pins},typing));
+  const typing=board.drag||!moved&&Boolean(document.activeElement?.matches?.("#board_grid textarea"));
+  const sections=boardGroups(tiles,mode,order,tr("Без проекта")).map(g=>boardSection(g,{mode,multi},typing));
   const summary=$("board_summary"),counts=boardCounts(tiles);
   summary.textContent=counts;
   if(typing)return;
@@ -158,10 +173,10 @@ function boardTile(t,view){
     entry={node:el("article","tile"),info:el("div","tile-info"),question:el("div","tile-question"),questionId:null,reply:tileReply(t),signature:""};
     entry.node.append(entry.info,entry.question,entry.reply);board.nodes.set(t.key,entry);
   }
-  const s=t.session,pinned=view.pins.includes(t.key);
-  entry.node.className="tile "+t.state+(t.offline?" offline":"")+(tileNow(s)?" has-now":"");
-  const signature=JSON.stringify([t.state,t.machine,t.offline,s.title,s.agent,s.group,s.path,s.tail,s.summary,s.digest?.now,s.digest?.at,s.context,pinned,view.mode,view.multi]);
-  if(signature!==entry.signature){entry.signature=signature;entry.info.replaceChildren(...tileInfo(t,view,pinned))}
+  const s=t.session,size=tileSize(t.key);
+  entry.node.className="tile "+t.state+(t.offline?" offline":"")+(tileNow(s)?" has-now":"")+" size-"+size+(board.drag?.node===entry.node?" dragging":"");entry.node.dataset.key=t.key;
+  const signature=JSON.stringify([t.state,t.machine,t.offline,s.title,s.agent,s.group,s.path,s.tail,s.summary,s.digest?.now,s.digest?.at,s.context,size,view.mode,view.multi]);
+  if(signature!==entry.signature){entry.signature=signature;entry.info.replaceChildren(...tileInfo(t,view,size))}
   const qid=t.question?t.question.id:null;
   if(qid!==entry.questionId){
     entry.questionId=qid;
@@ -170,18 +185,17 @@ function boardTile(t,view){
   entry.reply.querySelector("textarea").disabled=t.state==="off"&&agentOf(s)!=="shell";
   return entry.node;
 }
-function tileInfo(t,view,pinned){
+function tileInfo(t,view,size){
   const s=t.session,head=el("button","tile-head",agentIcon(s),el("span","tile-title",sessionTitle(s)),el("span","tile-state "+t.state,tr(TILE_WORDS[t.state])));
   head.type="button";head.title=tr("Открыть сессию");head.onclick=()=>openTile(t);
-  const pin=el("button","tile-pin"+(pinned?" on":""),svgIcon("pin"));pin.type="button";
-  pin.setAttribute("aria-pressed",String(pinned));pin.setAttribute("aria-label",tr("Закрепить первой в группе"));pin.title=pin.getAttribute("aria-label");
-  pin.onclick=()=>togglePin(t.key);
+  const words={s:tr("маленькая"),m:tr("средняя"),l:tr("большая")},resize=el("button","tile-size",size.toUpperCase());resize.type="button";
+  resize.setAttribute("aria-label",tr("Размер плитки: {0}",[words[size]]));resize.title=resize.getAttribute("aria-label");resize.onclick=()=>cycleSize(t.key);
   const where=[view.mode!=="computer"&&view.multi?t.machine:"",shortPath(s.path||"")].filter(Boolean).join(" · ");
-  const parts=[el("div","tile-top",head,pin),el("div","tile-where",where)];
+  const parts=[el("div","tile-top",tileGrip(t),head,resize),el("div","tile-where",where)];
   const now=tileNow(s);
   if(now)parts.push(el("p","tile-now",now.text,...(now.at?[el("span","tile-age",relativeTime(now.at))]:[])));
   if(s.context?.tokens)parts.push(el("span","tile-ctx "+(s.context.level||"fine"),Math.round(s.context.tokens/1000)+"k"));
-  const tail=(s.tail||[]).slice(-TAIL_SHOWN);
+  const tail=size==="s"?[]:(s.tail||[]).slice(-TAIL_SHOWN[size]);
   if(tail.length)parts.push(el("pre","tile-tail",tail.join("\n")));
   return parts;
 }
@@ -221,4 +235,58 @@ async function sendFromTile(t,input){
   finally{board.sending.delete(t.key);input.readOnly=false}
 }
 
-if(typeof module!=="undefined")module.exports={tileKey,tileState,boardTiles,boardGroups,tileNow};
+/* ---------- moving tiles ---------- */
+// Pointer events, not HTML drag and drop (iOS has none of that). The listeners sit on the window, so moving
+// the dragged node within the page does not end the gesture.
+function tileGrip(t){
+  const grip=el("button","tile-grip",svgIcon("grip"));grip.type="button";
+  grip.setAttribute("aria-label",tr("Переместить: перетащите или нажимайте стрелки"));grip.title=grip.getAttribute("aria-label");
+  grip.onpointerdown=e=>startDrag(e,t.key);
+  grip.onkeydown=e=>{const step={ArrowLeft:-1,ArrowUp:-1,ArrowRight:1,ArrowDown:1}[e.key];if(step){e.preventDefault();moveTile(t.key,step)}};
+  return grip;
+}
+const groupKeys=grid=>[...grid.children].map(node=>node.dataset.key);
+function moveTile(key,step){
+  const grid=board.nodes.get(key)?.node.parentElement;
+  if(!grid)return;
+  const keys=groupKeys(grid),from=keys.indexOf(key),to=from+step;
+  if(to<0||to>=keys.length)return;
+  keys.splice(from,1);keys.splice(to,0,key);saveGroupOrder(keys);
+  board.nodes.get(key)?.node.querySelector(".tile-grip")?.focus();
+}
+function startDrag(e,key){
+  const node=board.nodes.get(key)?.node,grid=node?.parentElement;
+  if(e.button!==0||!grid)return;
+  e.preventDefault();
+  board.drag={node,grid,start:groupKeys(grid).join("\n")};
+  node.classList.add("dragging");document.body.classList.add("board-dragging");
+  addEventListener("pointermove",dragMove);addEventListener("pointerup",endDrag);addEventListener("pointercancel",cancelDrag);
+}
+// The tile under the pointer, in the same group, swaps sides with the dragged one.
+function dragMove(e){
+  const drag=board.drag;
+  if(!drag)return;
+  e.preventDefault();scrollWhileDragging(e.clientY);
+  const over=document.elementFromPoint(e.clientX,e.clientY)?.closest(".tile");
+  if(!over||over===drag.node||over.parentElement!==drag.grid)return;
+  const tiles=[...drag.grid.children];
+  over[tiles.indexOf(over)>tiles.indexOf(drag.node)?"after":"before"](drag.node);
+}
+function scrollWhileDragging(y){
+  const box=$("board"),rect=box.getBoundingClientRect(),edge=56;
+  if(y<rect.top+edge)box.scrollBy(0,-14);else if(y>rect.bottom-edge)box.scrollBy(0,14);
+}
+function endDrag(){
+  const drag=stopDrag();
+  if(drag&&groupKeys(drag.grid).join("\n")!==drag.start)saveGroupOrder(groupKeys(drag.grid));
+}
+// Cancelled (a call, the system took the touch): the tiles go back to the saved order.
+function cancelDrag(){if(stopDrag())renderBoard(true)}
+function stopDrag(){
+  const drag=board.drag;board.drag=null;
+  removeEventListener("pointermove",dragMove);removeEventListener("pointerup",endDrag);removeEventListener("pointercancel",cancelDrag);
+  drag?.node.classList.remove("dragging");document.body.classList.remove("board-dragging");
+  return drag;
+}
+
+if(typeof module!=="undefined")module.exports={tileKey,tileState,boardTiles,boardGroups,tileNow,reorder};

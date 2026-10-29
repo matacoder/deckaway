@@ -1192,8 +1192,14 @@ body.board-on #title,body.board-on #bar_tools,body.board-on #b_actions,body.boar
 .tile-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--fg2)}
 .tile-state{flex:none;font-size:12px;color:var(--mut)}
 .tile-state.busy{color:var(--acc-text)}.tile-state.asks{color:var(--warn)}.tile-state.done{color:var(--ok)}
-.tile-pin{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--dim)}
-.tile-pin.on{color:var(--acc-text)}
+.tile-grip{flex:none;display:grid;place-items:center;width:24px;height:32px;margin-left:-4px;border-radius:var(--r-sm);color:var(--dim);cursor:grab;touch-action:none}
+.tile-size{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);font:600 11px/1 var(--mono);color:var(--dim)}
+.tile.size-l{grid-column:span 2}
+.tile.size-s .tile-tail,.tile.size-s .tile-ctx,.tile.size-s .tile-where{display:none}
+.tile.size-s .tile-now{-webkit-line-clamp:2}
+.tile.dragging{opacity:.55;outline:2px dashed var(--acc);outline-offset:2px}
+body.board-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}
+body.board-dragging .tile-grip{cursor:grabbing}
 .tile-where{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--mut)}
 .tile-now{margin:0;color:var(--fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tile-age{margin-left:6px;font-size:11px;color:var(--dim)}
@@ -1205,13 +1211,15 @@ body.board-on #title,body.board-on #bar_tools,body.board-on #b_actions,body.boar
 .tile-reply textarea{flex:1;min-width:0;min-height:32px;max-height:120px;resize:none;padding:6px 9px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm)}
 .tile-reply textarea:focus{outline:none;border-color:var(--acc)}
 .tile-send{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--on-acc);background:var(--acc)}
-@media (hover:hover){.tile-head:hover .tile-title{color:var(--acc-text)}.tile-pin:hover{background:var(--side2);color:var(--fg)}}
+@media (hover:hover){.tile-head:hover .tile-title{color:var(--acc-text)}.tile-grip:hover,.tile-size:hover{background:var(--side2);color:var(--fg)}}
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   body.board-on .board{padding:10px 10px calc(16px + var(--sab))}
   .board-tiles{grid-template-columns:1fr}
   .board-tools{font-size:14px}
   .tile-title{font-size:16px}
   .tile-reply textarea,.board-group-pick select{font-size:16px}
-  .tile-pin,.tile-send{width:var(--tap);height:var(--tap)}
+  .tile-size,.tile-send{width:var(--tap);height:var(--tap)}
+  .tile-grip{width:36px;height:var(--tap)}
+  .tile.size-l{grid-column:auto}
   .tile.has-now .tile-tail{display:none}
 }

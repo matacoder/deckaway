@@ -968,7 +968,6 @@
     "Поиск папки…": "Szukaj folderu…",
     "Без проекта": "Bez projektu",
     "Ждут вас": "Czekają na ciebie",
-    "Закрепить первой в группе": "Przypnij jako pierwszą w grupie",
     "Открыть сессию": "Otwórz sesję",
     "ждут ответа: {0}": "czekają na odpowiedź: {0}",
     "закончили: {0}": "zakończone: {0}",
@@ -983,6 +982,11 @@
     "по компьютерам": "według komputerów",
     "без групп": "bez grup",
     "Выжимка экрана через Codex": "Skrót ekranu przez Codex",
-    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Gdy pulpit jest otwarty, Codex (model Sol) na komputerze sesji co kilka minut pisze jedną linijkę o tym, co teraz widać na jej ekranie. Tekst ekranu trafia do OpenAI w ramach subskrypcji Codex tego komputera. Bez Codex kafelek pokazuje streszczenie i koniec ekranu."
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Gdy pulpit jest otwarty, Codex (model Sol) na komputerze sesji co kilka minut pisze jedną linijkę o tym, co teraz widać na jej ekranie. Tekst ekranu trafia do OpenAI w ramach subskrypcji Codex tego komputera. Bez Codex kafelek pokazuje streszczenie i koniec ekranu.",
+    "Переместить: перетащите или нажимайте стрелки": "Przenieś: przeciągnij albo naciskaj strzałki",
+    "Размер плитки: {0}": "Rozmiar kafelka: {0}",
+    "маленькая": "mały",
+    "средняя": "średni",
+    "большая": "duży"
   }
 }

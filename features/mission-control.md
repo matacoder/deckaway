@@ -6,7 +6,8 @@ tiles, grouped by project or computer, arranged by hand.
 
 Researched independently by Claude and Codex; both arrived at the same core, differences resolved below.
 Phase 1 shipped in 1.72.0: the board, three groupings, "waiting for you", pins, in-tile questions and replies,
-screen digests by Codex Sol. Next: drag to reorder, tile sizes, then the open questions below.
+screen digests by Codex Sol. Phase 2 in 1.73.0: drag to reorder within a group (handle, pointer events,
+arrow keys), tile sizes S/M/L; the pin became the start of the dragged order. Next: the open questions below.
 
 ## Shape
 - A second view, "Пульт", next to the session view (header toggle, a hotkey on desktop). The session view
