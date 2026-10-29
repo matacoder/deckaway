@@ -1864,6 +1864,8 @@ def answer_question(question, index, text=None):
             same = [q for q in pending if q.title == question.title and q.options == question.options and q.progress == question.progress]
             if len(same) != 1:
                 raise ValueError('В сессии несколько одинаковых вопросов. Ответьте через панель.')
+            if question.settled and not matches_screen(question, current):
+                return answer_by_message(question, index, text, current)
             if not matches_screen(question, current):
                 # Codex async questions can be hidden behind the normal composer.
                 if question.agent == 'codex':
@@ -1906,6 +1908,18 @@ def answer_question(question, index, text=None):
             # The highlighted "Other / Type something" row takes typed text; paste keeps exact bytes.
             paste_to_tmux(question.session, text)
         tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Enter')
+
+
+def answer_by_message(question, index, text, current):
+    """Codex ended its turn after an async question: the question is only text on its screen, with no form
+    to open, and Codex takes the answer as an ordinary message."""
+    if current:
+        raise QuestionNotReady('Сначала ответьте на предыдущий вопрос в Telegram, затем повторите нажатие')
+    if not 0 <= index < len(question.options):
+        raise ValueError('Неверный вариант ответа')
+    answer = text.strip() if isinstance(text, str) and text.strip() else question.options[index]
+    several = question.progress and not question.progress.endswith('/1')
+    send_input({'name': question.session, 'text': f'{question.title}\n{answer}' if several else answer})
 
 
 telegram_lock = threading.Lock()

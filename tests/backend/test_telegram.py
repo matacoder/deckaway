@@ -128,6 +128,10 @@ enter submit   ctrl+] skip   shift+→ main prompt
         self.assertEqual(self.transcript([call,accepted,reply]),[])
         closed={**accepted,'payload':{**accepted['payload'],'output':'{"answers":{"choice":"Manual"}}'}}
         self.assertEqual(self.transcript([call,closed]),[])
+        self.assertFalse(pending[0].settled)
+        ended={'type':'event_msg','payload':{'type':'task_complete','turn_id':'t'}}
+        self.assertTrue(self.transcript([call,accepted,ended])[0].settled)
+        self.assertFalse(self.transcript([ended,call,accepted])[0].settled)
 
     def test_claude_structured_questions_end_on_tool_result_and_secret_questions_are_skipped(self):
         call={'type':'assistant','message':{'content':[{'type':'tool_use','name':'AskUserQuestion','id':'tool-1',
@@ -705,6 +709,26 @@ class QuestionInputTests(PanelCase):
         with patch.object(self.panel.time,'sleep'):
             self.panel.answer_question(structured,1)
         self.assertEqual([c.args[-1] for c in self.panel.tmux.call_args_list],['S-Left','Down','Enter'])
+
+    def test_a_codex_question_after_its_turn_ended_is_answered_by_a_message(self):
+        # Codex 0.160 prints an async question and ends its turn: there is no form to open, it reads the answer.
+        from dataclasses import replace
+        q = replace(question(), request_id='call-1:0', progress='Question 1/1', settled=True)
+        self.panel.pending_questions = Mock(return_value=[q])
+        self.panel.current_question = Mock(return_value=None)
+        self.panel.send_input = Mock()
+        self.panel.tmux = Mock(return_value='')
+        self.panel.answer_question(q, 1)
+        self.panel.send_input.assert_called_once_with({'name': q.session, 'text': q.options[1]})
+        self.panel.tmux.assert_not_called()
+        several = replace(q, progress='Question 2/3')
+        self.panel.pending_questions = Mock(return_value=[several])
+        self.panel.answer_question(several, 0, 'Staging')
+        self.assertEqual(self.panel.send_input.call_args.args[0]['text'], several.title + '\nStaging')
+        # Another menu on the screen is never typed into.
+        self.panel.current_question = Mock(return_value=question(SCREEN.replace('1/2', '9/9')))
+        with self.assertRaises(ValueError):
+            self.panel.answer_question(q, 0)
 
     def test_no_longer_pending_question_does_not_open_overlay(self):
         from dataclasses import replace

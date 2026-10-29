@@ -21,6 +21,8 @@ class Question:
     origin: str = ""
     # The session's display name (renamed title); shown to people, never part of the fingerprint.
     label: str = ""
+    # Codex finished its turn after asking: there is no form any more, the answer goes as a message.
+    settled: bool = False
 
     @property
     def fingerprint(self):
@@ -141,7 +143,7 @@ def transcript_model(path, agent):
 
 def transcript_questions(path, session, agent, instance):
     """Read only pending question tools from the agent's own conversation, not its output."""
-    pending = {}
+    pending, settled = {}, set()
     with Path(path).open('rb') as stream:
         if Path(path).stat().st_size > 2 * 1024 * 1024:
             stream.seek(-2 * 1024 * 1024, 2)
@@ -152,9 +154,14 @@ def transcript_questions(path, session, agent, instance):
             except (ValueError, UnicodeError):
                 continue
             if agent == 'codex':
+                item = record.get('payload')
+                if not isinstance(item, dict):
+                    continue
+                if record.get('type') == 'event_msg' and item.get('type') == 'task_complete':
+                    settled.update(pending)
+                    continue
                 if record.get('type') != 'response_item':
                     continue
-                item = record.get('payload', {})
                 if item.get('type') == 'message' and item.get('role') == 'user':
                     pending.clear()  # A direct answer/new instruction supersedes previous async questions.
                 if item.get('type') == 'function_call' and item.get('name', '').split('.')[-1] in ('request_user_input', 'request_user_input_async'):
@@ -197,7 +204,7 @@ def transcript_questions(path, session, agent, instance):
             if not all(isinstance(label, str) and label for label in labels):
                 continue
             result.append(Question(session, agent, instance, title[:1600], labels, 0,
-                                   f'Question {index + 1}/{len(questions)}', f'{identity}:{index}'))
+                                   f'Question {index + 1}/{len(questions)}', f'{identity}:{index}', settled=identity in settled))
     return result
 
 

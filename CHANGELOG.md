@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.76.0
+
+- A Codex question asked while it works and left open after its turn ended no longer sticks with "Could not open this question": Codex 0.160 shows such a question only as text and has no form to open, so a tap on an option (here, in the inbox or in Telegram) sends that option as an ordinary message, which is how Codex expects the answer. With several questions the message names the one answered.
+
 ## 1.75.0
 
 - "No reply needed" is kept by the session's own computer (and survives its restart), so a tile marked on the phone leaves "Waiting for you" on every device; the finished mark goes on every open page too. A computer on an earlier version cannot keep it: update it first (the board says the mark was not saved).
