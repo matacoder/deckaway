@@ -467,7 +467,7 @@ async function loadSessions(){
     for(const s of list){
       const busy=state(s)==="busy";
       if(wasBusy.get(s.name)&&!busy&&s.name!==active)attention.add(s.name);
-      wasBusy.set(s.name,busy);
+      wasBusy.set(s.name,busy);noteQuiet(selectedDeck,s);
     }
     const names=new Set(list.map(s=>s.name));
     for(const[n,f]of frames)if(!names.has(n)){f.remove();frames.delete(n);attention.delete(n)}
@@ -881,7 +881,7 @@ async function loadOtherDecks(){
     for(const s of result.sessions){
       const key=d.id+"/"+s.name,busy=state(s)==="busy";
       if(otherBusy.get(key)&&!busy)otherAttention.add(key);
-      otherBusy.set(key,busy);
+      otherBusy.set(key,busy);noteQuiet(d.id,s);
     }
     renderTabs();
   }));

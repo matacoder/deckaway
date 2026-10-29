@@ -518,12 +518,12 @@ def session_group(path):
 def list_sessions(preview_name=None, preview_revision=None, question_metadata=False):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
-           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}\t#{pane_id}:#{pane_pid}:#{@cc_sid}")
+           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}\t#{pane_id}:#{pane_pid}:#{@cc_sid}\t#{@cc_quiet}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     named = network_settings.get().get('auto_titles') is not False
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance = (line.split("\t") + [""] * 16)[:16]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance, quiet = (line.split("\t") + [""] * 17)[:17]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -540,6 +540,8 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
             "containers": containers,  # "" = this computer's default, "local", or the id of the computer chosen for this session.
             "runtime": runtime,  # "windows": the agent runs in Windows itself, started from WSL; "" = here.
         }
+        if quiet.isdigit():
+            item["quiet"] = int(quiet)  # When its owner said the waiting work needs no reply (`action_quiet`).
         try:
             model_source = json.loads(source or 'null')
             if isinstance(model_source, dict):
@@ -956,6 +958,17 @@ def action_rename(d):
         title = unique_name(title.strip(), lambda value: value.casefold() in used, 100)
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_title', title)
     return {'name': name, 'title': title}
+
+
+def action_quiet(d):
+    """The owner saw what the session waits with and needs not answer: every page drops its "finished" mark,
+    and a summary written before this moment stops asking."""
+    name = d.get('name', '')
+    if not isinstance(name, str) or not NAME_RE.fullmatch(name) or not session_exists(name):
+        raise ValueError('Session not found')
+    at = int(time.time())
+    tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_quiet', str(at))
+    return {'name': name, 'quiet': at}
 
 
 def action_restart(d):
@@ -1588,6 +1601,7 @@ ACTIONS = {
     'pair': lambda d: action_pair(d),
     'lan_save': lambda d: action_lan_save(d),
     'rename': action_rename,
+    'quiet': action_quiet,
     'project_directory': lambda d: {'directory': project_directory.save(d.get('directory'))},
     'lm_save': action_lm_save,
     'lm_probe': lambda d: {'profile':model_service().probe(d.get('id'))},
@@ -3436,10 +3450,10 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}\t#{@cc_auto_title}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}\t#{@cc_auto_title}\t#{@cc_quiet}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime, auto = (line.split("\t") + [""] * 12)[:12]
+        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime, auto, quiet = (line.split("\t") + [""] * 13)[:13]
         agent = agent or "claude"
         try:
             source = json.loads(raw_source or "null")
@@ -3451,6 +3465,7 @@ def live_sessions():
                                          "created": int(created or 0), "source": source,
                                          **({"title": title} if owner_title(sname[len(PREFIX):], title) else {}),
                                          **({"auto_title": auto} if auto else {}),
+                                         **({"quiet": int(quiet)} if quiet.isdigit() else {}),
                                          **({"containers": containers} if containers else {}),
                                          **({"runtime": runtime} if runtime else {})}
     return live
@@ -3521,6 +3536,8 @@ def restore_titles(name, info):
     for key, option in (('title', '@cc_title'), ('auto_title', '@cc_auto_title')):
         if isinstance(value := info.get(key), str) and owner_title(name, value):
             tmux('set-option', '-t', f'={PREFIX}{name}:', option, value)
+    if isinstance(quiet := info.get('quiet'), int) and quiet > 0:
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_quiet', str(quiet), check=False)
 
 
 def restore_windows_session(name, path, info):

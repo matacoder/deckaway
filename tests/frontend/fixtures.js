@@ -49,7 +49,7 @@ const test = base.extend({
       version: { version: '0.1.0', update: false, can_update: true, job: { phase: 'idle' } },
       lmstudio:{available:true,profiles:[],discovery:{phase:"idle",results:[]}},lmActions:[],newSessions:[],updates: [], updateError: null, kimiConfig: {configured: false, model: "k3"}, kimiSaves: [],
       telegramConfig:{available:true,configured:false,paired:false,enabled:true},telegramSaves:[],
-      board: {}, boardRequests: [],
+      board: {}, boardRequests: [], quiets: [],
       sessionRequests: [], sessionGate: null, sessionCaptured: false, authExpired: false,
       async open({ active = 'tmux', mode = 'screen', width, height } = {}) {
         if (width) await page.setViewportSize({ width, height: height || 844 });
@@ -165,6 +165,11 @@ const test = base.extend({
         case '/api/push': return json({ available: true, error: '', public_key: null, devices: [], events: { questions: true, finished: true } });
         case '/api/backups': return json({ configured: false, key_id: null, instance: 'c'.repeat(24), name: 'demo-server', last: null, stored: [], report: null });
         case '/api/inbox': return json({ questions: [] });
+        case '/api/quiet': {
+          const { name } = route.request().postDataJSON(), quiet = Math.floor(Date.now() / 1000);
+          app.quiets.push(name);app.board[name] = { ...(app.board[name] || {}), quiet };
+          return json({ ok: true, name, quiet });
+        }
         case '/api/board': app.boardRequests.push(url.search);return json({ sessions: app.sessions.map(({ preview, preview_ansi, ...s }) => ({ ...s, ...(app.board[s.name] || {}) })), digests: false });
         default: return route.fulfill({ status: 404, body: 'Not found' });
       }

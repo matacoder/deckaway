@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.75.0
+
+- "No reply needed" is kept by the session's own computer (and survives its restart), so a tile marked on the phone leaves "Waiting for you" on every device; the finished mark goes on every open page too. A computer on an earlier version cannot keep it: update it first (the board says the mark was not saved).
+
 ## 1.74.0
 
 - A board tile that waits for you because the agent finished or its summary says it waits has a "No reply needed" button: the tile leaves "Waiting for you", the finished mark goes as if the session was opened, and the summary does not ask again until the next one. Kept in this browser. A real question on the screen stays until it is answered.

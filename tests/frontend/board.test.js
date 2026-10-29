@@ -27,11 +27,12 @@ test('questions and finished marks are matched by computer and session',()=>{
  expect(tiles[2].question.id).toBe('q1');
 });
 
-test('a summary marked "no reply needed" stops asking until the next summary',()=>{
- const computers=[{id:'',name:'gw',sessions:[session('api',{summary:{asks:true,at:7}})]}];
- expect(boardTiles(computers,[],[],stateOf,{'/api@1':7})[0].state).toBe('idle');
- expect(boardTiles(computers,[],[],stateOf,{'/api@1':6})[0].state).toBe('asks');
- expect(boardTiles(computers,[{deck:'',session:'api',id:'q'}],[],stateOf,{'/api@1':7})[0].state).toBe('asks');
+test('"no reply needed" mutes a summary written before it; a newer summary or a real question asks again',()=>{
+ const tiles=(quiet,questions=[])=>boardTiles([{id:'',name:'gw',sessions:[session('api',{summary:{asks:true,at:7},quiet})]}],questions,[],stateOf);
+ expect(tiles(7)[0].state).toBe('idle');
+ expect(tiles(6)[0].state).toBe('asks');
+ expect(tiles(undefined)[0].state).toBe('asks');
+ expect(tiles(9,[{deck:'',session:'api',id:'q'}])[0].state).toBe('asks');
 });
 
 test('waiting tiles lead, questions before finished; the rest keep the owner\'s order, then creation order',()=>{

@@ -82,3 +82,22 @@ class NamingTests(PanelCase):
         self.panel.tmux.assert_called_once_with('set-option', '-t', '=cc-demo:', '@cc_auto_title', 'fix-login', check=False)
         self.panel.opt = Mock(side_effect=lambda name, option: {'@cc_title': 'Моя работа'}.get(option, ''))
         self.assertEqual(self.panel.keep_auto_title('demo', 'Fix login'), '')
+
+    def test_no_reply_needed_is_kept_on_the_session_and_comes_back_after_a_reboot(self):
+        self.panel.session_exists = Mock(return_value=True)
+        self.panel.tmux = Mock(return_value='')
+        with patch.object(self.panel.time, 'time', return_value=1700000000.5):
+            self.assertEqual(self.panel.action_quiet({'name': 'demo'}), {'name': 'demo', 'quiet': 1700000000})
+        self.panel.tmux.assert_called_once_with('set-option', '-t', '=cc-demo:', '@cc_quiet', '1700000000')
+        for invalid in ('', '../x', None):
+            with self.subTest(name=invalid), self.assertRaises(ValueError):
+                self.panel.action_quiet({'name': invalid})
+        self.panel.tmux.return_value = f'cc-demo\t{self.home}\tbash\t\t0\t1\tshell\t\t\t\t\t\t1700000000\n'
+        self.assertEqual(self.panel.live_sessions()['demo']['quiet'], 1700000000)
+        self.panel.tmux.return_value = f'cc-demo\t1\t0\t{self.home}\tbash\t2\tshell' + '\t' * 10 + '1700000000\n'
+        self.assertEqual(self.panel.list_sessions()[0]['quiet'], 1700000000)
+        self.panel.tmux.return_value = ''
+        self.panel.tmux.reset_mock()
+        self.panel.create_session = Mock()
+        self.panel.restore_session('demo', {'path': str(self.home), 'agent': 'shell', 'quiet': 1700000000})
+        self.panel.tmux.assert_called_once_with('set-option', '-t', '=cc-demo:', '@cc_quiet', '1700000000', check=False)
