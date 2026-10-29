@@ -518,12 +518,13 @@ def session_group(path):
 def list_sessions(preview_name=None, preview_revision=None, question_metadata=False):
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
-           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}\t#{pane_id}:#{pane_pid}:#{@cc_sid}\t#{@cc_quiet}")
+           "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}\t#{pane_id}:#{pane_pid}:#{@cc_sid}\t#{@cc_quiet}"
+           "\t#{window_width}x#{window_height}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     named = network_settings.get().get('auto_titles') is not False
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance, quiet = (line.split("\t") + [""] * 17)[:17]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance, quiet, size = (line.split("\t") + [""] * 18)[:18]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -531,9 +532,10 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
         title = owner_title(name, title) or (auto if named else "")
         group = session_group(path)
         agent = agent or "claude"
+        activity = session_activity().shown((name, created), size, int(activity or 0), time.time())
         item = {
             "name": name, "title": title or name, "created": int(created or 0), "attached": int(attached or 0),
-            "activity": int(activity or 0), "group": group, "agent": agent,
+            "activity": activity, "group": group, "agent": agent,
             "path": path, "running": is_running(agent, cmd, runtime), "command": cmd,
             "sid": sid or None, "skip": skip == "1",
             "docker": docker,  # Where the running agent's containers really go: "local", a computer's id, "" = started before this was kept.
@@ -560,7 +562,20 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
             if revision != preview_revision:
                 item["preview_ansi"] = preview_ansi
         result.append(item)
+    session_activity().forget({(s["name"], str(s["created"])) for s in result})
     return sorted(result, key=lambda s: (s["group"], s["name"]))
+
+
+_activity = None
+
+
+def session_activity():
+    global _activity
+    from integrations.activity import Activity
+    with _gallery_lock:
+        if _activity is None:
+            _activity = Activity()
+        return _activity
 
 
 AGENTS = {
