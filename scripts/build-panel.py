@@ -35,6 +35,7 @@ SCRIPTS = (
     "resize.js",
     "markdown.js",
     "search.js",
+    "board.js",
     "hub.js",
     "hub-cards.js",
     "hub-models.js",

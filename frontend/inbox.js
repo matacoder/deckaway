@@ -17,7 +17,7 @@ async function loadInbox(){
   inbox.loading=true;
   try{inbox.questions=(await api("/api/inbox",null,true)).questions||[]}catch(e){/* Older gateways have no inbox; the list stays empty. */}
   finally{inbox.loading=false}
-  renderInbox();
+  renderInbox();if(typeof board!=="undefined"&&board.on)renderBoard();
 }
 // Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
 const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
@@ -80,21 +80,26 @@ function renderInboxItem(item){
   head.type="button";head.onclick=()=>openInboxSession(deck,session);
   const box=el("div","inbox-item",head);
   if(item.kind==="finished"){box.append(el("p","inbox-status",tr("Агент закончил работу")));return box}
-  // Per question, not per session: a new question in the same session starts with a clean card.
-  const draftKey=item.key+"/"+item.question.id,saved=answerDraft(draftKey);
+  box.append(answerCard(item.question,deck,()=>{inbox.questions=inbox.questions.filter(x=>x!==item.question);renderInbox()}));
+  return box;
+}
+// A question answered in place, here or on the board; per question, not per session: a new question in the
+// same session starts with a clean card. The draft is shared by every place that shows the question.
+function answerCard(q,deck,answered){
+  const draftKey=(deck||"")+"/"+q.session+"/"+q.id,saved=answerDraft(draftKey);
   const card=el("div","inbox-question"),state=inbox.cards.get(draftKey)||{expanded:false,busy:null,textIndex:saved?.index??null,draft:saved?.text||""};
   inbox.cards.set(draftKey,state);
   const answer=async(index,text)=>{
     state.busy=index;draw();
-    const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
+    const body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
     try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
-      saveAnswerDraft(draftKey,null);markAnswered(draftKey);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
+      saveAnswerDraft(draftKey,null);markAnswered(draftKey);inbox.cards.delete(draftKey);answered();if(deck===selectedDeck)load()}
     catch(e){state.busy=null;draw();toast(e.message)}
   };
-  const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
+  const draw=()=>renderQuestionCard({box:card,question:q,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
     onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
     onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value;saveAnswerDraft(draftKey,{index:state.textIndex,text:value})},onSubmitText:answer});
-  draw();box.append(card);return box;
+  draw();return card;
 }
 function openInbox(){
   drawer(false);sheet(false);

@@ -965,6 +965,24 @@
     "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "Kurulum programı bunları sonunda terminal penceresinde gösterdi. Pencere kapandıysa DeckAway bilgisayarının terminalinde şunu çalıştırın (Windows'ta PowerShell'de):",
     "Папки в {0}": "{0} içindeki klasörler",
     "Папки проектов": "Proje klasörleri",
-    "Поиск папки…": "Klasör ara…"
+    "Поиск папки…": "Klasör ara…",
+    "Без проекта": "Projesiz",
+    "Ждут вас": "Sizi bekliyor",
+    "Закрепить первой в группе": "Grubunda ilk sıraya sabitle",
+    "Открыть сессию": "Oturumu aç",
+    "ждут ответа: {0}": "yanıt bekliyor: {0}",
+    "закончили: {0}": "bitti: {0}",
+    "работают: {0}": "çalışıyor: {0}",
+    "закончил": "bitti",
+    "свободен": "boşta",
+    "Пульт": "Pano",
+    "Пульт: все сессии сразу": "Pano: tüm oturumlar bir arada",
+    "Пульт: все сессии сразу (⌥B)": "Pano: tüm oturumlar bir arada (⌥B)",
+    "Группировать": "Grupla",
+    "по проектам": "projeye göre",
+    "по компьютерам": "bilgisayara göre",
+    "без групп": "grupsuz",
+    "Выжимка экрана через Codex": "Codex ile ekran özeti",
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Pano açıkken, oturumun bilgisayarındaki Codex (Sol modeli) birkaç dakikada bir ekranın şu anda ne gösterdiğini tek satırla yazar. Ekran metni o bilgisayarın Codex aboneliğiyle OpenAI'ye gider. Codex yoksa kutucuk özeti ve ekranın sonunu gösterir."
   }
 }

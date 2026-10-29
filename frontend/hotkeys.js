@@ -17,6 +17,7 @@ function hotkeys(e){
   }
   else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
   else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
+  else if(e.code==="KeyB"){if(/^[^\x00-\x7f]$/.test(e.key))return;e.preventDefault();e.stopPropagation();toggleBoard();return}
   else if(e.code==="KeyK"){
     if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
     e.preventDefault();e.stopPropagation();openPalette();return;

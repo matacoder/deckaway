@@ -1282,9 +1282,10 @@ load();setInterval(load,2500);
 
 loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 loadInbox();setInterval(loadInbox,5000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadInbox();loadBoard()}});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 applyTheme();showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
+if(boardStored("on",false)===true)setBoard(true);
 addEventListener("pagehide",keepScreens);watchRichPaste();watchScreenCopy();watchVoice();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.

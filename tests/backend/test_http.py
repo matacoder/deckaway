@@ -44,6 +44,17 @@ class HTTPTests(PanelCase):
         self.assertEqual(status, 303)
         return response_headers["Set-Cookie"].split(";", 1)[0]
 
+    def test_board_answers_in_the_named_language_and_digests_only_when_asked(self):
+        cookie = self.login()
+        self.panel.board_payload = Mock(return_value={'sessions': [], 'digests': False})
+        status, _, body = self.request('GET', '/api/board?language=de&digests=1', headers={'Cookie': cookie})
+        self.assertEqual((status, json.loads(body)), (200, {'sessions': [], 'digests': False}))
+        self.panel.board_payload.assert_called_with('de', True)
+        self.request('GET', '/api/board?language=xx', headers={'Cookie': cookie})
+        self.panel.board_payload.assert_called_with('ru', False)
+        status, _, _ = self.request('GET', '/api/board')
+        self.assertNotEqual(status, 200)
+
     def test_panel_gzip_is_negotiated_and_matches_the_localized_identity_copy(self):
         import gzip
         cookie = self.login() + '; cc_lang=en'

@@ -1164,3 +1164,54 @@ body.resizing iframe{pointer-events:none}
 .drop-card b{color:var(--fg2);font-size:16px}
 .drop-card .ui-icon{width:28px;height:28px;color:var(--acc-text)}
 .drop-zone.blocked .drop-card .ui-icon{color:var(--bad-text)}
+
+/* ---------- board: every session at a glance ---------- */
+.board,.board-title{display:none}
+body.board-on .board{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;padding:10px 16px calc(16px + var(--sab));gap:14px}
+body.board-on .board-title{display:block;flex:1;min-width:0;font-weight:600;color:var(--fg2)}
+body.board-on #stage,body.board-on #session_hint,body.board-on #session_meta,body.board-on #terminal_keys,
+body.board-on #title,body.board-on #bar_tools,body.board-on #b_actions,body.board-on #b_project{display:none!important}
+#b_board[aria-pressed=true]{color:var(--acc-text);background:var(--acc-soft)}
+.board-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+.board-summary{color:var(--mut)}
+.board-group-pick{display:flex;align-items:center;gap:8px;color:var(--mut)}
+.board-group-pick select{min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:4px 8px}
+#board_grid{display:flex;flex-direction:column;gap:18px}
+.board-group-head{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--mut)}
+.board-count{color:var(--dim);font-weight:400}
+.board-group.waiting .board-group-head{color:var(--warn)}
+.board-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;align-items:start}
+.board-empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 0;color:var(--mut)}
+.board-empty .pri{display:inline-flex;align-items:center;gap:6px}
+.tile{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px 10px 10px;background:var(--side);border:1px solid var(--bd);border-radius:var(--r-md)}
+.tile.asks{border-color:var(--warn)}.tile.done{border-color:var(--ok)}
+.tile.off .tile-info,.tile.offline{opacity:.6}
+.tile-info{display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile-top{display:flex;align-items:center;gap:4px}
+.tile-head{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:32px;text-align:left;border-radius:var(--r-sm)}
+.tile-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--fg2)}
+.tile-state{flex:none;font-size:12px;color:var(--mut)}
+.tile-state.busy{color:var(--acc-text)}.tile-state.asks{color:var(--warn)}.tile-state.done{color:var(--ok)}
+.tile-pin{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--dim)}
+.tile-pin.on{color:var(--acc-text)}
+.tile-where{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--mut)}
+.tile-now{margin:0;color:var(--fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tile-age{margin-left:6px;font-size:11px;color:var(--dim)}
+.tile-ctx{align-self:flex-start;padding:0 6px;border-radius:var(--r-sm);font:11px/18px var(--mono);color:var(--ok);background:var(--hover-tint)}
+.tile-ctx.heavy{color:var(--heavy)}.tile-ctx.full{color:var(--bad-text)}
+.tile-tail{margin:0;padding:6px 8px;overflow:hidden;white-space:pre;font:11px/1.35 var(--mono);color:var(--dim);background:var(--bg);border-radius:var(--r-sm)}
+.tile-question:empty{display:none}
+.tile-reply{display:flex;align-items:flex-end;gap:6px}
+.tile-reply textarea{flex:1;min-width:0;min-height:32px;max-height:120px;resize:none;padding:6px 9px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm)}
+.tile-reply textarea:focus{outline:none;border-color:var(--acc)}
+.tile-send{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--on-acc);background:var(--acc)}
+@media (hover:hover){.tile-head:hover .tile-title{color:var(--acc-text)}.tile-pin:hover{background:var(--side2);color:var(--fg)}}
+@media (max-width:760px),(pointer:coarse) and (max-height:500px){
+  body.board-on .board{padding:10px 10px calc(16px + var(--sab))}
+  .board-tiles{grid-template-columns:1fr}
+  .board-tools{font-size:14px}
+  .tile-title{font-size:16px}
+  .tile-reply textarea,.board-group-pick select{font-size:16px}
+  .tile-pin,.tile-send{width:var(--tap);height:var(--tap)}
+  .tile.has-now .tile-tail{display:none}
+}

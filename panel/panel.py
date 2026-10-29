@@ -2343,32 +2343,94 @@ def keep_auto_title(name, title):
 
 def session_info(name, language, fresh=False):
     """How full the open conversation is and its summary; parsed again only when the file changed."""
-    from integrations.session_info import HEAD, context, dialogue, started, tail_records
     agent = opt(name, "@cc_agent") or "claude"
     sid = windows_codex_sid(name, agent, opt(name, "@cc_sid"))
     if agent not in (*CLAUDE_FAMILY, "codex") or not valid_sid(sid):
         return {"supported": False}
-    kind = "codex" if agent == "codex" else "claude"
     path = transcript_path(agent, sid)
     if not path:
         return {"supported": True, "context": None, "summary": None, "started": None}
+    cached = read_conversation(agent, path)
+    summary = summaries().get(sid, language, cached[0][1], cached[2], lambda: summary_model(name, agent), fresh)
+    summary["title"] = keep_auto_title(name, summary.get("title"))
+    return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3] or None}
+
+
+def read_conversation(agent, path, settle=0):
+    """(stamp, context, dialogue, start) of a conversation file, parsed again only when it changed.
+    settle: seconds an older parse still answers, so a board of many busy sessions does not reread them all."""
+    from integrations.session_info import HEAD, context, dialogue, started, tail_records
     stat = path.stat()
     stamp = (stat.st_mtime_ns, stat.st_size)
     with _session_reads_lock:
         cached = _session_reads.get(path)
-    if not cached or cached[0] != stamp:
-        records = tail_records(path)
-        # The start never changes once known; only the tail is read again. 0: looked through the whole head
-        # and found none, so it is not read again on every change either.
-        begun = cached[3] if cached and cached[3] is not None else started(path) or (0 if stat.st_size > HEAD else None)
-        cached = (stamp, context(kind, records), dialogue(kind, records), begun)
-        with _session_reads_lock:
-            if len(_session_reads) > 200:
-                _session_reads.clear()
-            _session_reads[path] = cached
-    summary = summaries().get(sid, language, stat.st_size, cached[2], lambda: summary_model(name, agent), fresh)
-    summary["title"] = keep_auto_title(name, summary.get("title"))
-    return {"supported": True, "context": cached[1], "summary": summary, "started": cached[3] or None}
+    if cached and (cached[0] == stamp or time.monotonic() - cached[4] < settle):
+        return cached
+    kind = "codex" if agent == "codex" else "claude"
+    records = tail_records(path)
+    # The start never changes once known; only the tail is read again. 0: looked through the whole head
+    # and found none, so it is not read again on every change either.
+    begun = cached[3] if cached and cached[3] is not None else started(path) or (0 if stat.st_size > HEAD else None)
+    cached = (stamp, context(kind, records), dialogue(kind, records), begun, time.monotonic())
+    with _session_reads_lock:
+        if len(_session_reads) > 200:
+            _session_reads.clear()
+        _session_reads[path] = cached
+    return cached
+
+
+_digests = None
+BOARD_SETTLE = 30
+
+
+def digests():
+    global _digests
+    from integrations.board import Digests
+    with _gallery_lock:
+        if _digests is None:
+            _digests = Digests()
+        return _digests
+
+
+def digest_model():
+    """Codex Sol on this computer's subscription, or None when Codex is not installed or not signed in."""
+    from integrations.board import sol_model
+    from integrations.feature_groups import codex_answer
+    path = shutil.which("codex") or os.path.expanduser("~/.local/bin/codex")
+    if not os.access(path, os.X_OK) or not agent_status("codex")["logged_in"]:
+        return None
+    model = sol_model()
+    return {"label": "Codex · " + model, "complete": lambda prompt: codex_answer(path, model, prompt, subprocess.run)}
+
+
+def board_session(item, language, digest_on):
+    """One tile: the bottom of the screen, the kept summary and context (never a new summary), and the
+    screen digest when the owner turned digests on."""
+    from integrations.board import screen_tail
+    name, agent = item["name"], item["agent"]
+    screen = tmux("capture-pane", "-p", "-J", "-t", f"={PREFIX}{name}:", "-S", "-80", check=False)
+    tile = {**item, "tail": screen_tail(screen)}
+    sid = windows_codex_sid(name, agent, item.get("sid")) if item.get("runtime") == "windows" else item.get("sid")
+    if agent in (*CLAUDE_FAMILY, "codex") and valid_sid(sid) and (path := transcript_path(agent, sid)):
+        try:
+            tile["context"] = read_conversation(agent, path, BOARD_SETTLE)[1]
+        except (OSError, ValueError):
+            pass
+        kept = summaries().read(sid, language)
+        if kept.get("line"):
+            tile["summary"] = {key: kept.get(key) for key in ("line", "done", "at")} | {"asks": kept.get("asks") is True}
+    if digest_on:
+        tile["digest"] = digests().get(f'{name}:{item["created"]}', language, screen, agent, digest_model)
+    return tile
+
+
+def board_payload(language, digest_on):
+    """digest_on: the page asks for it when the gateway's owner turned digests on; the computer of the
+    session writes them with its own Codex."""
+    items = list_sessions()
+    if digest_on:
+        digests().forget({f'{s["name"]}:{s["created"]}' for s in items})
+    return {"sessions": [board_session(item, language, digest_on) for item in items], "digests": digest_on}
 
 
 def session_conversation(name):
@@ -2959,6 +3021,13 @@ class Handler(BaseHTTPRequestHandler):
             preview_name = parse_qs(parsed.query).get("preview", [None])[0]
             revision = parse_qs(parsed.query).get("preview_revision", [None])[0]
             return self.send_json(200, {"sessions": list_sessions(preview_name, revision)})
+        if parsed.path == "/api/board":
+            # Through a gateway the page's language cookie stays behind, so the page names it.
+            query = parse_qs(parsed.query)
+            language = query.get("language", [""])[0]
+            allowed = {item["code"] for item in locales.available()} if locales is not None else set()
+            return self.send_json(200, board_payload(language if language in allowed else self.language(),
+                                                     query.get("digests", [""])[0] == "1"))
         if parsed.path == "/api/image":
             return self.serve_session_image(parse_qs(parsed.query))
         if parsed.path == "/api/session_info":

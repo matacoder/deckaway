@@ -91,7 +91,7 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;$("auto_titles").checked=network.auto_titles!==false;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;$("auto_titles").checked=network.auto_titles!==false;$("screen_digests").checked=network.screen_digests===true;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port+(network.lan_address?" · http://"+network.lan_address+":"+network.bind_port:"");
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
@@ -192,4 +192,10 @@ async function saveAutoTitles(){
   try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",auto_titles:input.checked});toast(tr("Настройки сохранены"),"success");loadSessions()}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
 }
 
-if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults,saveAutoTitles};
+async function saveScreenDigests(){
+  const input=$("screen_digests");input.disabled=true;
+  const stored=deckDirectory.network||{};
+  try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",screen_digests:input.checked});toast(tr("Настройки сохранены"),"success");loadBoard()}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
+}
+
+if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults,saveAutoTitles,saveScreenDigests};

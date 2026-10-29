@@ -1178,6 +1178,57 @@ body.resizing iframe{pointer-events:none}
 .drop-card b{color:var(--fg2);font-size:16px}
 .drop-card .ui-icon{width:28px;height:28px;color:var(--acc-text)}
 .drop-zone.blocked .drop-card .ui-icon{color:var(--bad-text)}
+
+/* ---------- board: every session at a glance ---------- */
+.board,.board-title{display:none}
+body.board-on .board{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;padding:10px 16px calc(16px + var(--sab));gap:14px}
+body.board-on .board-title{display:block;flex:1;min-width:0;font-weight:600;color:var(--fg2)}
+body.board-on #stage,body.board-on #session_hint,body.board-on #session_meta,body.board-on #terminal_keys,
+body.board-on #title,body.board-on #bar_tools,body.board-on #b_actions,body.board-on #b_project{display:none!important}
+#b_board[aria-pressed=true]{color:var(--acc-text);background:var(--acc-soft)}
+.board-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+.board-summary{color:var(--mut)}
+.board-group-pick{display:flex;align-items:center;gap:8px;color:var(--mut)}
+.board-group-pick select{min-height:32px;background:var(--side2);color:var(--fg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:4px 8px}
+#board_grid{display:flex;flex-direction:column;gap:18px}
+.board-group-head{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--mut)}
+.board-count{color:var(--dim);font-weight:400}
+.board-group.waiting .board-group-head{color:var(--warn)}
+.board-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;align-items:start}
+.board-empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 0;color:var(--mut)}
+.board-empty .pri{display:inline-flex;align-items:center;gap:6px}
+.tile{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px 10px 10px;background:var(--side);border:1px solid var(--bd);border-radius:var(--r-md)}
+.tile.asks{border-color:var(--warn)}.tile.done{border-color:var(--ok)}
+.tile.off .tile-info,.tile.offline{opacity:.6}
+.tile-info{display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile-top{display:flex;align-items:center;gap:4px}
+.tile-head{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:32px;text-align:left;border-radius:var(--r-sm)}
+.tile-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--fg2)}
+.tile-state{flex:none;font-size:12px;color:var(--mut)}
+.tile-state.busy{color:var(--acc-text)}.tile-state.asks{color:var(--warn)}.tile-state.done{color:var(--ok)}
+.tile-pin{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--dim)}
+.tile-pin.on{color:var(--acc-text)}
+.tile-where{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--mut)}
+.tile-now{margin:0;color:var(--fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tile-age{margin-left:6px;font-size:11px;color:var(--dim)}
+.tile-ctx{align-self:flex-start;padding:0 6px;border-radius:var(--r-sm);font:11px/18px var(--mono);color:var(--ok);background:var(--hover-tint)}
+.tile-ctx.heavy{color:var(--heavy)}.tile-ctx.full{color:var(--bad-text)}
+.tile-tail{margin:0;padding:6px 8px;overflow:hidden;white-space:pre;font:11px/1.35 var(--mono);color:var(--dim);background:var(--bg);border-radius:var(--r-sm)}
+.tile-question:empty{display:none}
+.tile-reply{display:flex;align-items:flex-end;gap:6px}
+.tile-reply textarea{flex:1;min-width:0;min-height:32px;max-height:120px;resize:none;padding:6px 9px;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm)}
+.tile-reply textarea:focus{outline:none;border-color:var(--acc)}
+.tile-send{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);color:var(--on-acc);background:var(--acc)}
+@media (hover:hover){.tile-head:hover .tile-title{color:var(--acc-text)}.tile-pin:hover{background:var(--side2);color:var(--fg)}}
+@media (max-width:760px),(pointer:coarse) and (max-height:500px){
+  body.board-on .board{padding:10px 10px calc(16px + var(--sab))}
+  .board-tiles{grid-template-columns:1fr}
+  .board-tools{font-size:14px}
+  .tile-title{font-size:16px}
+  .tile-reply textarea,.board-group-pick select{font-size:16px}
+  .tile-pin,.tile-send{width:var(--tap);height:var(--tap)}
+  .tile.has-now .tile-tail{display:none}
+}
 /* ---------- themes ---------- */
 /* A theme only sets the tokens of style.css; a token it leaves out keeps the dark value. Text keeps WCAG AA on every
    surface (tests/frontend/theme.test.js). Light is a warm, homely look: cream paper, white cards, a coral accent,
@@ -1285,6 +1336,8 @@ body.resizing iframe{pointer-events:none}
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
   <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 4H6l4-4zM12 14v7"/></symbol>
   <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a6 6 0 0 1-8.5-8.5L13 3a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.5-8.5"/></symbol>
   <symbol id="i-keyboard-hide" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="12" rx="2"/><path d="M5 7h2m3 0h2m3 0h2m2 0h1M6 11h12m-9 8 3 3 3-3"/></symbol>
   <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
@@ -1313,9 +1366,11 @@ body.resizing iframe{pointer-events:none}
       <button class="iconbtn m-only" style="position:relative" onclick="drawer(true)" aria-label="Сессии"><svg class="ui-icon"><use href="#i-menu"/></svg><span id="menuBadge"></span></button>
       <button class="iconbtn d-only" id="b_side" onclick="toggleSidebar()" aria-label="Скрыть или показать список сессий" title="Скрыть или показать список сессий"><svg class="ui-icon"><use href="#i-sidebar"/></svg></button>
       <div id="title">—</div>
+      <div id="board_title" class="board-title">Пульт</div>
       <span class="bar-tools" id="bar_tools"><button class="iconbtn d-only" id="b_help" onclick="openHelp()" aria-label="Как это работает" title="Как это работает"><svg class="ui-icon"><use href="#i-help"/></svg></button><form class="bar-search" id="search_form" role="search"><svg class="ui-icon"><use href="#i-search"/></svg><input id="search_q" type="search" maxlength="200" placeholder="Поиск в выводе" aria-label="Поиск в выводе" title="Поиск по всему выводу сессии, включая прокрутку" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button type="button" class="m-only search-close" onclick="closeOutputSearch()" aria-label="Закрыть поиск"><svg class="ui-icon"><use href="#i-x"/></svg></button></form><button class="iconbtn m-only" id="b_search" onclick="openOutputSearch()" aria-label="Поиск в выводе" title="Поиск в выводе"><svg class="ui-icon"><use href="#i-search"/></svg></button></span>
       <button class="iconbtn" id="b_actions" onclick="sheet(true)" aria-label="Действия" title="Действия" aria-haspopup="menu"><svg class="ui-icon"><use href="#i-more"/></svg></button>
       <button class="act stale" id="b_stale" onclick="refreshInterface()" title="Интерфейс обновился, а эта страница открыта от прошлой версии. Черновики сохранятся" hidden><svg class="ui-icon"><use href="#i-refresh"/></svg><span>Обновить страницу</span></button>
+      <button class="iconbtn" id="b_board" onclick="toggleBoard()" aria-pressed="false" aria-label="Пульт: все сессии сразу" title="Пульт: все сессии сразу (⌥B)"><svg class="ui-icon"><use href="#i-grid"/></svg></button>
       <button class="iconbtn" id="b_settings" onclick="openSettings()" aria-label="Настройки" title="Настройки"><svg class="ui-icon"><use href="#i-gear"/></svg></button>
       <div id="search_pop" class="search-pop" hidden><div id="search_body" role="region" aria-label="Поиск в выводе"></div></div>
       <button class="iconbtn" id="b_project" onclick="toggleProject(PROJECT_TABS)" aria-pressed="false" aria-label="Скрыть или показать панель проекта" title="Скрыть или показать панель проекта"><svg class="ui-icon"><use href="#i-sidebar-right"/></svg></button>
@@ -1369,6 +1424,10 @@ body.resizing iframe{pointer-events:none}
         </div>
       </div>
     </div>
+    <section id="board" class="board" aria-label="Пульт">
+      <div class="board-tools"><span id="board_summary" class="board-summary" role="status"></span><label class="board-group-pick"><span>Группировать</span><select id="board_group" onchange="setBoardGroup(this.value)"><option value="project">по проектам</option><option value="computer">по компьютерам</option><option value="none">без групп</option></select></label></div>
+      <div id="board_grid"></div>
+    </section>
     <div id="terminal_keys" hidden></div>
     <div id="session_meta" class="session-meta" hidden><button type="button" class="iconbtn" onclick="restart('new')" aria-label="Перезапустить — новый разговор" title="Перезапустить — новый разговор"><svg class="ui-icon"><use href="#i-chat-plus"/></svg></button><button type="button" class="iconbtn" onclick="restart('continue')" aria-label="Перезапустить — продолжить разговор" title="Перезапустить — продолжить разговор"><svg class="ui-icon"><use href="#i-restart"/></svg></button><button type="button" class="iconbtn" id="b_talk" onclick="openConversation()" aria-label="Разговор" title="Разговор"><svg class="ui-icon"><use href="#i-chat"/></svg></button><button type="button" class="iconbtn" id="b_compact" onclick="compactConversation()" aria-label="Сжать разговор" title="Сжать разговор"><svg class="ui-icon"><use href="#i-compact"/></svg></button><span class="ctx" id="ctx" role="img"><span class="ctx-age" id="ctx_age_box" hidden><svg class="ui-icon"><use href="#i-clock"/></svg><span id="ctx_age"></span></span><span class="ctx-bar"><i id="ctx_fill"></i></span><span id="ctx_text"></span></span><div class="session-where" id="session_where" hidden><span class="where-item" id="session_computer_box"><svg class="ui-icon" aria-hidden="true"><use href="#i-monitor"/></svg><span id="session_computer"></span></span><span class="where-item" id="session_runtime_box" hidden><svg class="ui-icon" aria-hidden="true"><use href="#i-terminal"/></svg><span>Windows</span></span><label class="where-item where-containers" id="session_containers_box" hidden><svg class="ui-icon" aria-hidden="true"><use href="#i-docker"/></svg><span id="session_containers_name"></span><select id="session_containers" aria-label="Контейнеры" onchange="saveSessionContainers()"></select></label></div></div>
   </main>
@@ -1677,6 +1736,7 @@ body.resizing iframe{pointer-events:none}
       <form class="hub-card" onsubmit="event.preventDefault();saveProjectDirectory()"><h4>Новые сессии</h4><label for="project_directory">Папка проектов</label><input type="text" id="project_directory" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" required><p class="hint">Используется для новых сессий. Существующие сессии остаются в своих папках.</p><div class="acts"><button class="pri" id="project_directory_save">Сохранить</button></div></form>
       <div class="hub-card"><h4>Готовая задача</h4><label class="integration-toggle"><span>Скриншоты и ссылка от агента</span><input type="checkbox" role="switch" id="show_results" onchange="saveShowResults()"></label><p class="hint">Claude и Codex получают в начале сессии просьбу: закончив задачу, снять скриншоты результата и дать ссылку на адрес этого компьютера в Tailscale. Действует с новой или перезапущенной сессии.</p></div>
       <div class="hub-card"><h4>Названия сессий</h4><label class="integration-toggle"><span>Называть сессии по теме разговора</span><input type="checkbox" role="switch" id="auto_titles" onchange="saveAutoTitles()"></label><p class="hint">Модель, которая пишет пересказ, даёт сессии короткое название латиницей и меняет его, когда меняется задача. Оно видно в списке и в уведомлениях. Сессию, переименованную вручную, не трогает.</p></div>
+      <div class="hub-card"><h4>Пульт</h4><label class="integration-toggle"><span>Выжимка экрана через Codex</span><input type="checkbox" role="switch" id="screen_digests" onchange="saveScreenDigests()"></label><p class="hint">Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.</p></div>
       <div class="hub-card" data-card="version">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-download"/></svg></span><div class="card-main"><h4>Версия и обновления</h4><p id="version_status" class="card-status" role="status"></p><p id="version_meta" class="card-meta"></p></div></div>
         <p id="version_hint" class="hint" hidden></p>
@@ -2569,7 +2629,7 @@ async function loadInbox(){
   inbox.loading=true;
   try{inbox.questions=(await api("/api/inbox",null,true)).questions||[]}catch(e){/* Older gateways have no inbox; the list stays empty. */}
   finally{inbox.loading=false}
-  renderInbox();
+  renderInbox();if(typeof board!=="undefined"&&board.on)renderBoard();
 }
 // Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
 const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
@@ -2632,21 +2692,26 @@ function renderInboxItem(item){
   head.type="button";head.onclick=()=>openInboxSession(deck,session);
   const box=el("div","inbox-item",head);
   if(item.kind==="finished"){box.append(el("p","inbox-status",tr("Агент закончил работу")));return box}
-  // Per question, not per session: a new question in the same session starts with a clean card.
-  const draftKey=item.key+"/"+item.question.id,saved=answerDraft(draftKey);
+  box.append(answerCard(item.question,deck,()=>{inbox.questions=inbox.questions.filter(x=>x!==item.question);renderInbox()}));
+  return box;
+}
+// A question answered in place, here or on the board; per question, not per session: a new question in the
+// same session starts with a clean card. The draft is shared by every place that shows the question.
+function answerCard(q,deck,answered){
+  const draftKey=(deck||"")+"/"+q.session+"/"+q.id,saved=answerDraft(draftKey);
   const card=el("div","inbox-question"),state=inbox.cards.get(draftKey)||{expanded:false,busy:null,textIndex:saved?.index??null,draft:saved?.text||""};
   inbox.cards.set(draftKey,state);
   const answer=async(index,text)=>{
     state.busy=index;draw();
-    const q=item.question,body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
+    const body={name:q.session,id:q.id,index};if(text!==undefined)body.text=text;
     try{await api(instancePath(deck,"/api/answer"),body,true);toast(tr("Ответ отправлен: {0}",[text===undefined?q.options[index].label:text.slice(0,80)]),"success");
-      saveAnswerDraft(draftKey,null);markAnswered(draftKey);inbox.questions=inbox.questions.filter(x=>x!==q);inbox.cards.delete(draftKey);renderInbox();if(deck===selectedDeck)load()}
+      saveAnswerDraft(draftKey,null);markAnswered(draftKey);inbox.cards.delete(draftKey);answered();if(deck===selectedDeck)load()}
     catch(e){state.busy=null;draw();toast(e.message)}
   };
-  const draw=()=>renderQuestionCard({box:card,question:item.question,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
+  const draw=()=>renderQuestionCard({box:card,question:q,expanded:state.expanded,busyIndex:state.busy,textIndex:state.textIndex,textDraft:state.draft,translate:tr,
     onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
     onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value;saveAnswerDraft(draftKey,{index:state.textIndex,text:value})},onSubmitText:answer});
-  draw();box.append(card);return box;
+  draw();return card;
 }
 function openInbox(){
   drawer(false);sheet(false);
@@ -4339,6 +4404,7 @@ function hotkeys(e){
   }
   else if(e.code==="ArrowUp"||e.code==="ArrowDown"){const i=vis.indexOf(active);target=vis[(i+(e.code==="ArrowUp"?-1:1)+vis.length)%vis.length]}
   else if(e.code==="KeyT"){e.preventDefault();e.stopPropagation();openNew();return}
+  else if(e.code==="KeyB"){if(/^[^\x00-\x7f]$/.test(e.key))return;e.preventDefault();e.stopPropagation();toggleBoard();return}
   else if(e.code==="KeyK"){
     if(/^[^\x00-\x7f]$/.test(e.key))return;  // Option+K types "˚" on a Mac; that keeps working, Cmd+K opens the switcher there.
     e.preventDefault();e.stopPropagation();openPalette();return;
@@ -4941,6 +5007,230 @@ function paletteKey(e){
 }
 
 if(typeof module!=="undefined")module.exports={matchPalette,markMatch};
+// Mission control: every session on every computer as a tile, grouped by project or computer. A tile shows
+// what the agent does (screen digest, summary, the bottom of its screen), answers its question and takes a
+// short reply; opening it leaves for the session view. Bundled before app.js; nothing runs at load time.
+const BOARD_GROUPS=["project","computer","none"];
+const BOARD_POLL=5000;
+const board={on:false,decks:new Map(),pending:new Set(),nodes:new Map(),groups:new Map(),cards:new Map(),sending:new Set(),timer:null};
+
+/* ---------- pure: tests require these ---------- */
+const tileKey=(deck,session)=>(deck||"")+"/"+session.name+"@"+session.created;
+// asks: an open question, or a summary that says the agent waits while it is idle; done: finished, not yet seen.
+function tileState(session,{question,finished,busy,running}){
+  if(question)return "asks";
+  if(busy)return "busy";
+  if(finished)return "done";
+  if(session.summary?.asks&&running)return "asks";
+  return running?"idle":"off";
+}
+// One tile per session; questions and "finished" marks come from the inbox, keyed by computer + session.
+function boardTiles(computers,questions,finished,stateOf){
+  const asked=new Map(questions.map(q=>[(q.deck||"")+"/"+q.session,q])),seen=new Set(finished.map(f=>(f.deck||"")+"/"+f.session));
+  const tiles=[];
+  for(const c of computers)for(const s of c.sessions||[]){
+    const where=(c.id||"")+"/"+s.name,question=asked.get(where)||null,{busy,running}=stateOf(s);
+    tiles.push({key:tileKey(c.id,s),deck:c.id||"",machine:c.name,offline:Boolean(c.error),session:s,question,
+      state:tileState(s,{question,finished:seen.has(where),busy,running})});
+  }
+  return tiles;
+}
+// Waiting tiles go to the top, the rest stay in a stable order: pinned first, then by creation time.
+function boardGroups(tiles,mode,pins,noProject){
+  const order=t=>{const i=pins.indexOf(t.key);return i<0?pins.length:i};
+  const asksFirst=(a,b)=>(a.state==="asks"?0:1)-(b.state==="asks"?0:1);
+  const sort=(list,first=()=>0)=>list.sort((a,b)=>first(a,b)||order(a)-order(b)||Number(a.session.created)-Number(b.session.created)||a.key.localeCompare(b.key));
+  const waiting=tiles.filter(t=>t.state==="asks"||t.state==="done"),rest=tiles.filter(t=>!waiting.includes(t));
+  const groups=[];
+  if(waiting.length)groups.push({key:"waiting",label:null,tiles:sort(waiting,asksFirst)});
+  if(mode==="none"){if(rest.length)groups.push({key:"all",label:null,tiles:sort(rest)});return groups}
+  const byKey=new Map();
+  for(const t of rest){
+    const key=mode==="computer"?"c:"+t.deck:"p:"+(t.session.group||"");
+    const label=mode==="computer"?t.machine:t.session.group||noProject;
+    if(!byKey.has(key))byKey.set(key,{key,label,tiles:[]});
+    byKey.get(key).tiles.push(t);
+  }
+  const named=[...byKey.values()].sort((a,b)=>a.label.localeCompare(b.label));
+  for(const g of named)sort(g.tiles);
+  return [...groups,...named];
+}
+
+/* ---------- stored choices, per browser ---------- */
+function boardStored(name,fallback){try{return JSON.parse(localStore.getItem("cc.board."+name))??fallback}catch(e){return fallback}}
+function boardStore(name,value){try{localStore.setItem("cc.board."+name,JSON.stringify(value))}catch(e){}}
+const boardGroup=()=>{const g=boardStored("group","project");return BOARD_GROUPS.includes(g)?g:"project"};
+const boardPins=()=>{const p=boardStored("pins",[]);return Array.isArray(p)?p.filter(x=>typeof x==="string"):[]};
+const digestsOn=()=>deckDirectory.network?.screen_digests===true;
+
+/* ---------- data ---------- */
+function boardComputers(){
+  const all=[{id:"",name:deckDirectory.name||tr("Этот компьютер")},...deckDirectory.decks.map(d=>({id:d.id,name:d.name}))];
+  return all.map(c=>{
+    const got=board.decks.get(c.id);
+    // A computer without /api/board yet (older version) still shows its sessions from the sidebar's list.
+    const listed=c.id===selectedDeck?{sessions}:otherDecks.find(d=>d.id===c.id)||{};
+    return {...c,sessions:got?.sessions||listed.sessions||[],error:got?got.error:listed.error};
+  });
+}
+async function loadBoard(){
+  if(!board.on||document.hidden)return;
+  const query="?language="+encodeURIComponent(I18N.language)+(digestsOn()?"&digests=1":"");
+  await Promise.all(boardComputers().map(async c=>{
+    if(board.pending.has(c.id))return;
+    board.pending.add(c.id);
+    try{const data=await api(instancePath(c.id,"/api/board"+query),null,true);board.decks.set(c.id,{sessions:Array.isArray(data.sessions)?data.sessions:[]})}
+    catch(e){
+      const known=board.decks.get(c.id);
+      // Unreachable: the last tiles stay, greyed. A computer on an older version falls back to the sidebar's list.
+      if(e.offline)board.decks.set(c.id,{sessions:known?.sessions||[],error:true});else board.decks.delete(c.id);
+    }finally{board.pending.delete(c.id)}
+  }));
+  renderBoard();
+}
+function boardTileList(){
+  const stateOf=s=>{const st=state(s);return {busy:st==="busy",running:st!=="off"}};
+  return boardTiles(boardComputers(),openQuestions(),finishedSessions(),stateOf);
+}
+
+/* ---------- view ---------- */
+const TAIL_SHOWN=6;
+function setBoard(on){
+  board.on=on;document.body.classList.toggle("board-on",on);boardStore("on",on);
+  $("b_board").setAttribute("aria-pressed",String(on));
+  clearInterval(board.timer);board.timer=null;
+  if(!on){show();load();return}
+  drawer(false);$("board_group").value=boardGroup();
+  renderBoard();loadBoard();board.timer=setInterval(loadBoard,BOARD_POLL);
+}
+function toggleBoard(){setBoard(!board.on)}
+function setBoardGroup(value){boardStore("group",BOARD_GROUPS.includes(value)?value:"project");renderBoard(true)}
+function togglePin(key){
+  const pins=boardPins(),i=pins.indexOf(key);
+  if(i<0)pins.push(key);else pins.splice(i,1);
+  boardStore("pins",pins);renderBoard(true);
+}
+// Leaving the board for the session itself; another computer's session switches the computer as the list does.
+function openTile(t){
+  setBoard(false);
+  if(t.deck===selectedDeck)select(t.session.name);else openDeckSession(t.deck,t.session.name);
+}
+// moved: the owner asked for a new order (grouping, a pin), so it applies even while a field has focus.
+function renderBoard(moved=false){
+  if(!board.on)return;
+  const mode=boardGroup(),pins=boardPins(),tiles=boardTileList(),multi=boardComputers().length>1;
+  const live=new Set(tiles.map(t=>t.key));
+  for(const key of [...board.nodes.keys()])if(!live.has(key))board.nodes.delete(key);
+  // Someone is typing in a tile: its contents update, but nothing moves until the field is left.
+  const typing=!moved&&Boolean(document.activeElement?.matches?.("#board_grid textarea"));
+  const sections=boardGroups(tiles,mode,pins,tr("Без проекта")).map(g=>boardSection(g,{mode,multi,pins},typing));
+  const summary=$("board_summary"),counts=boardCounts(tiles);
+  summary.textContent=counts;
+  if(typing)return;
+  placeChildren($("board_grid"),sections.length?sections:[boardEmpty()]);
+}
+function boardCounts(tiles){
+  const n=state=>tiles.filter(t=>t.state===state).length,parts=[];
+  if(n("asks"))parts.push(tr("ждут ответа: {0}",[n("asks")]));
+  if(n("busy"))parts.push(tr("работают: {0}",[n("busy")]));
+  if(n("done"))parts.push(tr("закончили: {0}",[n("done")]));
+  return parts.join(" · ");
+}
+// Moving a node that is already in place blurs it in browsers, so only nodes out of place are moved.
+function placeChildren(parent,nodes){
+  nodes.forEach((node,i)=>{if(parent.children[i]!==node)parent.insertBefore(node,parent.children[i]||null)});
+  for(const node of [...parent.children])if(!nodes.includes(node))node.remove();
+}
+function boardEmpty(){
+  const start=el("button","pri",svgIcon("plus"),el("span","",tr("Новая сессия")));start.type="button";start.onclick=()=>openNew();
+  return el("div","board-empty",el("p","",tr("Сессий пока нет")),start);
+}
+function boardSection(group,view,typing){
+  let section=board.groups.get(group.key);
+  if(!section){
+    section={node:el("section","board-group"),head:el("h3","board-group-head"),grid:el("div","board-tiles")};
+    section.node.append(section.head,section.grid);board.groups.set(group.key,section);
+  }
+  const label=group.key==="waiting"?tr("Ждут вас"):group.label;
+  section.head.hidden=!label;section.head.replaceChildren(...(label?[el("span","",label),el("span","board-count",String(group.tiles.length))]:[]));
+  section.node.classList.toggle("waiting",group.key==="waiting");
+  const tiles=group.tiles.map(t=>boardTile(t,view));
+  if(!typing)placeChildren(section.grid,tiles);
+  return section.node;
+}
+const TILE_WORDS={asks:"ждёт ответа",busy:"работает",done:"закончил",idle:"свободен",off:"остановлен"};
+// One node per tile for its whole life: the reply field and a question card keep focus and drafts across
+// refreshes; only the information part is drawn again, and only when it changed.
+function boardTile(t,view){
+  let entry=board.nodes.get(t.key);
+  if(!entry){
+    entry={node:el("article","tile"),info:el("div","tile-info"),question:el("div","tile-question"),questionId:null,reply:tileReply(t),signature:""};
+    entry.node.append(entry.info,entry.question,entry.reply);board.nodes.set(t.key,entry);
+  }
+  const s=t.session,pinned=view.pins.includes(t.key);
+  entry.node.className="tile "+t.state+(t.offline?" offline":"")+(tileNow(s)?" has-now":"");
+  const signature=JSON.stringify([t.state,t.machine,t.offline,s.title,s.agent,s.group,s.path,s.tail,s.summary,s.digest?.now,s.digest?.at,s.context,pinned,view.mode,view.multi]);
+  if(signature!==entry.signature){entry.signature=signature;entry.info.replaceChildren(...tileInfo(t,view,pinned))}
+  const qid=t.question?t.question.id:null;
+  if(qid!==entry.questionId){
+    entry.questionId=qid;
+    entry.question.replaceChildren(...(t.question?[answerCard(t.question,t.deck,()=>{inbox.questions=inbox.questions.filter(x=>x!==t.question);renderBoard()})]:[]));
+  }
+  entry.reply.querySelector("textarea").disabled=t.state==="off"&&agentOf(s)!=="shell";
+  return entry.node;
+}
+function tileInfo(t,view,pinned){
+  const s=t.session,head=el("button","tile-head",agentIcon(s),el("span","tile-title",sessionTitle(s)),el("span","tile-state "+t.state,tr(TILE_WORDS[t.state])));
+  head.type="button";head.title=tr("Открыть сессию");head.onclick=()=>openTile(t);
+  const pin=el("button","tile-pin"+(pinned?" on":""),svgIcon("pin"));pin.type="button";
+  pin.setAttribute("aria-pressed",String(pinned));pin.setAttribute("aria-label",tr("Закрепить первой в группе"));pin.title=pin.getAttribute("aria-label");
+  pin.onclick=()=>togglePin(t.key);
+  const where=[view.mode!=="computer"&&view.multi?t.machine:"",shortPath(s.path||"")].filter(Boolean).join(" · ");
+  const parts=[el("div","tile-top",head,pin),el("div","tile-where",where)];
+  const now=tileNow(s);
+  if(now)parts.push(el("p","tile-now",now.text,...(now.at?[el("span","tile-age",relativeTime(now.at))]:[])));
+  if(s.context?.tokens)parts.push(el("span","tile-ctx "+(s.context.level||"fine"),Math.round(s.context.tokens/1000)+"k"));
+  const tail=(s.tail||[]).slice(-TAIL_SHOWN);
+  if(tail.length)parts.push(el("pre","tile-tail",tail.join("\n")));
+  return parts;
+}
+// The digest says what the screen shows now; without one, the summary's latest result or its topic line.
+function tileNow(s){
+  if(s.digest?.now)return {text:s.digest.now,at:s.digest.at};
+  const summary=s.summary;
+  if(summary&&(summary.done||summary.line))return {text:summary.done||summary.line,at:summary.at};
+  return null;
+}
+function tileReply(t){
+  const input=el("textarea"),send=el("button","tile-send",svgIcon("arrow-up"));
+  input.rows=1;input.placeholder=tr("Сообщение агенту…");input.setAttribute("aria-label",tr("Сообщение агенту…"));
+  input.autocomplete="off";input.spellcheck=false;input.value=boardStored("drafts",{})[t.key]||"";
+  input.oninput=()=>{saveTileDraft(t.key,input.value);input.style.height="";input.style.height=Math.min(input.scrollHeight,120)+"px"};
+  input.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&!isTouch()){e.preventDefault();sendFromTile(t,input)}};
+  send.type="button";send.setAttribute("aria-label",tr("Отправить"));send.title=tr("Отправить");send.onclick=()=>sendFromTile(t,input);
+  return el("div","tile-reply",input,send);
+}
+function saveTileDraft(key,text){
+  const drafts=boardStored("drafts",{});
+  if(text)drafts[key]=text;else delete drafts[key];
+  boardStore("drafts",drafts);
+}
+// Bound to the tile's computer and session; the draft stays until the computer confirms the message.
+async function sendFromTile(t,input){
+  const text=input.value;
+  if(!text.trim()||board.sending.has(t.key))return;
+  board.sending.add(t.key);input.readOnly=true;
+  try{
+    await api(instancePath(t.deck,"/api/send"),{name:t.session.name,text,attachments:[]},true);
+    if(input.value===text){input.value="";input.style.height=""}
+    saveTileDraft(t.key,input.value);
+    toast(tr("Отправлено в ")+sessionTitle(t.session),"success");
+    loadBoard();
+  }catch(e){toast(tr("Не отправлено: ")+e.message)}
+  finally{board.sending.delete(t.key);input.readOnly=false}
+}
+
+if(typeof module!=="undefined")module.exports={tileKey,tileState,boardTiles,boardGroups,tileNow};
 // Settings: six sections, one card pattern (icon, title, coloured status, meta, one primary action, a
 // "more" menu), editors that open in place of the card they edit, a getting-started card and dots on
 // sections that need attention. Bundled before app.js; nothing here touches the page at load time.
@@ -5446,7 +5736,7 @@ function configureSource(){returnToNew=true;$("dlg").close();openSettings("model
 
 /* ---------- computers ---------- */
 function renderComputers(data,network){
-  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;$("auto_titles").checked=network.auto_titles!==false;
+  syncField($("network_name"),network.name);syncField($("network_public_url"),network.public_url);$("network_isolate").checked=network.isolate_terminals===true;$("show_results").checked=network.show_results!==false;$("auto_titles").checked=network.auto_titles!==false;$("screen_digests").checked=network.screen_digests===true;
   $("network_bind").textContent="http://"+network.bind_host+":"+network.bind_port+(network.lan_address?" · http://"+network.lan_address+":"+network.bind_port:"");
   $("network_browser").textContent=location.origin;
   const count=data.decks.length;
@@ -5547,7 +5837,13 @@ async function saveAutoTitles(){
   try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",auto_titles:input.checked});toast(tr("Настройки сохранены"),"success");loadSessions()}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
 }
 
-if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults,saveAutoTitles};
+async function saveScreenDigests(){
+  const input=$("screen_digests");input.disabled=true;
+  const stored=deckDirectory.network||{};
+  try{await saveNetworkSettings(stored.isolate_terminals===true,{name:stored.name||deckDirectory.name,public_url:stored.public_url||"",screen_digests:input.checked});toast(tr("Настройки сохранены"),"success");loadBoard()}catch(e){input.checked=!input.checked;toast(e.message)}finally{input.disabled=false}
+}
+
+if(typeof module!=="undefined")module.exports={lmMetrics,deckAddress,saveShowResults,saveAutoTitles,saveScreenDigests};
 // Containers on another computer: which computers lend their Docker and which one this computer's
 // sessions use. Always asked from the gateway: it is the one that reaches the others.
 let containers=null,containersTimer=null,containersAt=0;
@@ -7977,9 +8273,10 @@ load();setInterval(load,2500);
 
 loadDeckSettings().catch(e=>{if(!e.offline)toast(e.message)});
 loadInbox();setInterval(loadInbox,5000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadInbox()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadInbox();loadBoard()}});
 // Last: everything above is declared. What this browser showed before is on screen before the first answer.
 applyTheme();showRemembered();showRememberedDecks();renderTabs();show();renderInteg();
+if(boardStored("on",false)===true)setBoard(true);
 addEventListener("pagehide",keepScreens);watchRichPaste();watchScreenCopy();watchVoice();
 // A row that appears above or below the screen (summary, context, a question) makes it shorter: text that
 // was being followed stays followed instead of losing its last lines.

@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.72.0
+
+- Board (the grid button at the top, ⌥B): every session of every connected computer at once, as tiles grouped by project, by computer or not at all. A tile shows the agent's state, what it last did (its summary), how full the conversation is and the bottom of its screen; a question is answered in the tile and a short message is sent from it, without opening the session. Sessions that ask or have finished come first under "Waiting for you"; the rest keep their place, pinned tiles first. The grouping, pins and drafts stay in this browser, and a tap on a tile's name opens the session.
+- Settings → General → Board: "Screen digest by Codex". While the board is open, Codex (the Sol model) on the session's computer writes one line every few minutes about what the screen shows right now, for any agent or a plain terminal. Off by default: the screen text goes to OpenAI on that computer's Codex subscription. A computer on an earlier version shows its tiles from the session list only.
+
 ## 1.71.2
 
 - Session titles come back after a reboot. The title a model keeps for a session was not saved with the session list, and a restored session got its own name as the owner's title, which kept the model's title away for good. Both titles are saved and restored now, and a session already restored that way takes the model's title again the next time its summary is read.

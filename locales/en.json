@@ -965,6 +965,24 @@
     "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "The installer showed them at the end, in the terminal window. If that window is closed, run this in a terminal on the DeckAway computer (in PowerShell on Windows):",
     "Папки в {0}": "Folders in {0}",
     "Папки проектов": "Project folders",
-    "Поиск папки…": "Search folders…"
+    "Поиск папки…": "Search folders…",
+    "Без проекта": "No project",
+    "Ждут вас": "Waiting for you",
+    "Закрепить первой в группе": "Pin first in its group",
+    "Открыть сессию": "Open session",
+    "ждут ответа: {0}": "waiting for an answer: {0}",
+    "закончили: {0}": "finished: {0}",
+    "работают: {0}": "working: {0}",
+    "закончил": "finished",
+    "свободен": "free",
+    "Пульт": "Board",
+    "Пульт: все сессии сразу": "Board: every session at once",
+    "Пульт: все сессии сразу (⌥B)": "Board: every session at once (⌥B)",
+    "Группировать": "Group",
+    "по проектам": "by project",
+    "по компьютерам": "by computer",
+    "без групп": "no groups",
+    "Выжимка экрана через Codex": "Screen digest by Codex",
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "While the board is open, Codex (the Sol model) on the session's computer writes one line every few minutes about what its screen shows right now. The screen text goes to OpenAI on that computer's Codex subscription. Without Codex a tile shows the summary and the end of the screen."
   }
 }

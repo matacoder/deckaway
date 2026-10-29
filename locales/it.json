@@ -965,6 +965,24 @@
     "Их показал установщик в конце, в окне терминала. Если окно уже закрыто, выполните в терминале компьютера с DeckAway (на Windows — в PowerShell):": "Il programma di installazione li ha mostrati alla fine, nella finestra del terminale. Se la finestra è chiusa, esegui questo in un terminale del computer con DeckAway (su Windows, in PowerShell):",
     "Папки в {0}": "Cartelle in {0}",
     "Папки проектов": "Cartelle dei progetti",
-    "Поиск папки…": "Cerca cartella…"
+    "Поиск папки…": "Cerca cartella…",
+    "Без проекта": "Senza progetto",
+    "Ждут вас": "Ti aspettano",
+    "Закрепить первой в группе": "Fissa per primo nel gruppo",
+    "Открыть сессию": "Apri sessione",
+    "ждут ответа: {0}": "attendono risposta: {0}",
+    "закончили: {0}": "finite: {0}",
+    "работают: {0}": "al lavoro: {0}",
+    "закончил": "finito",
+    "свободен": "libero",
+    "Пульт": "Plancia",
+    "Пульт: все сессии сразу": "Plancia: tutte le sessioni insieme",
+    "Пульт: все сессии сразу (⌥B)": "Plancia: tutte le sessioni insieme (⌥B)",
+    "Группировать": "Raggruppa",
+    "по проектам": "per progetto",
+    "по компьютерам": "per computer",
+    "без групп": "senza gruppi",
+    "Выжимка экрана через Codex": "Sintesi dello schermo con Codex",
+    "Пока открыт пульт, Codex (модель Sol) на компьютере сессии раз в несколько минут пишет одной строкой, что сейчас происходит на её экране. Текст экрана уходит в OpenAI по подписке Codex этого компьютера. Без Codex плитка показывает пересказ и конец экрана.": "Mentre la plancia è aperta, Codex (modello Sol) sul computer della sessione scrive ogni pochi minuti una riga su ciò che il suo schermo mostra ora. Il testo dello schermo va a OpenAI con l’abbonamento Codex di quel computer. Senza Codex, la scheda mostra il riassunto e la fine dello schermo."
   }
 }
