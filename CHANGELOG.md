@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.78.0
+
+- Telegram no longer sends the same permission question every few seconds. Claude Code now counts down before it denies a request by itself ("will automatically deny this request in 0:22"); that line changed every second, so each second looked like a new question, a new message, and a tap on the previous one was refused. The countdown is no longer part of the question (on the session's computer), and the bot on the gateway sends at most one message per session and menu every 30 seconds while the session keeps asking, whatever the computer's version.
+
 ## 1.77.0
 
 - A session no longer looks busy for a few seconds, and then "finished", just because a terminal attached to it somewhere (a phone, another tab, a page coming back): the redraw that follows a change of window size is not counted as activity. That burst was what lit the "ready" dot on old sessions where nothing had changed.

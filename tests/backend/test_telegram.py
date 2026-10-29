@@ -72,6 +72,17 @@ enter submit   ctrl+] skip   shift+→ main prompt
         # Generic settings menu without a question is not a notification.
         self.assertIsNone(parse_question('demo', 'claude', '%1:123', screen.replace('Choose', 'Model:')))
 
+    def test_claude_countdown_before_its_own_denial_is_not_part_of_the_question(self):
+        # Captured from Claude Code on an unattended session: the line counts down every second.
+        screen = lambda left: ('─' * 60 + '\n Bash command\n\n   cd ~/dev/router && diff a b\n   Reconnect and diff\n\n'
+                               ' Dangerous rm operation not ruled out\n'
+                               f' ⚠ Claude Code will automatically deny this request in {left}, to avoid blocking progress on an unattended session\n'
+                               ' Do you want to proceed?\n ❯ 1. Yes\n   2. No\n\n Esc to cancel · Tab to amend\n')
+        first, later = parse_question('demo', 'claude', '%1:1', screen('0:22')), parse_question('demo', 'claude', '%1:1', screen('0:21'))
+        self.assertEqual(first.fingerprint, later.fingerprint)
+        self.assertNotIn('automatically deny', first.title)
+        self.assertIn('Do you want to proceed?', first.title)
+
     def test_codex_approval_asks_above_a_long_command(self):
         # Shape of Codex's approval dialog: the question, then a command longer than the usual few lines.
         command = '\n'.join(f"  Get-Content 'C:\\Users\\demo\\logs\\{i}.log' -Tail 12" for i in range(12))
@@ -215,6 +226,22 @@ class TelegramTests(unittest.TestCase):
         self.assertEqual(self.service.path.stat().st_mode & 0o777, 0o600)
         self.assertEqual(self.service.database().path.stat().st_mode & 0o777, 0o600)
         self.assertIsNone(self.service.status()['pair_url'])
+
+    def test_a_question_that_changes_every_scan_is_sent_at_most_every_half_minute(self):
+        from dataclasses import replace
+        self.pair()
+        sends = lambda: [c for c in self.api.calls if c[0] == 'sendMessage' and 'reply_markup' in c[1] and c[1]['reply_markup']['inline_keyboard']]
+        with patch('integrations.telegram.time.monotonic', return_value=100.0):
+            self.service.deliver()
+        self.assertEqual(len(sends()), 1)
+        for at, left in ((102.0, '0:20'), (110.0, '0:12')):
+            self.questions = [replace(question(), title='Proceed? ' + left)]
+            with patch('integrations.telegram.time.monotonic', return_value=at):
+                self.service.deliver()
+        self.assertEqual(len(sends()), 1)
+        with patch('integrations.telegram.time.monotonic', return_value=131.0):
+            self.service.deliver()
+        self.assertEqual(len(sends()), 2)
 
     def test_delivery_buttons_and_restart_deduplication(self):
         self.pair()

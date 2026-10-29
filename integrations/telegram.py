@@ -27,6 +27,8 @@ UPDATES = 25
 FREE_TEXT = re.compile(r'(?:Other\b|Type something|Другое\b|Свой ответ)', re.I)
 
 
+RESEND_AFTER = 30
+
 class TelegramError(RuntimeError):
     def __init__(self, message, delay=5, uncertain=True):
         super().__init__(message)
@@ -98,6 +100,7 @@ class Telegram:
                           'save the Telegram settings again or disconnect Telegram to reset it')
         self.started = False
         self.seen = {}
+        self.sent = {}  # (computer, session) -> (when, options) of the last question sent from it
 
     def language(self):
         language = self.config.get('language', os.environ.get('PANEL_LANGUAGE', 'en'))
@@ -255,6 +258,9 @@ class Telegram:
             now = time.monotonic()
             self.seen.update({q.fingerprint: now for q in questions})
             self.seen = {key: at for key, at in self.seen.items() if now - at < 6}
+            # A session that shows no question for a scan was answered or moved on: its next question goes at once.
+            asking = {(q.deck, q.session) for q in questions}
+            self.sent = {key: last for key, last in self.sent.items() if key in asking and now - last[0] < RESEND_AFTER}
             # Open rows get a 6 s grace for redraw flicker. Closed rows retire after ~2 missed scans
             # (scans run every 2 s), so one flickering scan never re-sends an answered prompt.
             recent = {key for key, at in self.seen.items() if now - at < 3}
@@ -266,6 +272,11 @@ class Telegram:
             self.api.call(token, 'editMessageReplyMarkup', chat_id=chat, message_id=message_id,
                           reply_markup={'inline_keyboard': []})
         for row_id, q in waiting:
+            # A question whose text keeps changing (a countdown, a timer) is a new one on every scan: while the
+            # session keeps asking, one message per menu at most every half minute, the rest waits.
+            last = self.sent.get((q.deck, q.session))
+            if last and last[1] == q.options and time.monotonic() - last[0] < RESEND_AFTER:
+                continue
             if not db.claim_delivery(row_id):
                 continue
             try:
@@ -277,6 +288,7 @@ class Telegram:
                 db.set_status(row_id, 'pending' if retry else 'uncertain')
                 raise
             with self.lock:
+                self.sent[(q.deck, q.session)] = (time.monotonic(), q.options)
                 if self.config.get('token') == token:
                     db.set_status(row_id, 'sent', message_id)
 

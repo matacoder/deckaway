@@ -41,6 +41,9 @@ SOLID = re.compile(r"^[─━═╭╰┌└][─━═╌┄╭╰┌└┐┘�
 RULE = re.compile(r"^[─━═╌┄╭╰┌└][─━═╌┄╭╰┌└┐┘╮╯\s]*$")
 # The last tab of Claude Code's form of several questions names no keys under its options.
 ASKS = re.compile(r"\?|would you|do you|allow|proceed|choose|выберите|разрешить", re.I)
+# Claude Code counts down before it denies by itself ("... automatically deny this request in 0:22, ..."): a line
+# that changes every second would make every second a new question (a Telegram message each, answers refused).
+COUNTDOWN = re.compile(r"\bautomatically\b.*\bin \d+:\d\d\b", re.I)
 READY = re.compile(r"^Ready to submit your answers\?$", re.I)
 
 
@@ -108,7 +111,7 @@ def parse_question(session, agent, instance, screen):
         far = asked[-1] if asked and not any(ASKS.search(line) for line in lines[near:first]) else near
         start = solid[-1] + 1 if solid else dashed[-1] + 1 if dashed else far
     title = "\n".join(line for line in lines[start:first] if line and not RULE.match(line)
-                      and not line.startswith("Tip: ")).strip()
+                      and not line.startswith("Tip: ") and not COUNTDOWN.search(line)).strip()
     if not title:
         return None
     if not headers and not async_form and not ASKS.search(title):
