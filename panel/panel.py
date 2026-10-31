@@ -1038,6 +1038,9 @@ def action_kill(d):
             _model_relay.bindings.remove(source.get("binding"))
     if isinstance(name, str) and NAME_RE.fullmatch(name):
         shutil.rmtree(os.path.join(UPLOAD_DIR, name), ignore_errors=True)
+        if windows_service().home():
+            from integrations.windows import uploads_root
+            shutil.rmtree(os.path.join(uploads_root(windows_service().home()), name), ignore_errors=True)
         schedule_service().forget(name)  # A new session with this name must not inherit waiting prompts.
 
 
@@ -1145,6 +1148,14 @@ def attachment_paths(name, attachments):
     return paths
 
 
+def windows_attachments(name, paths):
+    from integrations.windows import share
+    home = windows_service().status().get("home")
+    if not home:
+        raise ValueError("вложения не переданы: папка пользователя Windows не найдена")
+    return share(paths, home, name) if paths else []
+
+
 def action_discard_upload(d):
     for path in attachment_paths(d.get("name", ""), d.get("attachments", [])):
         os.unlink(path)
@@ -1155,10 +1166,18 @@ INCOMING_RE = re.compile(r'\.incoming-[0-9a-f]{32}')
 
 def cleanup_uploads(max_age=7 * 86400):
     """Keep sent images long enough for deferred agent reads, but not forever."""
-    if not os.path.isdir(UPLOAD_DIR):
+    home = windows_service().home()
+    if home:
+        from integrations.windows import uploads_root
+        cleanup_folder(uploads_root(home), max_age)
+    cleanup_folder(UPLOAD_DIR, max_age)
+
+
+def cleanup_folder(root, max_age):
+    if not os.path.isdir(root) or os.path.islink(root):
         return
     cutoff = time.time() - max_age
-    with os.scandir(UPLOAD_DIR) as folders:
+    with os.scandir(root) as folders:
         for folder in folders:
             if not folder.is_dir(follow_symlinks=False):
                 continue
@@ -1244,6 +1263,8 @@ def send_input(d):
             text = (text + translated("\n\nВложения временные: удаляются с сервера через 7 дней после загрузки. "
                     "Если они нужны надолго, сохрани их в подходящем месте в проекте.")).lstrip()
         paths = [path for path in paths if "--" not in os.path.basename(path)]
+        if (files or paths) and opt(name, "@cc_runtime") == "windows":
+            files, paths = windows_attachments(name, files), windows_attachments(name, paths)
         if files:
             text = (text + translated("\n\nПриложенные файлы (прочитай их с диска):\n") + "\n".join(files)).lstrip()
         if paths and agent == "codex":

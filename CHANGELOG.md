@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.79.0
+
+- Attachments reach agents in Windows sessions. They were named by their place in WSL, which a Windows program cannot open; now each is copied into `%LOCALAPPDATA%\DeckAway\uploads\<session>` and named by its Windows path. The copies are removed after 7 days like the originals, and with the session.
+
 ## 1.78.0
 
 - Telegram no longer sends the same permission question every few seconds. Claude Code now counts down before it denies a request by itself ("will automatically deny this request in 0:22"); that line changed every second, so each second looked like a new question, a new message, and a tap on the previous one was refused. The countdown is no longer part of the question (on the session's computer), and the bot on the gateway sends at most one message per session and menu every 30 seconds while the session keeps asking, whatever the computer's version.

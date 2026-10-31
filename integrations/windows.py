@@ -102,6 +102,37 @@ def to_linux(text):
     return '/'.join(['/mnt', match.group(1).lower(), *parts])
 
 
+# Attachments a Windows agent is sent: the panel's own copies live in WSL, which Windows programs cannot
+# open by a Linux path, so they are copied into the Windows user's own folder and named by a Windows path.
+UPLOADS = ('AppData', 'Local', 'DeckAway', 'uploads')
+
+
+def uploads_root(home):
+    return os.path.join(home, *UPLOADS)
+
+
+def share(paths, home, name):
+    """Windows paths to copies of the attachments in paths, kept per session under the Windows home."""
+    folder = os.path.join(uploads_root(home), name)
+    os.makedirs(folder, exist_ok=True)
+    if os.path.islink(folder):
+        raise ValueError('папка вложений Windows не должна быть символической ссылкой')
+    shared = []
+    for path in paths:
+        target = os.path.join(folder, os.path.basename(path))
+        if not os.path.isfile(target):
+            # Under a name the cleanup knows, so a copy cut short is removed like a cut-short upload.
+            partial = os.path.join(folder, '.incoming-' + os.urandom(16).hex())
+            try:
+                shutil.copyfile(path, partial)
+                os.replace(partial, target)
+            finally:
+                if os.path.exists(partial):
+                    os.unlink(partial)
+        shared.append(to_windows(target))
+    return shared
+
+
 def quote(text):
     return "'" + text.replace("'", "''") + "'"
 

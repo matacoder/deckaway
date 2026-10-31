@@ -101,6 +101,28 @@ class AttachmentTests(PanelCase):
         self.assertIn(paths[1], self.pasted[1])
         self.assertIn("Inspect", self.pasted[1])
 
+    def test_windows_agent_gets_copies_on_the_windows_drive_named_by_windows_paths(self):
+        image = self.upload()
+        archive = self.panel.action_upload({"name": "demo", "filename": "test.zip", "data": "UEsDBA=="})["attachment"]
+        home = Path(self.enterContext(tempfile.TemporaryDirectory())) / "mnt" / "c" / "Users" / "me"
+        self.panel.opt = Mock(side_effect=lambda name, key: "windows" if key == "@cc_runtime" else "claude")
+        windows = Mock(status=Mock(return_value={"home": str(home)}), home=Mock(return_value=str(home)))
+        with patch.object(self.panel, "windows_service", return_value=windows), \
+                patch("integrations.windows.to_windows", side_effect=lambda p: "C:" + p.split("/c", 1)[1].replace("/", "\\")):
+            self.panel.action_send({"name": "demo", "text": "Look", "attachments": [image, archive]})
+            folder = home / "AppData" / "Local" / "DeckAway" / "uploads" / "demo"
+            self.assertEqual((folder / image).read_bytes(), PNG)
+            self.assertIn("C:\\Users\\me\\AppData\\Local\\DeckAway\\uploads\\demo\\" + image, self.pasted[-1])
+            self.assertIn("demo\\" + archive, self.pasted[-1])
+            self.assertNotIn(self.panel.UPLOAD_DIR, self.pasted[-1])
+            os.utime(folder / image, (0, 0))
+            self.panel.cleanup_uploads()
+            self.assertFalse((folder / image).exists())
+            self.assertTrue((folder / archive).exists())
+            windows.status.return_value = {}
+            with self.assertRaises(ValueError):
+                self.panel.action_send({"name": "demo", "attachments": [image]})
+
     def test_upload_rejects_missing_session_and_shell(self):
         self.panel.session_exists.return_value = False
         with self.assertRaises(ValueError):
