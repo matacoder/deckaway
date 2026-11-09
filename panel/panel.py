@@ -1134,8 +1134,8 @@ def store_streamed_upload(name, filename, length, stream):
 
 
 def attachment_paths(name, attachments):
-    if not isinstance(attachments, list) or len(attachments) > 4:
-        raise ValueError("можно приложить до 4 файлов")
+    if not isinstance(attachments, list) or len(attachments) > 10:
+        raise ValueError("можно приложить до 10 файлов")
     folder = attachment_dir(name)
     paths = []
     for attachment in attachments:

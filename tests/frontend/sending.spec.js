@@ -99,15 +99,15 @@ test('attachments stay with their session and survive manual refresh', async ({ 
   await expect(page.locator('#attachments')).toBeEmpty();
 });
 
-test('upload errors and the four-image limit are visible without sending', async ({ app, page }) => {
+test('upload errors and the ten-file limit are visible without sending', async ({ app, page }) => {
   await app.open();
   app.uploadError = 'Invalid image';
   await page.locator('#image_files').setInputFiles({ name: 'bad.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.locator('#send_state')).toContainText('Не удалось приложить: Invalid image');
   await expect(page.locator('#attachments')).toBeEmpty();
   app.uploadError = null;
-  await page.locator('#image_files').setInputFiles(Array.from({ length: 5 }, (_, i) => ({ name: `${i}.png`, mimeType: 'image/png', buffer: PNG })));
-  await expect(page.locator('#toast')).toContainText('до 4 файлов');
+  await page.locator('#image_files').setInputFiles(Array.from({ length: 11 }, (_, i) => ({ name: `${i}.png`, mimeType: 'image/png', buffer: PNG })));
+  await expect(page.locator('#toast')).toContainText('до 10 файлов');
   expect(app.uploads).toHaveLength(1);
   expect(app.sends).toEqual([]);
 });

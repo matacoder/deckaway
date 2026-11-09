@@ -50,7 +50,9 @@ function pastedPictures(data){
   return [...new Set(sources.filter(src=>/^(data:image\/|https?:\/\/|blob:)/i.test(src)))];
 }
 // How many of the pictures fit, given what is already attached. Pure for tests.
-function pictureRoom(attached,wanted){return Math.max(0,Math.min(wanted,4-attached))}
+// What one message may carry; the computer refuses more (attachment_paths in panel.py).
+const MAX_ATTACHMENTS=10;
+function pictureRoom(attached,wanted){return Math.max(0,Math.min(wanted,MAX_ATTACHMENTS-attached))}
 const SMALL_PICTURE=48,PICTURE_TRIES=12,PICTURE_BYTES=25*1024*1024,PICTURE_WAIT=10000;
 // Copied text names its pictures by address. One that points into this network (a router, this machine)
 // is not a picture from a chat, and the page is not made to ask for it. Pure for tests.
@@ -99,7 +101,7 @@ async function fetchPicture(src,index){
 async function attachPastedPictures(sources,ready){
   const name=active,deck=selectedDeck,files=ready.slice();
   let wanted=ready.length;
-  const room=pictureRoom(attachmentsFor(name).length,4);
+  const room=pictureRoom(attachmentsFor(name).length,MAX_ATTACHMENTS);
   for(const [index,src] of sources.entries()){
     // A copied page may name dozens: only what can still be attached is asked for, the rest is counted.
     if(files.length>=room||index>=PICTURE_TRIES||!pictureAllowed(src)){wanted++;continue}

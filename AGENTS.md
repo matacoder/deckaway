@@ -49,7 +49,7 @@ Self-hosted panel (Python stdlib + static JS) for tmux sessions running Claude C
 - Trust `X-Forwarded-For` only from private/same host; never inside a container (`AGENT_DECK_TRUSTED_PROXIES` to opt in).
 - Root never writes into user-owned paths (`as_user` for every write under `$PREFIX`/home; open user files read-only).
 - `/api/image`: path must be on the session screen; PNG/JPEG/WebP/GIF by content, max 25 MB, `nosniff` + `CSP: sandbox`; check content before thumbnails. Gateway passes non-JSON `/api/*` only for these.
-- Uploads: max 4 files x 200 MB, 7-day TTL, reject symlinks; `/api/upload_raw` streams, JSON `/api/upload` kept for old gateways.
+- Uploads: max 10 files x 200 MB, 7-day TTL, reject symlinks; `/api/upload_raw` streams, JSON `/api/upload` kept for old gateways.
 - `/t/*`: unix-socket ttyd, keep ttyd `-O`. `/deck/<id>/t/*` only to an authenticated deck on a numeric Tailscale or private IPv4; never forward gateway cookies. A deck's password or cookie never goes to an address that has not proved the pair key, except the Tailscale address its owner entered.
 - Isolated terminals (opt-in): `/deck/<id>/c/<signed>/t/*` with `CSP: sandbox` (no `allow-same-origin`); the signed path is the only credential there.
 - Telegram: one-shot 10-min pairing bound to user+chat; owner-only replies; callbacks bound to owner/chat/message/session/question; a reply to a "finished" message is a prompt for that session only (name + creation time); never replay ambiguous deliveries.

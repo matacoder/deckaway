@@ -30,7 +30,7 @@ test('rich text copied from a chat yields its pictures once; a copied table yiel
   expect(pastedPictures(clip(html))).toEqual(['https://cdn.example/a.png','data:image/png;base64,AAAA']);
   expect(pastedPictures(clip('<table><tr><td>cell A1</td></tr></table>'))).toEqual([]);
   expect(pastedPictures({files:[]})).toEqual([]);
-  expect(pictureRoom(0,6)).toBe(4);expect(pictureRoom(3,2)).toBe(1);expect(pictureRoom(4,1)).toBe(0);
+  expect(pictureRoom(0,12)).toBe(10);expect(pictureRoom(9,2)).toBe(1);expect(pictureRoom(10,1)).toBe(0);
 });
 
 test('a pasted picture address inside the local network is not asked for',()=>{

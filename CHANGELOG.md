@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.80.0
+
+- A message can carry up to 10 attachments instead of 4. A computer on an earlier version still refuses more than 4 with its own message.
+
 ## 1.79.0
 
 - Attachments reach agents in Windows sessions. They were named by their place in WSL, which a Windows program cannot open; now each is copied into `%LOCALAPPDATA%\DeckAway\uploads\<session>` and named by its Windows path. The copies are removed after 7 days like the originals, and with the session.

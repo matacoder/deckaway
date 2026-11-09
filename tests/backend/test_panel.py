@@ -135,7 +135,7 @@ class AttachmentTests(PanelCase):
     def test_attachments_are_scoped_to_session_and_reject_traversal_and_symlinks(self):
         attachment = self.upload()
         for name, attachments in (("other", [attachment]), ("../escape", [attachment]),
-                                  ("demo", ["../" + attachment]), ("demo", [attachment] * 5),
+                                  ("demo", ["../" + attachment]), ("demo", [attachment] * 11),
                                   ("demo", "not a list")):
             with self.subTest(name=name, attachments=attachments), self.assertRaises(ValueError):
                 self.panel.attachment_paths(name, attachments)

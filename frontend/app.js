@@ -606,7 +606,7 @@ async function uploadImages(files){
   if(!active||sending||uploading||panelUpdating||!files.length)return;
   const name=active;
   if(agentOf(cur())==="shell"){toast(tr("Откройте сессию агента: в терминал файлы не прикладываются"));return}
-  if(attachmentsFor(name).length+files.length>4){toast(tr("Можно приложить до 4 файлов"));return}
+  if(attachmentsFor(name).length+files.length>MAX_ATTACHMENTS){toast(tr("Можно приложить до 10 файлов"));return}
   uploading=true;renderAttachments();
   sendStates.set(name,{text:tr("Загружаю файлы…"),phase:"pending"});renderSendState();
   let failed="";
@@ -1256,8 +1256,8 @@ function restoreInstance(){
   try{
     const draft=JSON.parse(deckSessionStorage.getItem("cc.reload-images")||"null");
     if(Array.isArray(draft)){
-      for(const [name,images] of draft)if(typeof name==="string"&&Array.isArray(images))imageAttachments.set(name,images.slice(0,4));
-    }else if(draft&&draft.name===active&&Array.isArray(draft.images))imageAttachments.set(active,draft.images.slice(0,4));
+      for(const [name,images] of draft)if(typeof name==="string"&&Array.isArray(images))imageAttachments.set(name,images.slice(0,MAX_ATTACHMENTS));
+    }else if(draft&&draft.name===active&&Array.isArray(draft.images))imageAttachments.set(active,draft.images.slice(0,MAX_ATTACHMENTS));
     deckSessionStorage.removeItem("cc.reload-images");
   }catch(e){}
   wrapPreview=true;try{wrapPreview=deckLocalStorage.getItem("cc.wrap")!=="0"}catch(e){}

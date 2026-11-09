@@ -51,7 +51,7 @@ The component diagram, the trust boundaries and the names in use are in [ARCHITE
 - Interface updates: the page checks for a new UI every 30 s and when it returns from the background and
   reloads when idle (no draft or attachments); the mobile action menu has **Обновить интерфейс**, which keeps
   the draft and uploaded attachments.
-- Attachments: up to four files, 200 MB each, including ZIP, text, PDFs and images. Codex receives
+- Attachments: up to ten files, 200 MB each, including ZIP, text, PDFs and images. Codex receives
   supported images as native attachments and other files as local paths in its current conversation.
   Claude receives local paths. Files are not automatically extracted or executed. Uploads are temporary:
   files older than seven days are removed by a cleanup that runs every minute, or immediately when
