@@ -145,6 +145,8 @@ function toast(m,info,action){
   const t=$("toast"),dialogs=Array.from(document.querySelectorAll("dialog[open]:not(.docked)")).filter(d=>d!==drawer);
   (dialogs[dialogs.length-1]||document.body).append(t);t.className=info==="success"?"success":info?"info":"";t.replaceChildren(el("span","",m));
   if(action){const b=document.createElement("button");b.textContent=action.label;b.onclick=e=>{e.stopPropagation();action.run();hideToast()};t.append(b)}
+  // The whole toast closes on a tap; the mark only says so.
+  const close=svgIcon("x");close.classList.add("toast-x");t.append(close);
   t.setAttribute("role",info?"status":"alert");t.setAttribute("aria-live",info?"polite":"assertive");
   t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(hideToast,action?12000:(info?2200:8000));
 }

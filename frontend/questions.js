@@ -5,7 +5,7 @@ function svgIcon(name){
 }
 
 // Free-text options (Other / Type something) open a text field; the answer is typed into that row.
-function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft="",onAnswer,onToggle,onTextOption,onTextInput,onSubmitText,translate}){
+function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft="",onAnswer,onToggle,onTextOption,onTextInput,onSubmitText,onHide,translate}){
   box.replaceChildren();
   box.hidden=!question;
   if(!question)return;
@@ -13,6 +13,11 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
   const head=document.createElement("div");head.className="q-head";
   head.append(translate("Вопрос агента"));
   if(question.progress){const progress=document.createElement("span");progress.className="q-progress";progress.textContent=question.progress;head.append(progress)}
+  if(onHide){
+    const hide=document.createElement("button");hide.type="button";hide.className="q-hide";
+    hide.title=translate("Скрыть");hide.setAttribute("aria-label",translate("Скрыть"));hide.append(svgIcon("x"));hide.onclick=onHide;
+    head.append(hide);
+  }
   // Not a <button>: WebKit neither clamps nor scrolls the text of one, so a long command pushed the answers off
   // a phone's screen with no way to reach them.
   const title=document.createElement("div");title.className="q-title"+(expanded?" open":"");
@@ -72,7 +77,20 @@ function wasAnswered(key,now=Date.now()){
   for(const [k,at] of answeredQuestions)if(now-at>ANSWERED_MS)answeredQuestions.delete(k);
   return answeredQuestions.has(key);
 }
-if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft,markAnswered,wasAnswered};
+// A card the owner hid (a question the panel cannot answer, or one answered in the terminal) stays hidden in this
+// browser until the agent asks something else; the terminal and its keys still answer it.
+const HIDDEN_QUESTIONS="cc.hidden-questions",HIDDEN_MS=7*86400000;
+function hiddenQuestions(now=Date.now()){
+  let all={};try{all=JSON.parse(localStorage.getItem(HIDDEN_QUESTIONS)||"{}")||{}}catch(e){}
+  for(const key of Object.keys(all))if(!(now-all[key]<HIDDEN_MS))delete all[key];
+  return all;
+}
+function hideQuestion(key,now=Date.now()){
+  const all=hiddenQuestions(now);all[key]=now;
+  try{localStorage.setItem(HIDDEN_QUESTIONS,JSON.stringify(all))}catch(e){}
+}
+function isHiddenQuestion(key){return Object.hasOwn(hiddenQuestions(),key)}
+if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft,markAnswered,wasAnswered,hideQuestion,isHiddenQuestion};
 
 // The open session's question: fetched with the screen, drawn as a card, answered by its buttons.
 let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
@@ -83,7 +101,7 @@ async function loadQuestion(){
   loadingQuestion=true;const name=s.name;
   try{
     const data=await api("/api/question?name="+encodeURIComponent(name)),got=data.question;
-    if(active===name)setQuestion(name,got&&wasAnswered(answerKey(name,got.id))?null:got);
+    if(active===name)setQuestion(name,got&&(wasAnswered(answerKey(name,got.id))||isHiddenQuestion(answerKey(name,got.id)))?null:got);
   }
   catch(e){/* Questions are an optional shortcut; the key row still works. */}
   finally{loadingQuestion=false}
@@ -113,6 +131,7 @@ function renderQuestion(){
   renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
     onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
     onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
+    onHide:()=>{hideQuestion(answerKey(question.name,data.id));setQuestion(question.name,null)},
     // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
     // refocus on every refresh would pop the keyboard back after the user dismissed it.
     onTextOption:index=>{question.textIndex=question.textIndex===index?null:index;renderQuestion();$("question").querySelector(".q-text textarea")?.focus()},

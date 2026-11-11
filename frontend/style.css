@@ -284,6 +284,10 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 #question{margin:0 0 10px;padding:12px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--bg)}
 .q-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
 .q-head .q-progress{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--mut)}
+.q-head .q-hide{margin:-10px -10px -10px auto;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-sm);color:var(--mut)}
+.q-head .q-progress+.q-hide{margin-left:0}
+@media (hover:hover){.q-head .q-hide:hover{color:var(--fg);background:var(--hover-tint)}}
+.q-head .q-hide .ui-icon{width:16px;height:16px}
 .q-title{display:block;width:100%;text-align:left;color:var(--fg2);font-size:13.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
 .q-title{cursor:pointer}
 /* Opened, a long command scrolls in its own box, so the answers below stay on a phone's screen. */
@@ -413,6 +417,7 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 /* ---------- toast ---------- */
 #toast{position:fixed;left:50%;top:calc(var(--app-top) + var(--sat) + 56px);transform:translateX(-50%);display:none;align-items:center;gap:12px;max-width:min(520px,calc(100vw - 32px));padding:10px 14px;border-radius:var(--r-md);border:1px solid var(--toast-bad-bd);background:var(--toast-bad-bg);color:var(--toast-bad-fg);box-shadow:var(--shadow-md);z-index:60;cursor:pointer}
 #toast.on{display:flex}
+#toast .toast-x{flex:none;width:14px;height:14px;opacity:.7}
 .search:focus-visible,#msg:focus-visible,.dlg input:focus-visible,.dlg select:focus-visible,.q-text textarea:focus-visible{box-shadow:0 0 0 2px var(--acc-soft)}
 #toast.success{background:var(--toast-ok-bg);color:var(--toast-ok-fg);border-color:var(--toast-ok-bd)}
 #toast.info{background:var(--toast-info-bg);color:var(--toast-info-fg);border-color:var(--toast-info-bd)}

@@ -1,6 +1,6 @@
 const fs=require('fs');
 const path=require('path');
-const {renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft}=require('../../frontend/questions');
+const {renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft,hideQuestion,isHiddenQuestion}=require('../../frontend/questions');
 
 const question={id:'q1',title:'Run <img src=x> now?',progress:'Question 1/2',selected:1,
  options:[{label:'Yes',text:false},{label:'Always <b>',text:false},{label:'Type something',text:true}]};
@@ -46,6 +46,18 @@ test('a pending answer disables every option so a second tap cannot double-send'
  const buttons=[...box.querySelectorAll('.q-opt')];
  expect(buttons.every(b=>b.disabled)).toBe(true);expect(buttons[0].classList.contains('sending')).toBe(true);
  buttons[1].click();expect(onAnswer).not.toHaveBeenCalled();
+});
+
+test('a hidden question stays hidden in this browser for a week; another question shows',()=>{
+ const onHide=jest.fn(),{box}=render({onHide});
+ box.querySelector('.q-hide').click();
+ expect(onHide).toHaveBeenCalledTimes(1);
+ expect(render().box.querySelector('.q-hide')).toBeNull();
+ hideQuestion('/demo/q1',1000);
+ expect(isHiddenQuestion('/demo/q1')).toBe(false); // Hidden long ago: a week has passed.
+ hideQuestion('/demo/q1');
+ expect(isHiddenQuestion('/demo/q1')).toBe(true);
+ expect(isHiddenQuestion('/demo/q2')).toBe(false);
 });
 
 test('no question hides the card',()=>{

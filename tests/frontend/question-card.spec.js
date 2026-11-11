@@ -23,3 +23,19 @@ test('a long command in a question leaves its answers on a phone screen, and an 
   await page.waitForTimeout(600);
   await expect(page.locator('#question')).toBeHidden();
 });
+
+test('a question card can be hidden; it stays hidden after a reload until the agent asks another', async ({ app, page }) => {
+  let current = QUESTION;
+  await page.route(/https:\/\/panel\.test\/api\/question\?/, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ question: current }) }));
+  app.sessions = [session('demo', { agent: 'claude', preview: 'Bash command' })];
+  await app.open({ width: 390, height: 844, active: 'demo' });
+  await page.locator('#question .q-hide').click();
+  await expect(page.locator('#question')).toBeHidden();
+  await page.reload();
+  await page.evaluate(() => loadQuestion());
+  await page.waitForTimeout(600);
+  await expect(page.locator('#question')).toBeHidden();
+  current = { ...QUESTION, id: 'q-next', title: 'Next?' };
+  await page.evaluate(() => loadQuestion());
+  await expect(page.locator('#question .q-title')).toHaveText('Next?');
+});

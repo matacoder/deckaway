@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.83.0
+
+- A question card can be hidden (the × in its corner): for a question the panel cannot answer, or one already answered in the terminal. It stays hidden in this browser until the agent asks something else; the terminal and the key row still answer it. Error messages show a close mark; a tap anywhere on them closes them, as before.
+
 ## 1.82.0
 
 - Answering a long Claude Code question from a phone no longer fails with "answer the previous question in Telegram first". A phone-sized window scrolls the top of such a question off the screen, and the panel took the rest of it for another question; the end of the question and its options are now enough to recognise it.
