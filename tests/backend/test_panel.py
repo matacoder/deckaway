@@ -672,6 +672,23 @@ class WebQuestionTests(PanelCase):
              patch.object(self.panel, 'current_question', return_value=submit):
             self.assertIs(self.panel.session_question('demo'), submit)
 
+    def test_a_form_with_a_question_the_panel_cannot_answer_follows_the_screen(self):
+        # The first question takes several choices: the conversation file lists only the second one.
+        second = self.question(request_id='tool-1:1', title='Protect main?', progress='Question 2/2')
+        shown = self.question(title='← ☐ CI ☐ Branch ✔ Submit →\nProtect main?', options=('Yes', 'No', 'Type something.'))
+        submit = self.question(title='Ready to submit your answers?', options=('Submit answers', 'Cancel'))
+        for screen, offered in ((None, None), (shown, second), (submit, submit)):
+            with self.subTest(screen=screen and screen.title), patch.object(self.panel, 'session_exists', return_value=True), \
+                 patch.object(self.panel, 'pending_questions', return_value=[second]), \
+                 patch.object(self.panel, 'current_question', return_value=screen):
+                self.assertIs(self.panel.session_question('demo'), offered)
+        session = {'name': 'demo', 'agent': 'claude', 'running': True, 'title': '', 'sid': 's', 'instance': 'i'}
+        for screen, offered in ((None, []), (submit, ['Ready to submit your answers?']), (shown, ['Protect main?'])):
+            with self.subTest(scan=screen and screen.title), patch.object(self.panel, 'list_sessions', return_value=[session]), \
+                 patch.object(self.panel, 'pending_questions', return_value=[second]), \
+                 patch.object(self.panel, 'current_question', return_value=screen):
+                self.assertEqual([q.title for q in self.panel.scan_questions()], offered)
+
     def test_answer_requires_the_shown_question_and_an_integer_index(self):
         question = self.question()
         with patch.object(self.panel, 'session_question', return_value=question), \

@@ -211,6 +211,27 @@ def transcript_questions(path, session, agent, instance):
     return result
 
 
+def screen_form(pending, current):
+    """Claude Code writes a form of several questions to its conversation only at Submit, so until then the file
+    lists every question of it, minus those the panel cannot answer (several choices, secrets). The screen
+    decides: the listed questions while one of them is on it, else what it shows (the Submit tab), else the
+    listed ones only if the form has nothing else (an answer must not wait for a tab it can never reach)."""
+    if not on_screen(pending) or any(matches_screen(q, current) for q in pending):
+        return pending
+    if current:
+        return [current]
+    return pending if len(pending) >= max(form_size(q) for q in pending) else []
+
+
+def form_size(question):
+    return int(question.progress.rsplit('/', 1)[1]) if re.fullmatch(r'Question \d+/\d+', question.progress) else 1
+
+
+def on_screen(pending):
+    """Whether the screen decides which of these pending questions is offered (see screen_form)."""
+    return bool(pending) and pending[0].agent != 'codex' and (len(pending) > 1 or form_size(pending[0]) > 1)
+
+
 def matches_screen(structured, visible):
     """Transcript labels omit terminal descriptions and the UI's implicit Other option."""
     if not visible or structured.instance != visible.instance or structured.session != visible.session:

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.81.0
+
+- Claude Code forms of several questions follow the screen. When one question of a form takes several choices (which the panel cannot answer), the card no longer offers a later question that a tap could never reach, so it no longer hangs: the form is answered in the terminal until the screen shows a question the panel can answer. The Submit tab now reaches the card, the board, the inbox and Telegram once the answers are given, instead of the already answered questions staying there.
+
 ## 1.80.0
 
 - A message can carry up to 10 attachments instead of 4. A computer on an earlier version still refuses more than 4 with its own message.

@@ -100,7 +100,7 @@ except ModuleNotFoundError:
     locales = None  # Legacy updaters repair the optional catalog package on the next run.
 DEFAULT_LANGUAGE = os.environ.get("PANEL_LANGUAGE", "en")
 try:
-    from integrations.questions import parse_question, transcript_questions, matches_screen, QuestionNotReady
+    from integrations.questions import parse_question, transcript_questions, matches_screen, on_screen, screen_form, QuestionNotReady
     from integrations.telegram import Telegram
 except ModuleNotFoundError:
     Telegram = None  # A pre-0.7 updater installs core files first; its next run repairs packages.
@@ -1680,6 +1680,8 @@ def scan_questions():
             label = session.get('title') or session['name']
             structured = pending_questions(session['name'], session['agent'], session.get('sid') or '', session.get('instance'))
             if structured:
+                if on_screen(structured):
+                    structured = screen_form(structured, current_question(session['name'], session))
                 result.extend(dataclasses.replace(q, label=label) for q in structured)
                 continue
             question = current_question(session['name'], session)
@@ -1790,12 +1792,12 @@ def session_question(name):
     with lock:
         metadata = {}
         pending = pending_questions(name, metadata=metadata)
-        if len(pending) > 1:
-            # A form of several questions is answered only at Submit: the conversation file lists them all
-            # as pending until then, so the one on screen is the one to answer, its Submit tab included.
-            current = current_question(name, metadata)
-            return next((q for q in pending if matches_screen(q, current)), current or pending[0])
-        return pending[0] if pending else current_question(name, metadata)
+        if not pending:
+            return current_question(name, metadata)
+        # Codex's own async question may be hidden behind its composer: its file alone is enough there.
+        current = current_question(name, metadata) if len(pending) > 1 or on_screen(pending) else None
+        shown = screen_form(pending, current)
+        return next((q for q in shown if matches_screen(q, current)), current or (shown[0] if shown else None))
 
 
 def question_payload(question):
