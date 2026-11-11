@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 from support import PanelCase, ROOT
 sys.path.insert(0, str(ROOT))
-from integrations.questions import parse_question, transcript_questions, transcript_model, matches_screen, QuestionNotReady
+from integrations.questions import Question, parse_question, transcript_questions, transcript_model, matches_screen, QuestionNotReady
 from integrations.telegram import API, Telegram, TelegramError
 
 TOKEN = '1234567890:' + 'test_token_only_' * 3
@@ -173,6 +173,17 @@ enter submit   ctrl+] skip   shift+→ main prompt
         self.assertTrue(matches_screen(q,q))
         self.assertFalse(matches_screen(q,question(instance='%2:456:other')))
         self.assertFalse(matches_screen(q,question(SCREEN.replace('1/2','2/2'))))
+
+    def test_a_long_question_scrolled_off_the_top_of_a_phone_sized_window_still_matches_its_end(self):
+        from dataclasses import replace
+        title = 'Когда образуется переплата, можно на депозит? ' * 6 + 'Если зачислять автоматически, сумма посчитается неверно. Что делаем?'
+        structured = Question('demo', 'claude', '%1:1:s', title, ('Кнопка', 'Ответить'), 0, 'Question 1/1', 'tool:0')
+        screen = ('│ Если зачислять автоматически, сумма\n│ посчитается неверно. Что делаем?\n\n'
+                  '❯ 1. Кнопка\n     Описание\n  2. Ответить\n  3. Type something.\n\nEnter to select · Esc to cancel\n')
+        shown = parse_question('demo', 'claude', '%1:1:s', screen)
+        self.assertTrue(matches_screen(structured, shown))
+        # Another question ending the same way is not enough: the text left on screen must end it.
+        self.assertFalse(matches_screen(replace(structured, title=title + ' Ещё?'), shown))
 
 
 class FakeAPI:

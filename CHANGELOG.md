@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.82.0
+
+- Answering a long Claude Code question from a phone no longer fails with "answer the previous question in Telegram first". A phone-sized window scrolls the top of such a question off the screen, and the panel took the rest of it for another question; the end of the question and its options are now enough to recognise it.
+
 ## 1.81.0
 
 - Claude Code forms of several questions follow the screen. When one question of a form takes several choices (which the panel cannot answer), the card no longer offers a later question that a tap could never reach, so it no longer hangs: the form is answered in the terminal until the screen shows a question the panel can answer. The Submit tab now reaches the card, the board, the inbox and Telegram once the answers are given, instead of the already answered questions staying there.

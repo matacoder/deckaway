@@ -239,7 +239,9 @@ def matches_screen(structured, visible):
     if structured.progress and visible.progress and structured.progress != visible.progress:
         return False
     normalize = lambda value: ' '.join(value.split()).casefold()
-    if normalize(structured.title) not in normalize(visible.title):
+    title, shown = normalize(structured.title), normalize(visible.title)
+    # A phone-sized window scrolls the top of a long question off the screen: its end is what is left.
+    if title not in shown and not (len(shown) >= 40 and title.endswith(shown)):
         return False
     return len(visible.options) >= len(structured.options) and all(
         normalize(actual).startswith(normalize(expected)) for expected, actual in zip(structured.options, visible.options))
