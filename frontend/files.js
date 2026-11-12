@@ -2,7 +2,7 @@
 // The server keeps everything inside the home folder and refuses to overwrite a file changed meanwhile.
 // seq: each opening and folder load gets a number; an answer for an older one (another session, a
 // folder left meanwhile) is dropped so it can never fill the dialog or decide where a new file goes.
-const files={session:null,listing:null,file:null,seq:0,error:"",path:""};
+const files={session:null,listing:null,file:null,seq:0,error:"",path:"",picking:false,picked:new Set(),ready:null,busy:false};
 
 function formatSize(bytes){
   return bytes<1024?bytes+" B":bytes<1048576?(bytes/1024).toFixed(1)+" KB":(bytes/1048576).toFixed(1)+" MB";
@@ -116,9 +116,21 @@ function renderFiles(){
     create.onsubmit=e=>{e.preventDefault();newFile(input.value)};
     setTimeout(()=>input.focus(),0);
   }else crumbs.append(fileButton(tr("Файл"),"files-up files-add",()=>{files.creating=true;renderFiles()},"plus"));
+  const paths=listing.entries.filter(entry=>!entry.dir).map(entry=>listing.path+"/"+entry.name);
+  // Picks belong to the folder on screen: another folder starts with none.
+  files.picked=new Set(paths.filter(path=>files.picked.has(path)));
+  if(paths.length)crumbs.append(fileButton(files.picking?tr("Готово"):tr("Выбрать"),"files-up files-pick-toggle",()=>{
+    files.picking=!files.picking;files.picked.clear();files.ready=null;renderFiles()},"check"));
   const list=el("div","files-list");
   for(const entry of listing.entries){
     const path=listing.path+"/"+entry.name;
+    if(files.picking&&!entry.dir){
+      const picked=files.picked.has(path);
+      const row=fileButton(entry.name,"files-row files-pickable"+(picked?" picked":""),()=>{
+        picked?files.picked.delete(path):files.picked.add(path);files.ready=null;renderFiles()},picked?"check":"file");
+      row.setAttribute("aria-pressed",String(picked));row.append(el("span","files-size",formatSize(entry.size)));
+      list.append(el("div","files-item",row));continue;
+    }
     const row=fileButton(entry.name,"files-row"+(entry.dir?" dir":""),()=>entry.dir?loadFolder(path):openFile(path),entry.dir?"folder":"file");
     if(entry.dir){list.append(row);continue}
     row.append(el("span","files-size",formatSize(entry.size)));
@@ -130,7 +142,67 @@ function renderFiles(){
   }
   if(!listing.entries.length)list.append(el("p","files-empty",tr("Папка пуста")));
   if(listing.truncated)list.append(el("p","files-empty",tr("Показаны первые 2000 элементов")));
-  box.append(...[crumbs,create,list].filter(Boolean));
+  box.append(...[crumbs,create,list,files.picking&&paths.length?pickBar(paths):null].filter(Boolean));
+}
+
+// Several files at once, never zipped: shared together (the phone's sheet saves pictures to Photos or sends
+// them to a chat) or downloaded one by one.
+function pickBar(paths){
+  const every=paths.every(path=>files.picked.has(path)),count=files.picked.size;
+  const all=fileButton(every?tr("Снять выбор"):tr("Выбрать все"),"",()=>{files.picked=new Set(every?[]:paths);files.ready=null;renderFiles()});
+  const acts=[];
+  if(canShareFiles())acts.push(fileButton(tr("Поделиться"),"pri",sharePicked,"external"));
+  // A Home Screen app on iOS has no downloads folder: there the sheet is the way to save.
+  const environment=pushEnvironment();
+  if(!acts.length||!(environment.ios&&environment.standalone))acts.push(fileButton(tr("Скачать"),"",downloadPicked,"download"));
+  for(const button of acts)button.disabled=!count||files.busy;
+  return el("div","files-pick",all,el("span","files-pick-count",tr("Выбрано: {0}",[count])),...acts);
+}
+const SHARE_TYPES={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",gif:"image/gif",webp:"image/webp",heic:"image/heic",heif:"image/heif",
+  mp4:"video/mp4",mov:"video/quicktime",m4v:"video/x-m4v",pdf:"application/pdf",txt:"text/plain"};
+// Every download arrives as bytes; the share sheet offers "Save to Photos" only for a picture's or a video's type.
+function shareType(name){const dot=name.lastIndexOf(".");return dot>0&&SHARE_TYPES[name.slice(dot+1).toLowerCase()]||"application/octet-stream"}
+function canShareFiles(){
+  try{return Boolean(navigator.canShare&&navigator.canShare({files:[new File([""],"a.jpg",{type:"image/jpeg"})]}))}catch(e){return false}
+}
+async function fetchPicked(paths){
+  const out=[];let next=0,done=0;
+  const worker=async()=>{
+    while(next<paths.length){
+      const index=next++,path=paths[index],name=path.split("/").pop();
+      const r=await fetch(activePath("/api/download?path="+encodeURIComponent(path)),{cache:"no-store"});
+      if(!r.ok){let message="";try{message=(await r.json()).error}catch(e){}throw new Error(message||tr("Не удалось скачать файл"))}
+      out[index]=new File([await r.blob()],name,{type:shareType(name)});
+      toast(tr("Загружаю {0} из {1}…",[++done,paths.length]),"info");
+    }
+  };
+  await Promise.all([worker(),worker(),worker()]);
+  return out;
+}
+async function sharePicked(){
+  const paths=[...files.picked],key=paths.join("\n");
+  if(!paths.length||files.busy)return;
+  // Ready from an earlier tap: shared at once, inside this tap, which the browser requires.
+  let ready=files.ready?.key===key?files.ready.files:null;
+  if(!ready){
+    files.busy=true;renderFiles();
+    try{ready=await fetchPicked(paths)}catch(e){toast(e.message);return}finally{files.busy=false;renderFiles()}
+    files.ready={key,files:ready};
+  }
+  if(!navigator.canShare({files:ready})){toast(tr("Браузер не может поделиться этими файлами. Скачайте их."));return}
+  const share=()=>navigator.share({files:ready});
+  try{await share()}
+  catch(e){
+    // A long download outlives the tap that started it: one more tap shares what is already here.
+    if(e.name==="NotAllowedError")toast(tr("Файлы загружены: {0}",[ready.length]),"info",{label:tr("Поделиться"),run:()=>share().catch(()=>{})});
+    else if(e.name!=="AbortError")toast(e.message);
+  }
+}
+async function downloadPicked(){
+  for(const path of [...files.picked]){
+    await downloadFile(null,path);
+    await new Promise(resolve=>setTimeout(resolve,250));  // Browsers drop downloads started in one burst.
+  }
 }
 // Files open for reading: wrapped lines with numbers, selectable without the keyboard popping up and the
 // layout jumping. Editing is a separate step, and a new file starts in it.
@@ -276,4 +348,4 @@ async function copyText(text){
   if(execCopy(text,document))toast(tr("Скопировано: {0} симв.",[text.length]),"success");else toast(tr("Браузер запретил копирование"));
 }
 
-if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatches};
+if(typeof module!=="undefined")module.exports={formatSize,homeRelative,fileMatches,shareType};

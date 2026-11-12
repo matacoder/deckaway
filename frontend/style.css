@@ -790,6 +790,11 @@ body.resizing iframe{pointer-events:none}
 .files-row:last-child,.files-item:last-child{border-bottom:0}@media (hover:hover){.files-row:hover{background:var(--side2)}}
 .files-row span:first-of-type{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:13px}
 .files-row.dir svg{color:var(--acc-text)}
+.files-row.picked{background:var(--hl)}.files-row.picked svg{color:var(--acc-text)}
+.files-pick{position:sticky;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--bd);background:var(--side)}
+.files-pick button{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r-sm)}
+.files-pick button.pri{border-color:transparent}.files-pick button:disabled{opacity:.5}
+.files-pick .files-pick-count{flex:1;min-width:0;color:var(--mut);font-size:13px}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
 .files-empty{margin:0;padding:12px;color:var(--mut)}
 .gallery-count{margin:0;padding:10px 12px 6px;color:var(--mut);font-size:13px}
@@ -917,7 +922,7 @@ body.resizing iframe{pointer-events:none}
 @media (max-width:760px),(pointer:coarse) and (max-height:500px){
   .q-text textarea,.files-new input{font-size:16px} /* Below 16px iOS zooms the page on focus. */
   .files-text{font-size:max(16px,var(--code-font,16px))}
-  .files-row{min-height:var(--tap)}.files-download{width:var(--tap)}
+  .files-row{min-height:var(--tap)}.files-download{width:var(--tap)}.files-pick button{min-height:var(--tap)}
   html,body{position:fixed;inset:0;width:100%;height:100%}
   body{font-size:15px}
   .m-only:not([hidden]){display:inline-grid!important}.d-only{display:none!important}

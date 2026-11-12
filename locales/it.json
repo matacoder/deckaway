@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Dimensione della scheda: {0}",
     "маленькая": "piccola",
     "средняя": "media",
-    "большая": "grande"
+    "большая": "grande",
+    "Выбрать": "Seleziona",
+    "Выбрать все": "Seleziona tutto",
+    "Снять выбор": "Annulla selezione",
+    "Выбрано: {0}": "Selezionati: {0}",
+    "Поделиться": "Condividi",
+    "Загружаю {0} из {1}…": "Caricamento {0} di {1}…",
+    "Файлы загружены: {0}": "File caricati: {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "Questo browser non può condividere questi file. Scaricali."
   }
 }

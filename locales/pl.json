@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Rozmiar kafelka: {0}",
     "маленькая": "mały",
     "средняя": "średni",
-    "большая": "duży"
+    "большая": "duży",
+    "Выбрать": "Wybierz",
+    "Выбрать все": "Zaznacz wszystko",
+    "Снять выбор": "Wyczyść zaznaczenie",
+    "Выбрано: {0}": "Wybrano: {0}",
+    "Поделиться": "Udostępnij",
+    "Загружаю {0} из {1}…": "Wczytywanie {0} z {1}…",
+    "Файлы загружены: {0}": "Wczytano pliki: {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "Ta przeglądarka nie może udostępnić tych plików. Pobierz je."
   }
 }

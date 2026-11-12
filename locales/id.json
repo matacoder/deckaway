@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Ukuran kartu: {0}",
     "маленькая": "kecil",
     "средняя": "sedang",
-    "большая": "besar"
+    "большая": "besar",
+    "Выбрать": "Pilih",
+    "Выбрать все": "Pilih semua",
+    "Снять выбор": "Hapus pilihan",
+    "Выбрано: {0}": "Dipilih: {0}",
+    "Поделиться": "Bagikan",
+    "Загружаю {0} из {1}…": "Memuat {0} dari {1}…",
+    "Файлы загружены: {0}": "File dimuat: {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "Browser ini tidak dapat membagikan file ini. Unduh saja."
   }
 }

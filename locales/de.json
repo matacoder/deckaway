@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Kachelgröße: {0}",
     "маленькая": "klein",
     "средняя": "mittel",
-    "большая": "groß"
+    "большая": "groß",
+    "Выбрать": "Auswählen",
+    "Выбрать все": "Alle auswählen",
+    "Снять выбор": "Auswahl aufheben",
+    "Выбрано: {0}": "Ausgewählt: {0}",
+    "Поделиться": "Teilen",
+    "Загружаю {0} из {1}…": "Lade {0} von {1}…",
+    "Файлы загружены: {0}": "Dateien geladen: {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "Dieser Browser kann diese Dateien nicht teilen. Laden Sie sie herunter."
   }
 }

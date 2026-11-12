@@ -77,3 +77,12 @@ test('viewer controls follow the visible part of a pinch-zoomed page at their no
   expect(viewerChromeStyle({scale:2,offsetLeft:100,offsetTop:300,width:195,height:422}))
     .toEqual({left:'100px',top:'300px',width:'390px',height:'844px',transform:'scale(0.5)'});
 });
+
+test('a shared file gets the type of its extension, so the share sheet can save pictures and videos to Photos',()=>{
+ const {shareType}=require('../../frontend/files');
+ expect(shareType('IMG_1.JPG')).toBe('image/jpeg');
+ expect(shareType('clip.mov')).toBe('video/quicktime');
+ expect(shareType('archive.zip')).toBe('application/octet-stream');
+ expect(shareType('.jpg')).toBe('application/octet-stream');
+ expect(shareType('README')).toBe('application/octet-stream');
+});

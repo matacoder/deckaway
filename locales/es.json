@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Tamaño de la tarjeta: {0}",
     "маленькая": "pequeña",
     "средняя": "mediana",
-    "большая": "grande"
+    "большая": "grande",
+    "Выбрать": "Seleccionar",
+    "Выбрать все": "Seleccionar todo",
+    "Снять выбор": "Quitar selección",
+    "Выбрано: {0}": "Seleccionados: {0}",
+    "Поделиться": "Compartir",
+    "Загружаю {0} из {1}…": "Cargando {0} de {1}…",
+    "Файлы загружены: {0}": "Archivos cargados: {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "Este navegador no puede compartir estos archivos. Descárgalos."
   }
 }

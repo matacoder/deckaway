@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Tile size: {0}",
     "маленькая": "small",
     "средняя": "medium",
-    "большая": "large"
+    "большая": "large",
+    "Выбрать": "Select",
+    "Выбрать все": "Select all",
+    "Снять выбор": "Clear selection",
+    "Выбрано: {0}": "Selected: {0}",
+    "Поделиться": "Share",
+    "Загружаю {0} из {1}…": "Loading {0} of {1}…",
+    "Файлы загружены: {0}": "Files loaded: {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "This browser cannot share these files. Download them instead."
   }
 }

@@ -989,6 +989,14 @@
     "Размер плитки: {0}": "Taille de la tuile : {0}",
     "маленькая": "petite",
     "средняя": "moyenne",
-    "большая": "grande"
+    "большая": "grande",
+    "Выбрать": "Sélectionner",
+    "Выбрать все": "Tout sélectionner",
+    "Снять выбор": "Effacer la sélection",
+    "Выбрано: {0}": "Sélectionnés : {0}",
+    "Поделиться": "Partager",
+    "Загружаю {0} из {1}…": "Chargement {0} sur {1}…",
+    "Файлы загружены: {0}": "Fichiers chargés : {0}",
+    "Браузер не может поделиться этими файлами. Скачайте их.": "Ce navigateur ne peut pas partager ces fichiers. Téléchargez-les."
   }
 }

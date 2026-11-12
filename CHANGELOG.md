@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.84.0
+
+- The file browser picks several files at once ("Select", then a tap per file or "Select all") and shares them together, as the files themselves, never an archive: on a phone the share sheet saves pictures and videos to Photos, or sends them to a chat or by AirDrop. "Download" saves them one by one where a browser has a downloads folder.
+
 ## 1.83.0
 
 - A question card can be hidden (the × in its corner): for a question the panel cannot answer, or one already answered in the terminal. It stays hidden in this browser until the agent asks something else; the terminal and the key row still answer it. Error messages show a close mark; a tap anywhere on them closes them, as before.
