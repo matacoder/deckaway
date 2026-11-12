@@ -33,6 +33,7 @@ test('several files are picked, all at once, and shared together as pictures, no
   expect(shared).toHaveLength(30);
   expect(shared[0]).toEqual(['shot-0.jpg', 'image/jpeg']);
   expect(new Set(downloads).size).toBe(30);
+  await page.locator('#files_body .files-pick button', { hasText: 'Выбрать все' }).click();
   await page.locator('#files_body .files-pick button', { hasText: 'Снять выбор' }).click();
   await expect(page.locator('#files_body .files-pick button', { hasText: 'Поделиться' })).toBeDisabled();
 });

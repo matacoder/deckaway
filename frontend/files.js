@@ -156,7 +156,7 @@ function pickBar(paths){
   const environment=pushEnvironment();
   if(!acts.length||!(environment.ios&&environment.standalone))acts.push(fileButton(tr("Скачать"),"",downloadPicked,"download"));
   for(const button of acts)button.disabled=!count||files.busy;
-  return el("div","files-pick",all,el("span","files-pick-count",tr("Выбрано: {0}",[count])),...acts);
+  return el("div","files-pick",all,el("span","files-pick-count",tr("Выбрано: {0}",[count])),el("div","files-pick-acts",...acts));
 }
 const SHARE_TYPES={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",gif:"image/gif",webp:"image/webp",heic:"image/heic",heif:"image/heif",
   mp4:"video/mp4",mov:"video/quicktime",m4v:"video/x-m4v",pdf:"application/pdf",txt:"text/plain"};
