@@ -39,6 +39,8 @@ const test = base.extend({
       if (request.isNavigationRequest() && request.frame() === page.mainFrame() && ++documents > 1) leftAt = Date.now();
     });
     page.on('pageerror', error => {
+      // A browser's notice that a resize observer will run again next frame, not an error of the page.
+      if (error.message === 'ResizeObserver loop completed with undelivered notifications.') return;
       if (/due to access control checks\.$|^Context is stopped$/.test(error.message) && Date.now() - leftAt < 3000) return;
       errors.push(error.message); console.error(error.stack);
     });
