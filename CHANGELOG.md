@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.85.1
+
+- A long suggested next prompt of Claude Code wraps onto several lines above the message field instead of ending in "…", so all of it can be read before a tap sends it.
+
 ## 1.85.0
 
 - The question card under a session shows only the answers: the question itself is on the terminal right above it. The title is still shown when the terminal does not show the question (a Codex question behind its composer) and in the inbox.

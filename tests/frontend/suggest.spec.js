@@ -27,3 +27,14 @@ test('on a wide window the suggestion sits under the keys, which keep the quick 
   expect(quick.y).toBeLessThan(keys.y + keys.height);
   expect(chip.y).toBeGreaterThanOrEqual(keys.y + keys.height - 1);
 });
+
+test('a long suggestion wraps instead of being cut off', async ({ app, page }) => {
+  const long = 'ок, как закончат — коммить и делай редактор состава лейн с превью и проверкой конфликтов';
+  app.sessions = [session('demo', { agent: 'claude', preview_ansi: `● Готово.\n────────\n\x1b[39m❯ \x1b[2m${long}\x1b[0m\n────────\n` })];
+  await app.open({ width: 390, height: 844, active: 'demo' });
+  const text = page.locator('#suggest_text');
+  await expect(text).toHaveText(long);
+  const size = await text.evaluate(el => ({ scroll: el.scrollWidth, client: el.clientWidth, height: el.offsetHeight, line: parseFloat(getComputedStyle(el).lineHeight) }));
+  expect(size.scroll).toBeLessThanOrEqual(size.client);
+  expect(size.height).toBeGreaterThan(size.line * 1.5);
+});
