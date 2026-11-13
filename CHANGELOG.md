@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.85.0
+
+- The question card under a session shows only the answers: the question itself is on the terminal right above it. The title is still shown when the terminal does not show the question (a Codex question behind its composer) and in the inbox.
+- Claude Code questions of several choices (checkboxes) are answered from the card: tap the options to mark them, type your own one in "Type something" if needed, then "Reply". The panel sets each box in the terminal, types the text into its row and confirms. These questions stay off Telegram and the inbox, where one tap is one answer.
+- Claude Code's "Type something" row now reaches the card for every question, not only those read from the screen, so a question can be answered with your own text from the phone. "Chat about this" is left to the terminal.
+
 ## 1.84.0
 
 - The file browser picks several files at once ("Select", then a tap per file or "Select all") and shares them together, as the files themselves, never an archive: on a phone the share sheet saves pictures and videos to Photos, or sends them to a chat or by AirDrop. "Download" saves them one by one where a browser has a downloads folder.

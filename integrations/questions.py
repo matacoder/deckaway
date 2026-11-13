@@ -23,6 +23,12 @@ class Question:
     label: str = ""
     # Codex finished its turn after asking: there is no form any more, the answer goes as a message.
     settled: bool = False
+    # Claude Code's question of several choices: checkboxes, then a "Next"/"Submit" row (selected = its position
+    # when the cursor is there). The marks change with every toggle, so they are not part of the fingerprint.
+    multi: bool = False
+    checked: tuple = ()
+    # A question read from the conversation file, as its screen shows it: with the free-text row the file omits.
+    shown: tuple = ()
 
     @property
     def fingerprint(self):
@@ -45,6 +51,9 @@ ASKS = re.compile(r"\?|would you|do you|allow|proceed|choose|выберите|р
 # that changes every second would make every second a new question (a Telegram message each, answers refused).
 COUNTDOWN = re.compile(r"\bautomatically\b.*\bin \d+:\d\d\b", re.I)
 READY = re.compile(r"^Ready to submit your answers\?$", re.I)
+BOX = re.compile(r"^\[([ xX✓✔])\]\s*")
+TABS = re.compile(r"^←.*→$")
+ACTION = re.compile(r"^[›❯>]?\s*(?:Next|Submit)$")
 
 
 class QuestionNotReady(ValueError):
@@ -87,7 +96,8 @@ def parse_question(session, agent, instance, screen):
     elif async_form:
         start = queued[-1] + 1
     rows = [(i, OPTION.match(lines[i])) for i in range(start, end) if OPTION.match(lines[i])]
-    if not rows or not any(match[1] for _, match in rows):
+    # The cursor is on a numbered row, or on the "Next"/"Submit" row of checkboxes (checked below).
+    if not rows:
         return None
     # Keep only the final contiguous numbered menu (not a numbered list in the question).
     restart = max((j for j, (_, match) in enumerate(rows) if match[2] == "1"), default=-1)
@@ -96,9 +106,17 @@ def parse_question(session, agent, instance, screen):
     rows = rows[restart:]
     if [int(match[2]) for _, match in rows] != list(range(1, len(rows) + 1)) or len(rows) > 9:
         return None
-    marked = [j for j, (_, match) in enumerate(rows) if match[1]]
-    if len(marked) != 1:
-        return None
+    boxes = [j for j, (_, match) in enumerate(rows) if BOX.match(match[3])]
+    multi = bool(boxes)
+    if multi:
+        rows, selected = checkbox_rows(lines, rows, boxes, end)
+        if selected is None:
+            return None
+    else:
+        marked = [j for j, (_, match) in enumerate(rows) if match[1]]
+        if len(marked) != 1:
+            return None
+        selected = marked[0]
     first = rows[0][0]
     if not headers and not async_form:
         # A solid rule bounds the dialog and keeps the conversation out of notifications; dashed rules inside
@@ -116,10 +134,31 @@ def parse_question(session, agent, instance, screen):
         return None
     if not headers and not async_form and not ASKS.search(title):
         return None
+    if multi:
+        marks = tuple(BOX.match(match[3])[1] != ' ' for _, match in rows)
+        options = tuple(BOX.sub('', match[3]).strip() for _, match in rows)
+        # The tab line marks a question answered (☐ → ☒) as soon as one box is checked: not another question.
+        title = '\n'.join(line for line in title.splitlines() if not TABS.match(line)).strip() or title
+        return Question(session, agent, instance, title[:1600], options, selected, progress, multi=True, checked=marks)
     options = tuple(match[3].strip() for _, match in rows)
-    if any(re.match(r'\[[ xX✓]\]', label) for label in options) or any('space to toggle' in line.lower() for line in lines[start:end + 2]):
+    if any('space to toggle' in line.lower() for line in lines[start:end + 2]):
         return None
-    return Question(session, agent, instance, title[:1600], options, marked[0], progress)
+    return Question(session, agent, instance, title[:1600], options, selected, progress)
+
+
+def checkbox_rows(lines, rows, boxes, end):
+    """The checkbox rows of Claude Code's question of several choices, and where its cursor is: on a row, on the
+    "Next"/"Submit" row under them (len(rows)) or on "Chat about this" past it (len(rows) + 1)."""
+    if boxes != list(range(len(boxes))):
+        return rows, None
+    after = rows[len(boxes)][0] if len(boxes) < len(rows) else end
+    action = [i for i in range(rows[boxes[-1]][0] + 1, after) if ACTION.match(lines[i])]
+    if len(action) != 1:
+        return rows, None
+    count = len(boxes)
+    marked = [j if j < count else j + 1 for j, (_, match) in enumerate(rows) if match[1]]
+    marked += [count] if lines[action[0]][0] in '›❯>' else []
+    return rows[:count], marked[0] if len(marked) == 1 else None
 
 
 def transcript_model(path, agent):

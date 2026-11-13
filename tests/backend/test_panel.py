@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import os
 import base64
@@ -641,16 +642,71 @@ class WebQuestionTests(PanelCase):
         self.assertEqual((payload['selected'], payload['progress']), (0, 'Question 1/2'))
 
     def test_transcript_question_wins_and_invalid_names_never_reach_tmux(self):
-        structured = self.question(request_id='tool-1')
+        structured = self.question(agent='codex', request_id='tool-1')
         with patch.object(self.panel, 'session_exists', return_value=True), \
              patch.object(self.panel, 'pending_questions', return_value=[structured]), \
              patch.object(self.panel, 'current_question') as screen:
             self.assertIs(self.panel.session_question('demo'), structured)
-            screen.assert_not_called()
+            screen.assert_not_called()  # Codex's async question may be behind its composer.
         with patch.object(self.panel, 'session_exists') as exists:
             for name in (None, '', '../demo', 'a b', 7):
                 self.assertIsNone(self.panel.session_question(name))
             exists.assert_not_called()
+
+    def test_a_transcript_question_on_screen_offers_its_free_text_row_without_the_title(self):
+        structured = self.question(request_id='tool-1', options=('Yes', 'No'))
+        shown = self.question(options=('Yes', 'No', 'Type something.', 'Chat about this'))
+        with patch.object(self.panel, 'session_exists', return_value=True), \
+             patch.object(self.panel, 'pending_questions', return_value=[structured]), \
+             patch.object(self.panel, 'current_question', return_value=shown):
+            offered = self.panel.session_question('demo')
+        self.assertEqual(offered.fingerprint, structured.fingerprint)
+        payload = self.panel.question_payload(offered)
+        self.assertEqual([(o['label'], o['text']) for o in payload['options']], [('Yes', False), ('No', False), ('Type something.', True)])
+        self.assertTrue(payload['screen'])
+        self.assertFalse(self.panel.question_payload(structured)['screen'])  # Not seen on screen: the page shows the title.
+
+    def test_several_choices_set_each_checkbox_type_the_free_text_and_confirm(self):
+        def screen(selected, checked, last='Type something'):
+            return self.question(title='Pick sizes?', options=('S', 'M', 'L', last), selected=selected, multi=True, checked=checked)
+        start = screen(0, (True, False, False, False))
+        shots = iter([start,                                   # read under the lock
+                      screen(0, (False, False, False, False)),  # Space unchecked S
+                      screen(2, (False, False, False, False)),  # moved to L
+                      screen(2, (False, False, True, False)),   # Space checked L
+                      screen(3, (False, False, True, False)),   # moved to the free row
+                      screen(3, (False, False, True, True), 'XL'),  # the pasted text checks it
+                      screen(4, (False, False, True, True), 'XL')])  # on Submit
+        with patch.object(self.panel, 'current_question', side_effect=lambda *a: next(shots)), \
+             patch.object(self.panel, 'tmux') as tmux, patch.object(self.panel, 'paste_to_tmux') as paste, \
+             patch.object(self.panel.time, 'sleep'):
+            self.panel.answer_choices(start, {2}, 'XL')
+        keys = [c.args[3:] for c in tmux.call_args_list]
+        self.assertEqual(keys, [('Space',), ('Down', 'Down'), ('Space',), ('Down',), ('Down',), ('Enter',)])
+        paste.assert_called_once_with('demo', 'XL')
+        for picks, text in (({3}, None), (set(), None), ({7}, None)):
+            with self.subTest(picks=picks), patch.object(self.panel, 'current_question', return_value=start), \
+                 patch.object(self.panel, 'tmux') as tmux, self.assertRaises(ValueError):
+                self.panel.answer_choices(start, picks, text)
+            tmux.assert_not_called()
+
+    def test_several_choices_are_answered_with_picks_and_kept_off_telegram(self):
+        multi = self.question(title='Pick sizes?', options=('S', 'Type something'), multi=True, checked=(False, False))
+        self.assertEqual({k: v for k, v in self.panel.question_payload(multi).items() if k in ('multi', 'checked')},
+                         {'multi': True, 'checked': [False, False]})
+        with patch.object(self.panel, 'session_question', return_value=multi), \
+             patch.object(self.panel, 'answer_choices') as choices, patch.object(self.panel, 'answer_question') as single:
+            for bad in ({'index': 0}, {'picks': '0'}, {'picks': [True]}):
+                with self.assertRaises(ValueError):
+                    self.panel.action_answer({'name': 'demo', 'id': multi.fingerprint, **bad})
+            self.panel.action_answer({'name': 'demo', 'id': multi.fingerprint, 'picks': [0], 'text': 'XS'})
+            choices.assert_called_once_with(multi, {0}, 'XS')
+            single.assert_not_called()
+        session = {'name': 'demo', 'agent': 'claude', 'running': True, 'title': '', 'sid': 's', 'instance': 'i'}
+        with patch.object(self.panel, 'list_sessions', return_value=[session]), \
+             patch.object(self.panel, 'pending_questions', return_value=[]), \
+             patch.object(self.panel, 'current_question', return_value=multi):
+            self.assertEqual(self.panel.scan_questions(), [])
 
     def test_a_form_of_several_questions_offers_the_one_on_screen(self):
         first = self.question(request_id='tool-1:0', title='Prizes?', progress='Question 1/2')
@@ -660,7 +716,7 @@ class WebQuestionTests(PanelCase):
         with patch.object(self.panel, 'session_exists', return_value=True), \
              patch.object(self.panel, 'pending_questions', return_value=[first, second]), \
              patch.object(self.panel, 'current_question', return_value=shown):
-            self.assertIs(self.panel.session_question('demo'), second)
+            self.assertEqual(self.panel.session_question('demo'), dataclasses.replace(second, shown=shown.options))
         with patch.object(self.panel, 'session_exists', return_value=True), \
              patch.object(self.panel, 'pending_questions', return_value=[first, second]), \
              patch.object(self.panel, 'current_question', return_value=None):
@@ -681,7 +737,8 @@ class WebQuestionTests(PanelCase):
             with self.subTest(screen=screen and screen.title), patch.object(self.panel, 'session_exists', return_value=True), \
                  patch.object(self.panel, 'pending_questions', return_value=[second]), \
                  patch.object(self.panel, 'current_question', return_value=screen):
-                self.assertIs(self.panel.session_question('demo'), offered)
+                found = self.panel.session_question('demo')
+                self.assertEqual(found and dataclasses.replace(found, shown=()), offered)
         session = {'name': 'demo', 'agent': 'claude', 'running': True, 'title': '', 'sid': 's', 'instance': 'i'}
         for screen, offered in ((None, []), (submit, ['Ready to submit your answers?']), (shown, ['Protect main?'])):
             with self.subTest(scan=screen and screen.title), patch.object(self.panel, 'list_sessions', return_value=[session]), \

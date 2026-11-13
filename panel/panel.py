@@ -1682,10 +1682,11 @@ def scan_questions():
             if structured:
                 if on_screen(structured):
                     structured = screen_form(structured, current_question(session['name'], session))
-                result.extend(dataclasses.replace(q, label=label) for q in structured)
+                # Several choices are answered only on the page: Telegram and the inbox answer with one tap.
+                result.extend(dataclasses.replace(q, label=label) for q in structured if not q.multi)
                 continue
             question = current_question(session['name'], session)
-            if question:
+            if question and not question.multi:
                 result.append(dataclasses.replace(question, label=label))
     return result
 
@@ -1795,15 +1796,28 @@ def session_question(name):
         if not pending:
             return current_question(name, metadata)
         # Codex's own async question may be hidden behind its composer: its file alone is enough there.
-        current = current_question(name, metadata) if len(pending) > 1 or on_screen(pending) else None
+        current = current_question(name, metadata) if len(pending) > 1 or pending[0].agent != 'codex' else None
         shown = screen_form(pending, current)
-        return next((q for q in shown if matches_screen(q, current)), current or (shown[0] if shown else None))
+        found = next((q for q in shown if matches_screen(q, current)), None)
+        # Its screen adds the free-text row the file omits; the file keeps the question's identity.
+        if found and found is not current:
+            return dataclasses.replace(found, shown=current.options)
+        return current or (shown[0] if shown else None)
 
 
 def question_payload(question):
-    return {'id': question.fingerprint, 'title': question.title, 'progress': question.progress,
-            'selected': question.selected,
-            'options': [{'label': label, 'text': bool(FREE_TEXT_OPTION.match(label))} for label in question.options]}
+    options = list(question.shown or question.options)
+    # Starts a conversation instead of answering: the terminal still offers it.
+    if len(options) > 1 and options[-1] == 'Chat about this':
+        options.pop()
+    payload = {'id': question.fingerprint, 'title': question.title, 'progress': question.progress,
+               'selected': question.selected,
+               # The page leaves out a title its terminal shows right above it.
+               'screen': bool(question.shown) or not question.request_id,
+               'options': [{'label': label, 'text': bool(FREE_TEXT_OPTION.match(label))} for label in options]}
+    if question.multi:
+        payload.update(multi=True, checked=list(question.checked))
+    return payload
 
 
 def questions_payload():
@@ -1879,14 +1893,21 @@ def answer_text(d):
 
 
 def action_answer(d):
-    index = d.get('index')
-    if not isinstance(index, int) or isinstance(index, bool):
+    index, picks = d.get('index'), d.get('picks')
+    if picks is not None:
+        if not isinstance(picks, list) or len(picks) > 9 or not all(isinstance(i, int) and not isinstance(i, bool) for i in picks):
+            raise ValueError('неверный запрос')
+    elif not isinstance(index, int) or isinstance(index, bool):
         raise ValueError('неверный запрос')
     text = answer_text(d)
     question = session_question(d.get('name'))
     # The fingerprint binds the tap to the exact question the user saw.
     if not question or question.fingerprint != d.get('id'):
         raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
+    if question.multi != (picks is not None):
+        raise ValueError('Этот вопрос изменился. Обновите панель.')
+    if question.multi:
+        return answer_choices(question, set(picks), text)
     answer_question(question, index, text)
 
 
@@ -1946,6 +1967,55 @@ def answer_question(question, index, text=None):
             # The highlighted "Other / Type something" row takes typed text; paste keeps exact bytes.
             paste_to_tmux(question.session, text)
         tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Enter')
+
+
+def answer_choices(question, picks, text=None):
+    """Sets every checkbox of a question of several choices as picked, types the free text into its row (which
+    checks it) and confirms with the "Next"/"Submit" row under them."""
+    with input_locks_lock:
+        lock = input_locks.setdefault(question.session, threading.Lock())
+    with lock:
+        current = current_question(question.session)
+        if not current or current.fingerprint != question.fingerprint:
+            raise ValueError('Этот вопрос уже закрыт или изменился. Обновите панель.')
+        count = len(current.options)
+        free = count - 1 if count and FREE_TEXT_OPTION.match(current.options[-1]) else None
+        if not picks <= set(range(count)) or free in picks:
+            raise ValueError('Неверный вариант ответа')
+        if text is not None and free is None:
+            raise ValueError('У этого вопроса нет поля для своего ответа')
+        if not picks and text is None:
+            raise ValueError('Отметьте хотя бы один вариант')
+        same = lambda q: q and q.multi and q.title == current.title and q.options[:-1] == current.options[:-1]
+        for index in range(count):
+            if index != free and current.checked[index] != (index in picks):
+                current = move_choice(question.session, current, index, same)
+                # Space, not Enter: Enter on the free-text row would confirm the question.
+                tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Space')
+                current = wait_question(question.session, lambda q: same(q) and q.checked[index] == (index in picks))
+        if text is not None:
+            current = move_choice(question.session, current, free, same)
+            paste_to_tmux(question.session, text)
+            current = wait_question(question.session, lambda q: same(q) and q.checked[free])
+        move_choice(question.session, current, count, same)
+        tmux('send-keys', '-t', f'={PREFIX}{question.session}:', 'Enter')
+
+
+def move_choice(session, current, index, same):
+    delta = index - current.selected
+    if not delta:
+        return current
+    tmux('send-keys', '-t', f'={PREFIX}{session}:', *(['Down' if delta > 0 else 'Up'] * abs(delta)))
+    return wait_question(session, lambda q: same(q) and q.selected == index)
+
+
+def wait_question(session, done):
+    for _ in range(20):
+        time.sleep(.05)
+        current = current_question(session)
+        if done(current):
+            return current
+    raise ValueError('Не удалось отметить варианты. Ответьте в терминале.')
 
 
 def answer_by_message(question, index, text, current):

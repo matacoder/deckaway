@@ -96,6 +96,27 @@ enter submit   ctrl+] skip   shift+→ main prompt
         # Without a question anywhere above, a numbered list is still ordinary output.
         self.assertIsNone(parse_question('demo', 'codex', '%1:123', screen.replace('Would you like to run the following command?', 'Plan')))
 
+    def test_claude_checkboxes_are_a_question_of_several_choices(self):
+        # Captured from Claude Code 2.1.318: the cursor moves from the rows to "Submit" and "Chat about this".
+        rows = ['❯ 1. [ ] S', '     Small', '  2. [✔] M', '  3. [ ] L', '  4. [ ] Type something', '     Submit',
+                '─' * 60, '  5. Chat about this']
+        def screen(lines):
+            tab = '☒' if any('[✔]' in line for line in lines) else '☐'
+            return ('─' * 60 + f'\n←  {tab} Size  ✔ Submit  →\nPick sizes?\n' + '\n'.join(lines)
+                    + '\n\nEnter to select · ↑/↓ to navigate · Esc to cancel\n')
+        parsed = parse_question('demo', 'claude', '%1', screen(rows))
+        self.assertEqual((parsed.multi, parsed.options, parsed.checked, parsed.selected),
+                         (True, ('S', 'M', 'L', 'Type something'), (False, True, False, False), 0))
+        self.assertEqual(parsed.title, 'Pick sizes?')
+        on_submit = [row.replace('❯', ' ') for row in rows[:5]] + ['❯    Submit'] + rows[6:]
+        self.assertEqual(parse_question('demo', 'claude', '%1', screen(on_submit)).selected, 4)
+        on_chat = [row.replace('❯', ' ') for row in rows[:7]] + ['❯ 5. Chat about this']
+        self.assertEqual(parse_question('demo', 'claude', '%1', screen(on_chat)).selected, 5)
+        # Toggling does not make it another question.
+        checked = parse_question('demo', 'claude', '%1', screen([rows[0].replace('[ ]', '[✔]')] + rows[1:]))
+        self.assertEqual(checked.fingerprint, parsed.fingerprint)
+        self.assertIsNone(parse_question('demo', 'claude', '%1', screen([row for row in rows if 'Submit' not in row])))
+
     def test_claude_form_submit_tab_names_no_keys_and_is_still_a_question(self):
         screen = ('────────\n←  ☒ Landing  ☒ Button  ✔ Submit  →\n\nReview your answers\n\n● Which page?\n  → Landing\n\n'
                   'Ready to submit your answers?\n\n❯ 1. Submit answers\n  2. Cancel\n──────── demo-1\n')

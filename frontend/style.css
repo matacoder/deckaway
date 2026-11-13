@@ -850,6 +850,9 @@ body.resizing iframe{pointer-events:none}
 .q-opt.q-free .q-num{color:var(--acc-text)}
 .q-num .ui-icon{width:14px;height:14px}
 .q-opt.active{border-color:var(--acc)}
+.q-opt.picked{border-color:var(--acc);background:var(--sel)}
+.q-opt.picked .q-num{background:var(--acc);color:var(--on-acc)}
+.q-send{min-height:var(--tap);border-radius:var(--r);font-weight:600}
 .q-text{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .q-text textarea{min-height:44px;max-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side);color:var(--fg2);font:inherit;font-size:15px;outline:none}
 .q-text textarea:focus{border-color:var(--acc)}

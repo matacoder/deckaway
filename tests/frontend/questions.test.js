@@ -123,3 +123,27 @@ test('a question just answered is left out for a few seconds, then may come back
  expect(wasAnswered('/demo/q2',5000)).toBe(false);
  expect(wasAnswered('/demo/q1',9500)).toBe(false);
 });
+
+test('the title is left out when the terminal above shows it',()=>{
+ expect(render({showTitle:false}).box.querySelector('.q-title')).toBeNull();
+ expect(render().box.querySelector('.q-title')).not.toBeNull();
+});
+
+test('several choices toggle their rows and are sent together by one button',()=>{
+ const multi={...question,multi:true,checked:[true,false,false],selected:0};
+ const box=document.createElement('div'),onPick=jest.fn(),onSubmitChoices=jest.fn(),onAnswer=jest.fn(),onTextOption=jest.fn();
+ const draw=extra=>renderQuestionCard({box,question:multi,expanded:false,busyIndex:null,translate:x=>x,onAnswer,onPick,onSubmitChoices,onTextOption,...extra});
+ draw({picks:new Set([0])});
+ const rows=[...box.querySelectorAll('.q-opt')];
+ expect(rows.map(r=>r.getAttribute('aria-pressed'))).toEqual(['true','false',null]);
+ expect(box.querySelector('.q-opt.selected')).toBeNull(); // The cursor is not an answer here.
+ rows[1].click();expect(onPick).toHaveBeenCalledWith(1);expect(onAnswer).not.toHaveBeenCalled();
+ rows[2].click();expect(onTextOption).toHaveBeenCalledWith(2);
+ box.querySelector('.q-send').click();expect(onSubmitChoices).toHaveBeenCalledTimes(1);
+ draw({picks:new Set()});expect(box.querySelector('.q-send').disabled).toBe(true);
+ // Typed text in the free row is an answer too, and the field has no button of its own.
+ draw({picks:new Set(),textIndex:2,textDraft:'XL'});
+ expect(box.querySelector('.q-send').disabled).toBe(false);
+ expect(box.querySelector('.q-text button')).toBeNull();
+ expect(box.querySelectorAll('.q-opt')[2].classList.contains('picked')).toBe(true);
+});

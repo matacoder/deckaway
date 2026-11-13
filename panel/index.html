@@ -864,6 +864,9 @@ body.resizing iframe{pointer-events:none}
 .q-opt.q-free .q-num{color:var(--acc-text)}
 .q-num .ui-icon{width:14px;height:14px}
 .q-opt.active{border-color:var(--acc)}
+.q-opt.picked{border-color:var(--acc);background:var(--sel)}
+.q-opt.picked .q-num{background:var(--acc);color:var(--on-acc)}
+.q-send{min-height:var(--tap);border-radius:var(--r);font-weight:600}
 .q-text{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .q-text textarea{min-height:44px;max-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side);color:var(--fg2);font:inherit;font-size:15px;outline:none}
 .q-text textarea:focus{border-color:var(--acc)}
@@ -1997,7 +2000,9 @@ function svgIcon(name){
 }
 
 // Free-text options (Other / Type something) open a text field; the answer is typed into that row.
-function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft="",onAnswer,onToggle,onTextOption,onTextInput,onSubmitText,onHide,translate}){
+// A question of several choices (`multi`) toggles its rows into `picks` and is sent by one button under them.
+// Its title is left out when the terminal right above shows it (`showTitle`).
+function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft="",picks=new Set(),showTitle=true,onAnswer,onToggle,onTextOption,onTextInput,onSubmitText,onPick,onSubmitChoices,onHide,translate}){
   box.replaceChildren();
   box.hidden=!question;
   if(!question)return;
@@ -2016,26 +2021,39 @@ function renderQuestionCard({box,question,expanded,busyIndex,textIndex,textDraft
   title.setAttribute("role","button");title.tabIndex=0;
   title.textContent=question.title;title.setAttribute("aria-expanded",String(Boolean(expanded)));title.onclick=onToggle;
   title.onkeydown=event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onToggle?.()}};
+  const multi=Boolean(question.multi),typed=textIndex!==null&&textIndex!==undefined&&Boolean(textDraft.trim());
   const options=document.createElement("div");options.className="q-options";
   question.options.forEach((option,index)=>{
     const button=document.createElement("button");button.type="button";
-    button.className="q-opt"+(option.text?" q-free":"")+(index===question.selected?" selected":"")+(index===busyIndex?" sending":"")+(index===textIndex?" active":"");
+    const picked=multi&&(option.text?typed&&index===textIndex:picks.has(index));
+    button.className="q-opt"+(option.text?" q-free":"")+(!multi&&index===question.selected?" selected":"")+(index===busyIndex?" sending":"")+(index===textIndex?" active":"")+(picked?" picked":"");
     const number=document.createElement("span");number.className="q-num";
-    if(option.text)number.append(svgIcon("pencil"));else number.textContent=String(index+1);
+    if(option.text)number.append(svgIcon("pencil"));else if(picked)number.append(svgIcon("check"));else number.textContent=String(index+1);
     const label=document.createElement("span");label.textContent=option.label;
     button.append(number,label);button.disabled=busy;
-    button.onclick=()=>option.text?onTextOption&&onTextOption(index):onAnswer(index);
+    if(multi&&!option.text)button.setAttribute("aria-pressed",String(picked));
+    button.onclick=()=>option.text?onTextOption&&onTextOption(index):multi?onPick(index):onAnswer(index);
     options.append(button);
     if(option.text&&index===textIndex){
       const form=document.createElement("form");form.className="q-text";
       const field=document.createElement("textarea");field.rows=2;field.maxLength=4000;field.placeholder=translate("Ваш ответ…");field.disabled=busy;field.value=textDraft;
       field.oninput=()=>onTextInput&&onTextInput(field.value);
-      const send=document.createElement("button");send.type="submit";send.className="pri";send.textContent=translate("Ответить");send.disabled=busy;
-      form.onsubmit=event=>{event.preventDefault();if(field.value.trim())onSubmitText(index,field.value)};
-      form.append(field,send);options.append(form);
+      form.onsubmit=event=>{event.preventDefault();if(multi)onSubmitChoices();else if(field.value.trim())onSubmitText(index,field.value)};
+      form.append(field);
+      // A question of several choices has one send button for all of it, under the rows.
+      if(!multi){
+        const send=document.createElement("button");send.type="submit";send.className="pri";send.textContent=translate("Ответить");send.disabled=busy;
+        form.append(send);
+      }
+      options.append(form);
     }
   });
-  box.append(head,title,options);
+  if(multi){
+    const send=document.createElement("button");send.type="button";send.className="pri q-send";
+    send.textContent=translate("Ответить");send.disabled=busy||!(picks.size||typed);send.onclick=onSubmitChoices;
+    options.append(send);
+  }
+  box.append(head,...(showTitle?[title]:[]),options);
 }
 
 // Typed answers survive reloads, language switches, logout and computer switches, like message drafts.
@@ -2085,7 +2103,7 @@ function isHiddenQuestion(key){return Object.hasOwn(hiddenQuestions(),key)}
 if(typeof module!=="undefined")module.exports={svgIcon,renderQuestionCard,askConfirm,answerDraft,saveAnswerDraft,markAnswered,wasAnswered,hideQuestion,isHiddenQuestion};
 
 // The open session's question: fetched with the screen, drawn as a card, answered by its buttons.
-let question={name:null,data:null,expanded:false,busy:null,textIndex:null},loadingQuestion=false,questionCard="";
+let question={name:null,data:null,expanded:false,busy:null,textIndex:null,picks:new Set()},loadingQuestion=false,questionCard="";
 async function loadQuestion(){
   const s=cur();
   if(!s||agentOf(s)==="shell"||!s.running){if(question.data)setQuestion(s?.name||null,null);return}
@@ -2103,7 +2121,9 @@ function setQuestion(name,data){
   if(same)return;
   const keepExpanded=question.name===name&&question.data?.id===data?.id;
   const saved=data?answerDraft(answerKey(name,data.id)):null;
-  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,
+  // Marks made on the page are kept while the same question refreshes; a new one starts from its screen.
+  const picks=keepExpanded?question.picks:new Set((data?.checked||[]).flatMap((on,i)=>on&&!data.options[i]?.text?[i]:[]));
+  question={name,data,expanded:keepExpanded&&question.expanded,busy:null,picks,
     textIndex:saved?saved.index:keepExpanded?question.textIndex:null,textDraft:saved?saved.text:keepExpanded?question.textDraft:""};
   renderQuestion();
 }
@@ -2121,7 +2141,11 @@ function renderQuestion(){
   if($("question").querySelector(".q-text textarea:focus")&&questionCard===card)return;
   questionCard=card;
   renderQuestionCard({box:$("question"),question:data,expanded:question.expanded,busyIndex:question.busy,textIndex:question.textIndex,textDraft:question.textDraft||"",translate:tr,
-    onTextInput:value=>{question.textDraft=value;saveQuestionDraft()},
+    picks:question.picks,showTitle:!data?.screen,
+    onPick:index=>{question.picks.has(index)?question.picks.delete(index):question.picks.add(index);renderQuestion()},
+    onSubmitChoices:answerChoices,
+    // The send button of several choices follows the text as it is typed; the field itself is not redrawn.
+    onTextInput:value=>{question.textDraft=value;saveQuestionDraft();const send=$("question").querySelector(".q-send");if(send)send.disabled=!(question.picks.size||value.trim())},
     onToggle:()=>{question.expanded=!question.expanded;renderQuestion()},onAnswer:answerQuestion,
     onHide:()=>{hideQuestion(answerKey(question.name,data.id));setQuestion(question.name,null)},
     // Focus inside the tap itself: iOS opens the keyboard only for a user gesture, and a
@@ -2137,7 +2161,22 @@ async function answerQuestion(index,text){
     await api("/api/answer",text===undefined?{name,id:data.id,index}:{name,id:data.id,index,text});
     saveAnswerDraft(answerKey(name,data.id),null);markAnswered(answerKey(name,data.id));
     sendStates.set(name,{text:tr("Ответ отправлен: {0}",[text===undefined?data.options[index].label:text.slice(0,80)]),phase:"success"});
-    question={name,data:null,expanded:false,busy:null,textIndex:null};
+    question={name,data:null,expanded:false,busy:null,textIndex:null,picks:new Set()};
+  }catch(e){toast(e.message);question.busy=null}
+  renderQuestion();renderSendState();await load();loadQuestion();
+}
+async function answerChoices(){
+  const name=active,data=question.data;
+  if(!data||question.busy!==null||panelUpdating)return;
+  const text=question.textIndex!==null&&question.textDraft?.trim()?question.textDraft:undefined,picks=[...question.picks].sort((a,b)=>a-b);
+  if(!picks.length&&text===undefined)return;
+  question.busy=-1;$("question").querySelector(".q-text textarea")?.blur();renderQuestion();
+  try{
+    await api("/api/answer",text===undefined?{name,id:data.id,picks}:{name,id:data.id,picks,text});
+    saveAnswerDraft(answerKey(name,data.id),null);markAnswered(answerKey(name,data.id));
+    const said=[...picks.map(i=>data.options[i].label),...(text===undefined?[]:[text.slice(0,80)])].join(", ");
+    sendStates.set(name,{text:tr("Ответ отправлен: {0}",[said]),phase:"success"});
+    question={name,data:null,expanded:false,busy:null,textIndex:null,picks:new Set()};
   }catch(e){toast(e.message);question.busy=null}
   renderQuestion();renderSendState();await load();loadQuestion();
 }
