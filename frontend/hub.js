@@ -112,7 +112,7 @@ async function openSettings(section="agents"){
   if(!$("settings_dlg").open){applyContextLimits();fillThemes();$("settings_dlg").showModal()}updateHubNavFade();
   renderHub();
   // Push and backup state feed the getting-started card and the section dots.
-  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),...(hubSection==="computers"?[loadLeftovers()]:[]),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   if(!$("settings_dlg").open)return;  // Closed while loading (e.g. an agent sign-in started).
   renderHub();
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
