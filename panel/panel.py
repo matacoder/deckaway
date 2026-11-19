@@ -2606,12 +2606,11 @@ def digests():
 
 def digest_model():
     """Codex Sol on this computer's subscription, or None when Codex is not installed or not signed in."""
-    from integrations.board import sol_model
+    from integrations.board import SOL_MODEL as model
     from integrations.feature_groups import codex_answer
     path = shutil.which("codex") or os.path.expanduser("~/.local/bin/codex")
     if not os.access(path, os.X_OK) or not agent_status("codex")["logged_in"]:
         return None
-    model = sol_model()
     return {"label": "Codex · " + model, "complete": lambda prompt: codex_answer(path, model, prompt, subprocess.run)}
 
 

@@ -1,14 +1,12 @@
 """The board: every session of this computer at a glance, for the page's mission-control view.
 
 Each tile gets the bottom of its screen as plain text and, when the owner turned it on, a one-line digest
-of what the screen shows right now, written by Codex (its Sol model) on this computer's subscription. A
+of what the screen shows right now, written by Codex (its Sol model, SOL_MODEL) on this computer's subscription. A
 digest is rewritten only while someone looks at the board, when the screen changed, at most every few
 minutes per session and two at a time.
 """
 import hashlib
 import json
-from pathlib import Path
-import re
 import threading
 import time
 
@@ -28,17 +26,8 @@ def screen_tail(screen, lines=TAIL_LINES, width=TAIL_WIDTH):
     return kept[-lines:]
 
 
-def sol_model(home=None):
-    """Codex's Sol model: the first "sol" in its model list (newest first), else a known name."""
-    try:
-        data = json.loads((Path(home or Path.home()) / '.codex/models_cache.json').read_text())
-        for item in data.get('models', []) if isinstance(data, dict) else []:
-            slug = item.get('slug', '') if isinstance(item, dict) else ''
-            if re.fullmatch(r'[a-z0-9.-]*-sol', slug):
-                return slug
-    except (OSError, ValueError):
-        pass
-    return 'gpt-6.1-sol'
+# Fixed, not read from Codex's model cache: the cache lists models a ChatGPT sign-in is refused (gpt-6.2-sol).
+SOL_MODEL = 'gpt-6.1-sol'
 
 
 def digest_prompt(screen, language, agent):

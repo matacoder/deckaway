@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.87.2
+
+- Screen digests on the board ask Codex for gpt-6.1-sol. The model was picked from Codex's own model cache, which can list a Sol a ChatGPT sign-in is refused (gpt-6.2-sol), and then every digest failed.
+
 ## 1.87.1
 
 - Agents now really get DeckAway's notes when a conversation starts: an installed panel keeps its helpers next to the session hook, and the hook looked for them one folder up, so the note on filing questions for the owner (and, before it, the note on other agents ready for a task) never reached them. The note also says plainly to file decisions during duty, loop and scheduled runs instead of asking with a question tool.

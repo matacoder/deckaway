@@ -1,7 +1,5 @@
 import json
-from pathlib import Path
 import sys
-import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -16,13 +14,8 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(B.screen_tail(screen, 3), ['x' * 200, '', 'last'])
         self.assertEqual(B.screen_tail(''), [])
 
-    def test_sol_model_is_the_first_sol_in_the_cache(self):
-        with tempfile.TemporaryDirectory(dir='/tmp') as home:
-            self.assertEqual(B.sol_model(home), 'gpt-6.1-sol')
-            (Path(home) / '.codex').mkdir()
-            models = [{'slug': 'gpt-6-luna'}, {'slug': 'gpt-7-sol'}, {'slug': 'gpt-6-sol'}, {'slug': 'solar-x'}]
-            (Path(home) / '.codex/models_cache.json').write_text(json.dumps({'models': models}))
-            self.assertEqual(B.sol_model(home), 'gpt-7-sol')
+    def test_sol_is_the_model_a_chatgpt_sign_in_accepts(self):
+        self.assertEqual(B.SOL_MODEL, 'gpt-6.1-sol')
 
     def test_digest_answer_is_one_short_line(self):
         self.assertEqual(B.parse_digest('ok {"now": "  Runs\\n the tests "}'), 'Runs the tests')
