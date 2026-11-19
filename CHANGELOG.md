@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.86.1
+
+- The list of agents' background processes no longer shows the running agents themselves on a Mac. macOS does not let a program read the environment of its own programs (the session's shell, `sh -c`), so a process is now part of its session when the session's pane process is above it, and only what has come off a session is listed. The search never climbs to tmux, the panel or whatever adopts orphaned processes.
+
 ## 1.86.0
 
 - DeckAway cleans up after agents. Closing a session in the panel also stops what it left running in the background: dev servers, emulators, test runs. Settings → Computers lists what agents left on the selected computer, with memory and age: processes of sessions that are gone (closed in the terminal or before this version) first, then what live sessions run detached. "Stop" ends one, "Stop everything from closed sessions" all of them. Only processes started from this panel's sessions are listed or stopped, recognised by the tmux pane they came from.

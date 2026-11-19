@@ -66,29 +66,46 @@ def tags_linux(pids, root='/proc'):
 
 
 def find(procs, tags, panes, socket, server, exclude=()):
-    """Roots of this server's processes that are not a live pane's own process, each with everything under it.
-    panes: live pane id -> (session name, pane pid). A process of an earlier server of the same socket, or of
-    a pane that is gone, belongs to a closed session."""
-    ours = {}
+    """What this server's panes started and is no longer under a live pane, grouped by its topmost process.
+
+    panes: live pane id -> (session name, pane pid). macOS hides the environment of its own programs (a pane's
+    zsh, `sh -c`), so ancestry decides: a process with a live pane's process above it is that session at work.
+    The climb stops below whatever holds the panes or the panel (tmux, a user's systemd that adopts orphans):
+    those and everything above them are never part of a group. A pane that is gone, or a process of an
+    earlier server of the same socket, means a closed session."""
+    pane_pids = {pane_pid for _, pane_pid in panes.values()}
+    barrier = set(exclude)
+    for pid in [procs.get(pane_pid, {}).get('ppid') for pane_pid in pane_pids] + [int(server)]:
+        while pid in procs and pid not in barrier:
+            barrier.add(pid)
+            pid = procs[pid]['ppid']
+    roots = {}
     for pid, (value, pane) in tags.items():
         parts = value.split(',')
-        if pid in procs and pid not in exclude and parts[0] == socket:
-            live = len(parts) > 1 and parts[1] == str(server) and pane in panes
-            ours[pid] = (pane, panes[pane][0] if live else '')
+        if pid not in procs or pid in barrier or parts[0] != socket:
+            continue
+        top, current = pid, pid
+        while current in procs and current not in pane_pids:
+            top, current = current, procs[current]['ppid']
+            if current in barrier:
+                break
+        if current in pane_pids:
+            continue  # Still under its session's pane.
+        live = len(parts) > 1 and parts[1] == str(server) and pane in panes
+        session, known = roots.get(top, ('', None))
+        roots[top] = (session or (panes[pane][0] if live else ''), known or pane)
     children = {}
     for pid, info in procs.items():
         children.setdefault(info['ppid'], []).append(pid)
     groups = []
-    for pid, (pane, session) in ours.items():
-        if procs[pid]['ppid'] in ours or (session and panes[pane][1] == pid):
-            continue
-        tree, stack = [], [pid]
+    for root, (session, pane) in roots.items():
+        tree, stack = [], [root]
         while stack:
             current = stack.pop()
             tree.append(current)
-            stack.extend(child for child in children.get(current, []) if child not in exclude)
-        groups.append({'pid': pid, 'pane': pane, 'session': session, 'command': procs[pid]['command'][:400],
-                       'age': procs[pid]['age'], 'rss': sum(procs[p]['rss'] for p in tree), 'count': len(tree),
+            stack.extend(child for child in children.get(current, []) if child not in barrier and child not in pane_pids)
+        groups.append({'pid': root, 'pane': pane, 'session': session, 'command': procs[root]['command'][:400],
+                       'age': procs[root]['age'], 'rss': sum(procs[p]['rss'] for p in tree), 'count': len(tree),
                        'tree': {p: procs[p]['age'] for p in tree}})
     return sorted(groups, key=lambda group: -group['rss'])
 

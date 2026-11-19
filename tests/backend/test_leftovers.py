@@ -35,6 +35,21 @@ class FindTests(unittest.TestCase):
         self.assertEqual(find(self.procs, self.tags, PANES, SOCKET, '77')[0]['pid'], 300)  # Largest first.
         self.assertNotIn(300, {g['pid'] for g in find(self.procs, self.tags, PANES, SOCKET, '77', exclude={300})})
 
+    def test_ancestry_decides_where_macos_hides_the_environment_and_an_adopting_systemd_is_never_taken(self):
+        # The pane's zsh and `sh -c` are macOS programs whose environment ps cannot read.
+        procs = {10: proc(1, command='systemd --user'), 20: proc(10, command='tmux'), 100: proc(20, command='zsh'),
+                 101: proc(100, command='claude'), 102: proc(101, command='bash run.sh'), 103: proc(102, command='codex exec'),
+                 30: proc(10, command='panel.py'),
+                 200: proc(10, command='sh -c run.sh'), 201: proc(200, command='codex exec'), 202: proc(201, command='pytest')}
+        tag = (f'{SOCKET},20,1', '%1')
+        tags = {101: tag, 103: tag, 201: tag, 202: tag}
+        groups = find(procs, tags, {'%1': ('cc-api', 100)}, SOCKET, '20', exclude={30, 10})
+        # The live agent and its own runs are the session; the run that lost its parent is what it left behind.
+        self.assertEqual([(g['pid'], g['session'], sorted(g['tree'])) for g in groups], [(200, 'cc-api', [200, 201, 202])])
+        # Without the pane, everything of it is a closed session's, and still nothing above it: never tmux.
+        groups = find(procs, tags, {}, SOCKET, '20', exclude={30, 10})
+        self.assertEqual(sorted((g['pid'], g['session']) for g in groups), [(100, ''), (200, '')])
+
     def test_elapsed_time_and_environment_parsing(self):
         self.assertEqual([seconds(t) for t in ('05', '01:05', '02:01:05', '3-02:01:05')], [5, 65, 7265, 266465])
         # The environment follows the arguments; an argument that looks like it does not count.
