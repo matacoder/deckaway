@@ -33,7 +33,7 @@ function forgetShown(storage){
   shownWritten.clear();
 }
 // The last answer per computer and session, in memory: a switch back shows it while the fresh one is on its way.
-const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map(),galleryKnown=new Map(),filesKnown=new Map(),logKnown=new Map(),groupsKnown=new Map(),diffsKnown=new Map();
+const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map(),filesKnown=new Map(),logKnown=new Map(),groupsKnown=new Map(),diffsKnown=new Map();
 const KNOWN_DIFFS=12;  // A commit or a group of commits never changes; diffs are large, so only a few stay.
 function knownAnswer(known,key){return key&&known.has(key)?known.get(key):null}
 function keepAnswer(known,key,value,limit=KNOWN_ANSWERS){
@@ -48,11 +48,10 @@ function skeletonRows(count,build){return Array.from({length:count},(_,index)=>b
 function sessionSkeleton(){
   return el("div","tab tab-skeleton",el("span","sk-line sk-dot"),el("span","sk-line sk-icon"),el("div","t",el("span","sk-line"),el("span","sk-line")));
 }
-// Stands in for a list of the project panel (commits, groups, a diff, a folder) or for the picture grid.
+// Stands in for a list of the project panel (commits, groups, a diff, a folder, decisions).
 function listSkeleton(kind="rows"){
   const box=el("div","list-skeleton "+kind);box.setAttribute("role","status");box.setAttribute("aria-label",tr("Загрузка…"));
-  if(kind==="gallery")box.append(...skeletonRows(6,()=>el("span","sk-line")));
-  else for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
+  for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
   return box;
 }
 // The last figures of this computer stand in until the next ones, a few seconds later.

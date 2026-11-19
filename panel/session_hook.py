@@ -125,14 +125,28 @@ def session_agent(pane):
         return ""
 
 
+def integrations_on_path():
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if os.path.isdir(os.path.join(here, 'integrations')) and here not in sys.path:
+        sys.path.insert(0, here)
+
+
 def other_agents_note(host=""):
     """The leading agent learns which other agents here take a task in one command; never itself."""
     try:
-        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if os.path.isdir(os.path.join(here, 'integrations')) and here not in sys.path:
-            sys.path.insert(0, here)
+        integrations_on_path()
         from integrations.agents import leader_note
         return leader_note(hosts=(host,))
+    except Exception:  # The hook must never prevent a conversation from starting.
+        return None
+
+
+def decisions_note():
+    """How to leave a decision for the owner in the panel instead of the chat (`integrations/decisions.py`)."""
+    try:
+        integrations_on_path()
+        from integrations.decisions import agent_note
+        return agent_note()
     except Exception:  # The hook must never prevent a conversation from starting.
         return None
 
@@ -145,7 +159,7 @@ def main():
         data = json.load(sys.stdin)
         # Kimi's own CLI is left out: what it does with hook output is not known.
         if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli":
-            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note(session_agent(pane))) if note]
+            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note(session_agent(pane)), decisions_note()) if note]
             if notes:
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
                                                          "additionalContext": "\n\n".join(notes)}}))

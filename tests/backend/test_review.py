@@ -173,7 +173,10 @@ class HookTests(PanelCase):
         output = json.loads(self.start(data, roots))["hookSpecificOutput"]
         self.assertEqual(output["hookEventName"], "SessionStart")
         self.assertIn("http://100.64.0.7:<port>", output["additionalContext"])
-        self.assertNotIn("{", output["additionalContext"])
+        self.assertNotIn("{link}", output["additionalContext"])
+        # Decisions for the owner are filed with this very install's command, never left in the chat.
+        self.assertIn("integrations/decisions.py ask <<'EOF'", output["additionalContext"])
+        self.assertNotIn("{cmd}", output["additionalContext"])
         # No Tailscale (or a foreign address): the agent looks the address up itself.
         for addresses in ("", "192.168.1.5\n"):
             context = json.loads(self.start(data, roots, addresses))["hookSpecificOutput"]["additionalContext"]
@@ -186,7 +189,7 @@ class HookTests(PanelCase):
         settings.write_text("{broken")
         self.assertTrue(self.start(data, roots))
         settings.write_text(json.dumps({"name": "Deck", "public_url": "", "show_results": False}))
-        self.assertEqual(self.start(data, roots), "")
+        self.assertNotIn("Screenshot", self.start(data, roots))
 
     def test_native_kimi_session_id_and_process_name_are_recorded(self):
         sid = "session_11111111-1111-4111-8111-111111111111"

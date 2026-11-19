@@ -38,6 +38,7 @@ One command on a Linux server. [macOS, Windows, Docker, SteamOS](#install-anywhe
 - **Agents:** Claude Code, Codex, Kimi Code, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal, one per tab, grouped by project.
 - **Board:** every agent on every computer at a glance, as tiles by project or computer: what each is doing, questions answered in place, a short reply without opening the session, or "no reply needed" for work that only has to be seen.
 - **Models:** your subscriptions, any Anthropic-compatible service, or local models from LM Studio with no quota.
+- **Questions from agents in one place:** decisions an agent needs from you during a duty run or a long task wait in the side panel (one session or every session of a computer) instead of scrolling away in the chat; answer by tapping, typing or dictating, from any device, one by one or all at once.
 - **Cleans up after agents:** dev servers, emulators and test runs an agent left in the background are listed with their memory and stopped in a tap; closing a session stops what it started.
 - **Limits at a glance:** what is left of each subscription and whether you are ahead of plan.
 - **Send later:** hold a prompt until a set time, a free session or a limit reset.

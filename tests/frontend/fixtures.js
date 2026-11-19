@@ -175,6 +175,14 @@ const test = base.extend({
           app.leftovers = (app.leftovers || []).filter(p => !body.pids.includes(p.pid));
           return json({ ok: true, stopped: body.pids.length });
         }
+        case '/api/decisions': return json({ decisions: app.decisions || [] });
+        case '/api/decisions_answer': return json({ ok: true });
+        case '/api/decisions_send': {
+          const body = route.request().postDataJSON();
+          app.decisionSends = [...(app.decisionSends || []), body.ids];
+          app.decisions = (app.decisions || []).map(d => body.ids.includes(d.id) ? { ...d, status: 'sent' } : d);
+          return json({ sent: body.ids.length });
+        }
         case '/api/quiet': {
           const { name } = route.request().postDataJSON(), quiet = Math.floor(Date.now() / 1000);
           app.quiets.push(name);app.board[name] = { ...(app.board[name] || {}), quiet };

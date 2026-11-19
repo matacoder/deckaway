@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.87.0
+
+- Questions from agents get a tab of their own in the side panel, in place of Gallery. An agent that needs your decision and can carry on without it, a duty run every half hour above all, files it there instead of asking in the chat, where it scrolled away between runs. The tab lists the open session's questions or every session's on this computer; the count is on the session, the tab and the sidebar button. Tap an offered answer, type your own or dictate it with the card's microphone; drafts are kept on the computer, so a phone and a desktop see the same. "Send" or "Send all answers" types one message per session once it is free, and the agent can read its answers itself until it marks them done. Agents learn this when a conversation starts, resumes or is compacted.
+- The folder path in Files has a line of its own above the buttons instead of being squeezed beside them.
+
 ## 1.86.1
 
 - The list of agents' background processes no longer shows the running agents themselves on a Mac. macOS does not let a program read the environment of its own programs (the session's shell, `sh -c`), so a process is now part of its session when the session's pane process is above it, and only what has come off a session is listed. The search never climbs to tmux, the panel or whatever adopts orphaned processes.

@@ -1,7 +1,7 @@
-// Changes, commits, feature groups, files and pictures of the open session in one panel: a right sidebar on wide screens that stays
+// Changes, commits, feature groups, files and the decisions agents wait for in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
-const PROJECT_TABS=["changes","commits","groups","files","gallery"];
+const PROJECT_TABS=["changes","commits","groups","files","decisions"];
 const project={tab:"changes",moving:false};
 const projectDocked=()=>!isMobile();
 function savedProjectTab(){try{const tab=localStore.getItem("cc.project");return PROJECT_TABS.includes(tab)?tab:""}catch(e){return ""}}
@@ -26,7 +26,7 @@ function openProject(tab){
 }
 function projectCurrent(){
   if(project.tab==="files")return files.session===active;
-  if(project.tab==="gallery")return gallery.key===sessionInfoKey()&&Boolean(gallery.items);
+  if(project.tab==="decisions")return decisions.key===decisionsKey()&&Boolean(decisions.items);
   return hist.session===active&&Boolean(hist.changes);
 }
 function quietProject(){
@@ -37,7 +37,7 @@ function quietProject(){
     const box=$("project_dlg");
     if(!box.open)return;
     if(box.style.transform){project.quiet=setTimeout(check,200);return}  // Still under the finger.
-    if(project.tab==="gallery")return loadGallery();
+    if(project.tab==="decisions")return loadDecisions();
     if(project.tab==="changes"||project.tab==="groups")pollChanges();
   },projectDrawer()?400:0);
 }
@@ -61,7 +61,7 @@ function projectTab(tab){
   if(projectDocked())rememberProject(tab);
   markProjectTab();
   if(tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(tab==="gallery")return loadGallery();
+  if(tab==="decisions")return loadDecisions();
   if(hist.session!==active)return startHistory(tab);
   historyTab(tab);
 }
@@ -69,12 +69,13 @@ function projectTab(tab){
 function refreshProject(){
   markProjectTab();
   if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(project.tab==="gallery"){if(gallery.key!==sessionInfoKey())loadGallery();return}
+  if(project.tab==="decisions"){if(decisions.key!==decisionsKey())loadDecisions();return}
   if(hist.session!==active)startHistory(project.tab);
 }
 function markProjectTab(){
   for(const b of $("project_tabs").querySelectorAll("[data-tab]")){const on=b.dataset.tab===project.tab;b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on))}
-  $("git_body").hidden=["files","gallery"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("gallery_body").hidden=project.tab!=="gallery";
+  $("git_body").hidden=["files","decisions"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("decisions_body").hidden=project.tab!=="decisions";
+  markDecisionCount();
   const box=$("project_dlg");
   $("b_project").setAttribute("aria-pressed",String(box.open));
 }
@@ -134,7 +135,7 @@ function projectClosed(){
   hideClosedDrawer();
   document.body.classList.remove("project-drawer");
   if(project.moving)return;
-  clearTimeout(hist.timer);clearTimeout(gallery.timer);markProjectTab();
+  clearTimeout(hist.timer);clearTimeout(decisions.timer);markProjectTab();
   // The phone drawer comes back showing what it showed, so its open file stays too. Elsewhere the file is
   // let go and the folder drawn in its place; unsaved text is never dropped without the question.
   if(drawer||!files.file||filesDirty())return;

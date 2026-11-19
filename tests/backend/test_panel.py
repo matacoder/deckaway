@@ -783,6 +783,40 @@ class LeftoverTests(PanelCase):
             self.assertEqual([p['session'] for p in self.panel.leftovers_payload()['processes']], ['api', ''])
 
 
+class DecisionPanelTests(PanelCase):
+    ASK = {'key': 'k', 'question': 'Ship?'}
+
+    def sessions(self, *rows):
+        return [{'name': name, 'created': created, 'title': title} for name, created, title in rows]
+
+    def test_the_owner_sees_which_session_still_runs_and_its_count_is_on_that_session_only(self):
+        service = self.panel.decisions_service()
+        service.ask('api', 10, '/p', self.ASK)
+        service.ask('old', 5, '/p', self.ASK)
+        with patch.object(self.panel, 'list_sessions', return_value=self.sessions(('api', 10, 'Duty'), ('old', 6, 'old'))):
+            items = {i['session']: i for i in self.panel.decisions_payload('')['decisions']}
+            self.assertEqual([i['session'] for i in self.panel.decisions_payload('api')['decisions']], ['api'])
+        # A session of the same name started later is another one: its answer has nowhere to go.
+        self.assertEqual((items['api']['live'], items['api']['title'], items['old']['live']), (True, 'Duty', False))
+        with self.assertRaises(ValueError):
+            self.panel.decisions_payload('../x')
+        with patch.object(self.panel, 'tmux', return_value='cc-api\t10\t0\t/p\tclaude\t0\nother\t1\n'):
+            listed = self.panel.list_sessions()
+        self.assertEqual(listed[0]['decisions'], 1)
+
+    def test_answers_go_through_the_schedule_once_the_session_is_free(self):
+        service = self.panel.decisions_service()
+        item = service.ask('api', 10, '/p', self.ASK)
+        service.answer(item['id'], 'Yes')
+        schedule = Mock()
+        with patch.object(self.panel, 'list_sessions', return_value=self.sessions(('api', 10, 'api'))), \
+                patch.object(self.panel, 'schedule_service', return_value=schedule):
+            self.assertEqual(self.panel.ACTIONS['decisions_send']({'ids': [item['id']]}), {'sent': 1})
+        name, text, trigger = schedule.add.call_args.args
+        self.assertEqual((name, trigger), ('api', 'idle'))
+        self.assertIn('Answer: Yes', text)
+
+
 class RemoteQuestionTests(PanelCase):
     REMOTE = 'a' * 24
     ITEM = {'id': 'remote-fp', 'session': 'api', 'agent': 'claude', 'title': 'Proceed?', 'selected': 0, 'progress': '',

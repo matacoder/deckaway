@@ -52,7 +52,7 @@ agent); its session and tab stay, and the agent can be started again in it.
 
 - Agents send screenshots of what they built; the pictures open right in the session output.
 - A site an agent starts (a dev server) opens in the phone's browser at the computer's Tailscale address.
-- Changes, commits, files and the gallery are in the panel on the right (on a phone it slides in from the right edge); tap a changed
+- Changes, commits, files and the questions agents wait for are in the panel on the right (on a phone it slides in from the right edge); tap a changed
   line to comment on it in your next message.
 
 The **?** next to the search field in the session bar shows the same picture inside the panel.
@@ -77,7 +77,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 
 **Seeing the work**
 
-- Screenshots an agent mentions by path appear as thumbnails under the line and open full screen; a gallery keeps every picture a session showed.
+- Screenshots an agent mentions by path appear as thumbnails under the line and open full screen.
 - Changes, commits and files in a side panel: tap a line of the diff to comment on it in your next message.
 - **Feature groups:** a model sorts the commit history into features in the background, each with a combined diff.
 - Project files: browse, edit text, read Markdown rendered, preview images and PDF.
@@ -244,7 +244,7 @@ What is different from local Docker:
 
 ## Project panel: changes, commits, files
 
-Changes, Commits, Feature groups, Files and Gallery share one panel with five tabs. On a wide screen it is
+Changes, Commits, Feature groups, Files and Questions share one panel with five tabs. On a wide screen it is
 a sidebar on the right: the sidebar button at the right end of the session bar (like the one on the left)
 shows and hides it, it stays open while you switch sessions (showing the open session's project) and is
 remembered in this browser. Drag the inner edge of either sidebar to change its width (double click for the
@@ -302,11 +302,23 @@ visible in that session's recent output, only as a real raster image (never SVG)
 Thumbnails are scaled down to 480 px with `sips` on macOS or ImageMagick on Linux when available
 (cached until the file changes); otherwise the original image is used.
 
-Every picture a session showed is also kept in its **Gallery** (the picture icon in the project panel):
-square thumbnails, newest first, opening in the same viewer. The panel copies each picture when it appears
-(`~/.cache/agent-deck/gallery`, private), so it stays after the path scrolls away, the agent overwrites
-`/tmp/shot.png` with a new one or deletes the file; the Screen view falls back to that copy too. Up to 200
-pictures and 300 MB per session, each kept for 30 days.
+The panel also copies each picture when it appears (`~/.cache/agent-deck/gallery`, private), so it stays
+after the path scrolls away, the agent overwrites `/tmp/shot.png` with a new one or deletes the file: the
+Screen view falls back to that copy. Up to 200 pictures and 300 MB per session, each kept for 30 days.
+
+## Questions from agents
+
+An agent that needs your decision and can carry on without it, a duty run every half hour above all, leaves
+the question in the **Questions** tab of the project panel (the question mark) instead of the chat, where it
+would scroll away. Agents learn how from the panel when a conversation starts, resumes or is compacted; the
+command is `integrations/decisions.py` of this install (`ask` with the question as JSON, `list`, `done`).
+The tab shows the open session's questions, or every session's on this computer, with a count on the
+session, on the tab and on the sidebar button. Tap an offered answer, type your own or dictate it with the
+card's microphone; the draft is kept on the computer, so another device shows it. **Send** (or **Send all
+answers**) types one message per session once that session is free; the agent also sees the answers in its
+`list` until it marks them done. **Not needed** closes a question without an answer. A question belongs to
+the session that asked it: once that session is closed, its answer has nowhere to go. Questions and answers
+live in `~/.config/cc-panel/decisions.sqlite3` (private); closed ones are removed after 30 days.
 
 Claude and Codex sessions started from the panel are asked to show a finished task on their own: screenshots
 of the result and, for anything that opens in a browser, a link on this computer's Tailscale address rather

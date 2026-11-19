@@ -212,7 +212,7 @@ function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blu
 const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
   enabled:()=>isMobile()&&!document.querySelector("dialog[open]")&&$("viewer").hidden&&!$("sheet").classList.contains("on")};
 attachDrawerSwipe(document,drawerSwipe);
-// The project panel (changes, commits, files, gallery) slides in from the right edge on a phone.
+// The project panel (changes, commits, files, decisions) slides in from the right edge on a phone.
 const projectSwipe={panel:()=>$("project_dlg"),right:true,
   isOpen:()=>$("project_dlg").open&&!$("project_dlg").classList.contains("docked"),
   setOpen:on=>on?$("project_dlg").open||openProject(project.tab):closeProject(),reveal:()=>openProject(project.tab),
@@ -306,7 +306,7 @@ function renderCurrentSessions(box,list){
     // State is spelled out next to the path so it does not depend on the dot colour alone.
     const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
-    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
+    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s),...(s.decisions?[decisionBadge(s.decisions)]:[])),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k",modKey()+i));
@@ -327,6 +327,7 @@ function finishTabs(view,box,focused){
     view.replaceChildren(...box.childNodes);
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
+  markDecisionCount();
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"DeckAway";

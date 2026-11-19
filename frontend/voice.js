@@ -22,12 +22,13 @@ function voiceEngine(force=false){
       .then(j=>settle(index,{id,...j.voice}),e=>settle(index,{id,unreachable:e.message})));
   });
 }
-async function toggleVoice(){
+// target: where the text goes instead of the message draft ({decision: id}: that answer field).
+async function toggleVoice(target=null){
   if(voice.held){voice.held=false;return}  // A long press opened the dialog instead.
   if(voice.rec)return stopVoice();
   if(voice.starting||!active)return;
   if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast(tr("Микрофон работает только по https: откройте панель по её https-адресу"));return}
-  const start={epoch:deckEpoch,session:active};voice.starting=start;
+  const start={epoch:deckEpoch,session:active,target};voice.starting=start;
   let context,stream,recording=false;
   const current=()=>voice.starting===start&&start.epoch===deckEpoch&&start.session===active;
   try{
@@ -40,7 +41,7 @@ async function toggleVoice(){
     if(!current())return;
     // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
     context.resume().catch(()=>{});
-    startRecording(context,stream);recording=true;
+    startRecording(context,stream,target);recording=true;
   }catch(e){if(current())toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"))}
   finally{
     if(voice.starting===start)voice.starting=null;
@@ -50,9 +51,9 @@ async function toggleVoice(){
     }
   }
 }
-function startRecording(context,stream){
+function startRecording(context,stream,target=null){
   const source=context.createMediaStreamSource(stream),node=context.createScriptProcessor(4096,1,1);
-  const rec={id:String(Date.now()),seq:0,deck:selectedDeck,session:active,context,stream,source,node,
+  const rec={id:String(Date.now()),seq:0,deck:selectedDeck,session:active,target,context,stream,source,node,
     chunks:[],length:0,rate:context.sampleRate,started:Date.now(),ticks:0,saving:Promise.resolve(),lock:null};
   node.onaudioprocess=e=>{const data=e.inputBuffer.getChannelData(0);rec.chunks.push(new Float32Array(data));rec.length+=data.length};
   source.connect(node);node.connect(context.destination);
@@ -85,7 +86,7 @@ function queueSave(rec,seq,samples,open){
   rec.saving=rec.saving.then(async()=>{
     const key=voicePieceKey(rec.id,seq);
     if(!hasSpeech(samples)){if(!open)await voiceRemove(key);return}
-    await voicePut({key,rec:rec.id,seq,deck:rec.deck,session:rec.session,open,wav:encodeWav(samples).buffer});
+    await voicePut({key,rec:rec.id,seq,deck:rec.deck,session:rec.session,target:rec.target,open,wav:encodeWav(samples).buffer});
   }).catch(()=>{voice.error=tr("Не удалось сохранить запись в браузере");renderVoice()});
 }
 function stopVoice(message){
@@ -110,6 +111,7 @@ async function transcribePiece(piece,engine){
 // The text goes to the end of the draft; the cursor and a selection in the field stay where they are.
 function deliverDictation(piece){
   if(!piece.text)return;
+  if(piece.target?.decision)return decisionDictation(piece.target.decision,piece.text);
   if(piece.session!==active){messageDrafts.set(piece.session,joinDictation(messageDrafts.get(piece.session)||"",piece.text));return}
   const box=$("msg"),end=box.value.length;
   box.setRangeText(joinDictation(box.value,piece.text).slice(end),end,end,"preserve");
@@ -124,7 +126,7 @@ async function voiceStep(){
   const ready=[...first.values()].find(p=>typeof p.text==="string"&&p.deck===selectedDeck);
   if(ready){
     deliverDictation(ready);
-    if(ready.text&&ready.session===active){voice.doneAt=Date.now();setTimeout(renderVoice,VOICE_DONE_MS+50)}
+    if(ready.text&&ready.session===active&&!ready.target){voice.doneAt=Date.now();setTimeout(renderVoice,VOICE_DONE_MS+50)}
     if(ready.text)await voiceKeep({rec:ready.rec,deck:ready.deck,session:ready.session},ready.text);
     await voiceRemove(ready.key);return true;
   }
@@ -152,7 +154,7 @@ function voiceStatus(){
   const rec=voice.rec;
   if(rec){
     const seconds=Math.floor((Date.now()-rec.started)/1000);
-    return ["rec",Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")+" · "+tr("текст появляется в конце поля по ходу записи")];
+    return ["rec",Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")+" · "+(rec.target?tr("текст появится в поле ответа на вопрос"):tr("текст появляется в конце поля по ходу записи"))];
   }
   if(voice.pending&&voice.error)return ["error",tr("Запись сохранена, распознать пока не удалось: {0}",[voice.error])];
   if(voice.pending)return ["busy",tr("Распознаётся… текст встанет в конец поля")];
@@ -163,6 +165,7 @@ function renderVoice(){
   const button=$("b_mic"),state=$("voice_state"),[kind,text]=voiceStatus();
   button.classList.toggle("on",Boolean(voice.rec));button.classList.toggle("busy",kind==="busy");
   button.setAttribute("aria-pressed",voice.rec?"true":"false");
+  renderDecisionMics();
   state.hidden=!text;state.className="voice-state "+kind;state.querySelector("span").textContent=text;
 }
 function watchVoice(){

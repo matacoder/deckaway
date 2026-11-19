@@ -21,6 +21,7 @@ import shlex
 import select
 import signal
 import socket
+import sqlite3
 import urllib.request
 import urllib.error
 import subprocess
@@ -523,6 +524,7 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     named = network_settings.get().get('auto_titles') is not False
+    waiting = decision_counts() if out.strip() else {}
     for line in out.splitlines():
         sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance, quiet, size = (line.split("\t") + [""] * 18)[:18]
         if not sname.startswith(PREFIX):
@@ -542,6 +544,8 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
             "containers": containers,  # "" = this computer's default, "local", or the id of the computer chosen for this session.
             "runtime": runtime,  # "windows": the agent runs in Windows itself, started from WSL; "" = here.
         }
+        if waiting.get((name, item["created"])):
+            item["decisions"] = waiting[(name, item["created"])]  # Waiting for the owner's answer (`decisions_payload`).
         if quiet.isdigit():
             item["quiet"] = int(quiet)  # When its owner said the waiting work needs no reply (`action_quiet`).
         try:
@@ -1071,6 +1075,49 @@ def leftovers_payload():
     for item in data['processes']:
         item['session'] = item['session'].removeprefix(PREFIX)
     return data
+
+
+_decisions = None
+_decisions_lock = threading.Lock()
+
+
+def decisions_service():
+    global _decisions
+    with _decisions_lock:
+        if _decisions is None:
+            from integrations.decisions import Decisions
+            _decisions = Decisions()
+        return _decisions
+
+
+def decision_counts():
+    """Waiting decisions per session name, only for the very session that filed them."""
+    try:
+        return decisions_service().counts()
+    except (OSError, ValueError, sqlite3.Error) as error:
+        print(f"decisions: {type(error).__name__}", flush=True)
+        return {}
+
+
+def decisions_payload(name):
+    """The owner's view: one session's decisions, or every session's on this computer (name '')."""
+    if name and not NAME_RE.fullmatch(name):
+        raise ValueError("неверное имя сессии")
+    sessions = {s["name"]: s for s in list_sessions()}
+    items = []
+    for item in decisions_service().items(name or None):
+        session = sessions.get(item["session"])
+        live = bool(session) and session["created"] == item["created"]
+        items.append({**{k: item[k] for k in ("id", "session", "key", "question", "context", "options", "status",
+                                               "answer", "asked", "sent", "folder")},
+                      "live": live, "title": session["title"] if live else item["session"]})
+    return {"decisions": items}
+
+
+def send_decisions(d):
+    sessions = {s["name"]: s["created"] for s in list_sessions()}
+    return decisions_service().send(d.get("ids"), lambda name, created: sessions.get(name) == created,
+                                    lambda name, text: schedule_service().add(name, text, "idle"))
 
 
 def attachment_dir(name):
@@ -2734,6 +2781,9 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                direct_link=lambda d: {'token': direct_links.create()},
                decks_direct=lambda d: {'url': remote_decks.direct(d.get('id'))},
                leftovers_stop=lambda d: leftovers_service().stop(d.get('pids')),
+               decisions_answer=lambda d: decisions_service().answer(d.get('id'), d.get('answer')),
+               decisions_dismiss=lambda d: decisions_service().dismiss(d.get('id')),
+               decisions_send=send_decisions,
                backup_setup=lambda d: backup_service().setup(d.get('code') or None),
                backup_now=action_backup_now,
                backup_run=lambda d: {'report': run_backups()},
@@ -3217,6 +3267,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, session_conversation(name))
             except (OSError, ValueError) as error:
                 return self.send_json(500, {"error": f"Не удалось прочитать разговор сессии: {type(error).__name__}"})
+        if parsed.path == "/api/decisions":
+            try:
+                return self.send_json(200, decisions_payload(parse_qs(parsed.query).get("name", [""])[0]))
+            except (ValueError, OSError, sqlite3.Error) as error:
+                return self.send_json(400, {"error": str(error) if isinstance(error, ValueError) else "Не удалось прочитать вопросы"})
         if parsed.path == "/api/gallery":
             try:
                 return self.send_json(200, {"items": gallery().items(parse_qs(parsed.query).get("name", [""])[0])})

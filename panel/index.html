@@ -185,7 +185,6 @@ main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;backgrou
 .screen-skeleton{display:grid;gap:12px;padding:16px 4px}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--side2) 0%,var(--sel) 50%,var(--side2) 100%);background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
 .list-skeleton{display:grid;gap:7px;padding:14px 12px}.list-skeleton.rows .sk-line:nth-child(odd){width:34%;height:10px;margin-top:9px}.list-skeleton.rows .sk-line:first-child{margin-top:0}
-.list-skeleton.gallery{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.list-skeleton.gallery .sk-line{height:auto;aspect-ratio:1;border-radius:var(--r-xs)}
 .tab-skeleton{pointer-events:none}.tab-skeleton .t{display:grid;gap:7px;padding:4px 0}.tab-skeleton .t .sk-line:first-child{width:62%}.tab-skeleton .t .sk-line:last-child{width:38%;height:9px}
 .sk-dot{width:8px;height:8px;border-radius:50%;flex:none}.sk-icon{width:18px;height:18px;flex:none}
 .ver-skeleton,.sk-metric{display:inline-block;height:10px;vertical-align:middle}.ver-skeleton{width:44px}.sk-metric{width:3ch}
@@ -792,7 +791,7 @@ body.resizing iframe{pointer-events:none}
    and cut off rows instead of letting the dialog scroll. */
 #files_body{display:flex;flex-direction:column;gap:10px}
 #files_body>*{flex:none}
-.files-path{display:flex;align-items:center;gap:8px;min-width:0}
+.files-path{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
 .files-path code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg2);font-family:var(--mono);font-size:12.5px}
 .files-up{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--fg2)}
 .files-new{display:flex;gap:8px}
@@ -813,10 +812,35 @@ body.resizing iframe{pointer-events:none}
 .files-pick-acts{display:flex;gap:8px;width:100%}.files-pick-acts button{flex:1;justify-content:center}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
 .files-empty{margin:0;padding:12px;color:var(--mut)}
-.gallery-count{margin:0;padding:10px 12px 6px;color:var(--mut);font-size:13px}
-.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:0 0 12px}
-.gallery-cell{aspect-ratio:1;padding:0;border:0;border-radius:0;background:var(--side2);overflow:hidden;cursor:zoom-in}
-.gallery-cell img{width:100%;height:100%;object-fit:cover;display:block}
+/* Decisions agents wait for: one card each, its answer field and buttons; the agent's text stays plain. */
+.dec-scope{display:flex;gap:4px;margin:8px 0 10px;padding:3px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2)}
+.dec-scope button{flex:1;min-height:36px;padding:6px 10px;border-radius:var(--r-sm);color:var(--mut);font-size:13.5px}
+.dec-scope button[aria-pressed=true]{background:var(--sel);color:var(--fg);font-weight:600}
+.dec-card{display:flex;flex-direction:column;gap:8px;margin:0 0 10px;padding:12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2)}
+.dec-card.sent{opacity:.7}
+.dec-meta{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--dim);font-size:12.5px}
+.dec-session{color:var(--acc-text);font-weight:600}.dec-state{color:var(--ok)}
+.dec-q{margin:0;color:var(--fg);font-weight:600;font-size:15px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere}
+.dec-ctx,.dec-answer{margin:0;color:var(--fg2);font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.dec-answer{padding-left:10px;border-left:3px solid var(--acc)}
+.dec-options{display:flex;flex-wrap:wrap;gap:6px}
+.dec-option{min-height:var(--tap);padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);text-align:left;line-height:1.35;overflow-wrap:anywhere}
+.dec-option[aria-pressed=true]{background:var(--acc-strong);border-color:transparent;color:var(--on-acc)}
+.dec-field{display:flex;align-items:flex-end;gap:6px}
+.dec-field textarea{flex:1;min-width:0;min-height:var(--tap);resize:none;padding:10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg);font-size:16px;line-height:1.4;font-family:inherit}
+.dec-mic{flex:none;display:grid;place-items:center;width:var(--tap);height:var(--tap);border:1px solid var(--bd);border-radius:50%;color:var(--fg2)}
+.dec-mic.on{color:var(--on-acc);background:var(--bad);border-color:transparent;animation:mic-pulse 1.6s ease-in-out infinite}
+.dec-actions{display:flex;justify-content:flex-end;gap:8px}
+.dec-actions button,.dec-footer button{min-height:var(--tap);padding:8px 16px;border-radius:var(--r-btn)}
+.dec-dismiss{color:var(--mut)}
+.dec-send{background:var(--acc-strong);color:var(--on-acc);font-weight:600}.dec-send:disabled{opacity:.45}
+.dec-closed{margin:0;color:var(--dim);font-size:13px}
+.dec-heading{margin:16px 0 8px;color:var(--mut);font-size:13px;font-weight:600}
+.dec-footer{position:sticky;bottom:0;padding:10px 0;background:var(--side)}.dec-footer button{width:100%}
+.dec-count{display:inline-block;margin-left:6px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10.5px;font-weight:700;line-height:16px;text-align:center;vertical-align:1px}
+#project_tabs [data-tab]{position:relative}
+#project_tabs [data-count]:not([data-count=""])::after{content:attr(data-count);position:absolute;top:2px;right:2px;min-width:14px;height:14px;padding:0 3px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10px;font-weight:700;line-height:14px}
+#b_project{position:relative}#b_project.has-decisions::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--acc)}
 .files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:var(--code-font,13px)/1.5 var(--mono);outline:none;white-space:pre-wrap;overflow-wrap:anywhere}
 .files-view{padding:8px 0;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);font:var(--code-font,13px)/1.5 var(--mono);-webkit-user-select:text;user-select:text}
 .files-view .fl{display:flex}
@@ -1175,7 +1199,8 @@ body.resizing iframe{pointer-events:none}
   .dl .code{padding:0 6px}.files-view .code{padding-right:6px}.dl.hunk{padding:4px 6px}
 }
 @media (prefers-reduced-motion:reduce){#project_dlg:not(.docked){transition:none}}
-.files-crumbs{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:12.5px var(--mono);color:var(--mut)}
+/* The folder's path has a line of its own above its buttons: squeezed beside them, it wrapped into a narrow column. */
+.files-crumbs{order:-1;flex:1 0 100%;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px;font:12.5px var(--mono);color:var(--mut)}
 .files-crumbs button{padding:4px 6px;border-radius:6px;color:var(--acc-text)}
 .files-crumbs .here{padding:4px 6px;color:var(--fg2)}.files-crumbs .sep{color:var(--dim)}
 @media (pointer:coarse){.files-crumbs button{min-height:var(--tap)}}
@@ -1510,7 +1535,7 @@ body.board-dragging .tile-grip{cursor:grabbing}
     <h4 class="how-title">Как проверить результат удалённо</h4>
     <ul class="how-list"><li>Агенты присылают скриншоты: картинки открываются прямо в выводе.</li><li>Сайт, который запустил агент, открывается по адресу компьютера в Tailscale.</li><li>Изменения, коммиты, файлы и галерея — в панели справа (на телефоне она выезжает свайпом от правого края или кнопкой справа сверху).</li></ul>
   </div></div></dialog>
-  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="groups" onclick="projectTab('groups')" aria-label="Группы фич" title="Группы фич"><svg class="ui-icon"><use href="#i-layers"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button type="button" role="tab" data-tab="gallery" onclick="projectTab('gallery')" aria-label="Галерея" title="Галерея"><svg class="ui-icon"><use href="#i-image"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div><div class="dlg-body" id="gallery_body" hidden></div></div></dialog>
+  <dialog id="project_dlg" aria-label="Проект"><div class="resizer" id="project_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div><div class="dlg"><div class="git-tabs" id="project_tabs" role="tablist" tabindex="-1" autofocus><button type="button" role="tab" data-tab="changes" onclick="projectTab('changes')" aria-label="Изменения" title="Изменения"><svg class="ui-icon"><use href="#i-diff"/></svg></button><button type="button" role="tab" data-tab="commits" onclick="projectTab('commits')" aria-label="Коммиты" title="Коммиты"><svg class="ui-icon"><use href="#i-commit"/></svg></button><button type="button" role="tab" data-tab="groups" onclick="projectTab('groups')" aria-label="Группы фич" title="Группы фич"><svg class="ui-icon"><use href="#i-layers"/></svg></button><button type="button" role="tab" data-tab="files" onclick="projectTab('files')" aria-label="Файлы" title="Файлы"><svg class="ui-icon"><use href="#i-folder"/></svg></button><button type="button" role="tab" data-tab="decisions" onclick="projectTab('decisions')" aria-label="Вопросы от агентов" title="Вопросы от агентов"><svg class="ui-icon"><use href="#i-help"/></svg></button><span class="git-font"><button type="button" onclick="codeFont(-1)" aria-label="Уменьшить шрифт">A−</button><button type="button" onclick="codeFont(1)" aria-label="Увеличить шрифт">A+</button></span><button type="button" class="project-close" onclick="closeProject()" aria-label="Закрыть"><svg class="ui-icon"><use href="#i-x"/></svg></button></div><div class="dlg-body" id="git_body"></div><div class="dlg-body" id="files_body" hidden></div><div class="dlg-body" id="decisions_body" hidden></div></div></dialog>
 </div>
 
 <div id="sheet"><div class="scrim" onclick="sheet(false)"></div><div class="panel" role="menu" aria-labelledby="sheetCap">
@@ -3874,58 +3899,181 @@ async function sendSuggestion(){
 }
 
 if(typeof module!=="undefined")module.exports={promptSuggestion};
-// Every picture the open session showed, kept by the panel after it left the screen: a grid of square
-// thumbnails, newest first, opening in the full-screen viewer. Reloaded while the tab is open and visible.
-// key: computer and session, as in sessionInfoKey(): the same name on another computer has other pictures.
-const gallery={key:null,session:null,items:null,raw:"",error:"",timer:null};
-const GALLERY_POLL=15000;
+// Decisions agents left for their owner (integrations/decisions.py): the open session's, or every session's on this
+// computer, each with its own answer field. A typed or dictated answer is kept on that computer as a draft (any
+// device sees it) and goes to the agent with "Send", as a prompt typed once the session is free.
+// The agent's text is shown as plain text: it is data, never markup.
+const decisions={key:null,items:null,raw:"",error:"",timer:null,drafts:new Map(),saves:new Map(),stale:false,sending:false};
+const DECISIONS_POLL=15000,DECISION_SAVE_MS=700;
 
-function galleryUrl(session,id,thumb){
-  return activePath("/api/gallery_image?name="+encodeURIComponent(session)+"&id="+encodeURIComponent(id)+(thumb?"&thumb=1":""));
+function decisionScope(){try{return localStore.getItem("cc.decisions.scope")==="all"?"all":"session"}catch(e){return "session"}}
+function setDecisionScope(scope){
+  try{localStore.setItem("cc.decisions.scope",scope)}catch(e){}
+  decisions.key=null;loadDecisions();
 }
-function galleryShown(){
-  const box=$("project_dlg");
-  return box.open&&project.tab==="gallery"&&!document.hidden;
-}
-async function loadGallery(){
-  const session=active,key=sessionInfoKey();clearTimeout(gallery.timer);
-  // Pictures this session showed last time stay up while the list is read again.
-  if(gallery.key!==key){const known=knownAnswer(galleryKnown,key);Object.assign(gallery,{key,session,items:known,raw:known?JSON.stringify(known):"",error:"",recalled:Boolean(known)});renderGallery()}
+function decisionsKey(){return decisionScope()==="all"?(selectedDeck||"")+"/*":sessionInfoKey()}
+function decisionsShown(){return $("project_dlg").open&&project.tab==="decisions"&&!document.hidden}
+function decisionFocused(){return Boolean(document.activeElement?.closest?.("#decisions_body .dec-card"))}
+async function loadDecisions(){
+  const key=decisionsKey(),scope=decisionScope();clearTimeout(decisions.timer);
+  if(!key)return;
+  if(decisions.key!==key){Object.assign(decisions,{key,items:null,raw:"",error:""});renderDecisions()}
   try{
-    const data=await api("/api/gallery?name="+encodeURIComponent(session));
-    if(gallery.key!==key)return;
-    const raw=JSON.stringify(data.items||[]);gallery.recalled=false;
-    // The same answer leaves the grid alone: no thumbnail reloads, no lost scroll.
-    if(raw!==gallery.raw||gallery.error){Object.assign(gallery,{raw,items:data.items||[],error:""});keepAnswer(galleryKnown,key,gallery.items);renderGallery()}
+    const data=await api("/api/decisions?name="+encodeURIComponent(scope==="all"?"":active));
+    if(decisions.key!==key)return;
+    const raw=JSON.stringify(data.decisions||[]);
+    if(raw!==decisions.raw||decisions.error){
+      Object.assign(decisions,{raw,items:data.decisions||[],error:""});
+      // Redrawn under a typing finger, the field would lose the cursor: the new list waits for the blur.
+      if(decisionFocused())decisions.stale=true;else renderDecisions();
+    }
   }catch(e){
-    if(gallery.key!==key||e.message===STALE)return;
-    // Pictures remembered from before are not a list this computer just gave: the error is shown instead.
-    gallery.error=e.message;if(gallery.recalled){gallery.items=null;gallery.raw="";gallery.recalled=false}
-    if(!gallery.items)renderGallery();
+    if(decisions.key!==key||e.message===STALE)return;
+    decisions.error=e.message;if(!decisions.items)renderDecisions();
   }
-  if(galleryShown())gallery.timer=setTimeout(()=>{if(galleryShown())loadGallery()},GALLERY_POLL);
+  if(decisionsShown())decisions.timer=setTimeout(()=>{if(decisionsShown())loadDecisions()},DECISIONS_POLL);
 }
-function renderGallery(){
-  const box=$("gallery_body");box.replaceChildren();
-  if(gallery.error&&!gallery.items){box.append(errorWithRetry(gallery.error,loadGallery));return}
-  if(!gallery.items){box.append(listSkeleton("gallery"));return}
-  const items=gallery.items,session=gallery.session;
-  if(!items.length){box.append(el("p","files-empty",tr("Здесь появятся картинки, которые агенты этой сессии покажут на экране: скриншоты, превью, графики. Они остаются, даже когда уходят с экрана.")));return}
-  box.append(el("p","gallery-count",tr("Картинок: {0}",[items.length])));
-  const grid=el("div","gallery-grid");
-  const viewer=()=>items.map(item=>({url:galleryUrl(session,item.id),name:item.name,title:item.path+" · "+formatTime(item.at)}));
-  items.forEach((item,i)=>{
-    const cell=el("button","gallery-cell"),img=document.createElement("img");
-    cell.type="button";cell.title=item.name;cell.setAttribute("aria-label",tr("Открыть картинку {0}",[item.name]));
-    img.loading="lazy";img.decoding="async";img.alt="";img.src=galleryUrl(session,item.id,true);
-    cell.append(img);cell.onclick=()=>showViewer(viewer(),i);grid.append(cell);
-  });
-  box.append(grid);
+function decisionCardFor(id){return [...document.querySelectorAll("#decisions_body .dec-card")].find(card=>card.dataset.id===id)}
+function decisionDraft(item){return decisions.drafts.has(item.id)?decisions.drafts.get(item.id):item.answer}
+// Every change is saved after a short pause, so another device (or a reload) finds the draft.
+function setDecisionDraft(id,text){
+  decisions.drafts.set(id,text);
+  clearTimeout(decisions.saves.get(id));
+  decisions.saves.set(id,setTimeout(()=>saveDecisionDraft(id),DECISION_SAVE_MS));
+  const card=decisionCardFor(id);
+  if(card)markDecisionCard(card,id);
+  renderDecisionFooter();
+}
+async function saveDecisionDraft(id){
+  clearTimeout(decisions.saves.get(id));decisions.saves.delete(id);
+  if(!decisions.drafts.has(id))return;
+  const text=decisions.drafts.get(id);
+  try{
+    await api("/api/decisions_answer",{id,answer:text});
+    const item=decisions.items?.find(x=>x.id===id);if(item)item.answer=text.trim();
+    if(decisions.drafts.get(id)===text)decisions.drafts.delete(id);
+  }catch(e){if(e.message!==STALE)toast(e.message)}
+}
+// Dictation started from a card's microphone ends up here (voice.js).
+function decisionDictation(id,text){
+  const item=decisions.items?.find(x=>x.id===id);
+  const current=decisions.drafts.has(id)?decisions.drafts.get(id):item?.answer||"";
+  const next=joinDictation(current,text);
+  const field=decisionCardFor(id)?.querySelector("textarea");
+  if(field&&document.activeElement!==field)field.value=next;
+  else if(field){const end=field.value.length;field.setRangeText(next.slice(current.length),end,end,"preserve")}
+  if(field)fitDecisionField(field);
+  setDecisionDraft(id,next);
+}
+function answeredDecisions(){
+  return (decisions.items||[]).filter(item=>item.status==="open"&&item.live&&decisionDraft(item).trim());
+}
+async function sendDecisions(ids){
+  if(decisions.sending||!ids.length)return;
+  decisions.sending=true;renderDecisionFooter();
+  try{
+    for(const id of ids)if(decisions.drafts.has(id))await saveDecisionDraft(id);
+    const result=await api("/api/decisions_send",{ids});
+    toast(tr("Отправлено ответов: {0}. Агент получит их, когда сессия освободится",[result.sent]),true);
+    decisions.raw="";await loadDecisions();
+  }catch(e){if(e.message!==STALE)toast(e.message)}
+  finally{decisions.sending=false;renderDecisionFooter()}
+}
+async function dismissDecision(item){
+  if(!await confirmAction(tr("Закрыть вопрос без ответа?"),{text:item.question,confirm:tr("Закрыть")}))return;
+  try{await api("/api/decisions_dismiss",{id:item.id});decisions.drafts.delete(item.id);decisions.raw="";await loadDecisions()}
+  catch(e){if(e.message!==STALE)toast(e.message)}
+}
+function fitDecisionField(field){field.style.height="auto";field.style.height=Math.min(field.scrollHeight+2,320)+"px"}
+function markDecisionCard(card,id){
+  const item=decisions.items?.find(x=>x.id===id);if(!item)return;
+  const text=decisionDraft(item);
+  card.querySelector(".dec-send").disabled=!text.trim()||!item.live||decisions.sending;
+  for(const chip of card.querySelectorAll(".dec-option"))chip.setAttribute("aria-pressed",String(chip.dataset.option===text.trim()));
+}
+function renderDecisionMics(){
+  for(const button of document.querySelectorAll("#decisions_body .dec-mic")){
+    const on=voice.rec?.target?.decision===button.dataset.id;
+    button.classList.toggle("on",on);button.setAttribute("aria-pressed",String(on));
+  }
+}
+function decisionCard(item,all){
+  const card=el("article","dec-card"+(item.status==="sent"?" sent":""));card.dataset.id=item.id;
+  const meta=el("div","dec-meta");
+  if(all)meta.append(el("span","dec-session",item.title||item.session));
+  meta.append(el("span","",formatTime(item.asked)));
+  if(item.status==="sent")meta.append(el("span","dec-state",tr("Отправлено")));
+  card.append(meta,el("p","dec-q",item.question));
+  if(item.context)card.append(el("p","dec-ctx",item.context));
+  if(item.status==="sent"){card.append(el("p","dec-answer",item.answer));return card}
+  const field=document.createElement("textarea");
+  field.rows=2;field.value=decisionDraft(item);field.placeholder=tr("Ваш ответ");field.setAttribute("aria-label",tr("Ответ на вопрос"));
+  field.oninput=()=>{fitDecisionField(field);setDecisionDraft(item.id,field.value)};
+  field.onblur=()=>{if(decisions.saves.has(item.id))saveDecisionDraft(item.id);setTimeout(()=>{if(decisions.stale&&!decisionFocused()){decisions.stale=false;renderDecisions()}},0)};
+  if(item.options.length){
+    const options=el("div","dec-options");
+    for(const option of item.options){
+      const chip=el("button","dec-option",option);chip.type="button";chip.dataset.option=option;
+      chip.onclick=()=>{field.value=option;fitDecisionField(field);setDecisionDraft(item.id,option)};
+      options.append(chip);
+    }
+    card.append(options);
+  }
+  const mic=el("button","dec-mic",svgIcon("mic"));mic.type="button";mic.dataset.id=item.id;
+  mic.setAttribute("aria-label",tr("Надиктовать ответ"));mic.title=tr("Надиктовать ответ");
+  mic.onclick=()=>toggleVoice({decision:item.id});
+  card.append(el("div","dec-field",field,mic));
+  const send=el("button","dec-send",tr("Отправить"));send.type="button";send.onclick=()=>sendDecisions([item.id]);
+  const dismiss=el("button","dec-dismiss",tr("Не нужно"));dismiss.type="button";dismiss.onclick=()=>dismissDecision(item);
+  card.append(el("div","dec-actions",dismiss,send));
+  if(!item.live)card.append(el("p","dec-closed",tr("Сессия этого вопроса закрыта: ответ некуда отправить")));
+  setTimeout(()=>fitDecisionField(field),0);
+  markDecisionCard(card,item.id);
+  return card;
+}
+function decisionScopeSwitch(){
+  const box=el("div","dec-scope"),scope=decisionScope();box.setAttribute("role","group");
+  for(const [value,label] of [["session",tr("Эта сессия")],["all",tr("Все сессии компьютера")]]){
+    const b=el("button","",label);b.type="button";b.setAttribute("aria-pressed",String(scope===value));
+    b.onclick=()=>{if(decisionScope()!==value)setDecisionScope(value)};box.append(b);
+  }
+  return box;
+}
+function renderDecisionFooter(){
+  const footer=document.querySelector("#decisions_body .dec-footer");if(!footer)return;
+  const ready=answeredDecisions();
+  footer.hidden=ready.length<2;
+  const button=footer.querySelector("button");
+  button.textContent=tr("Отправить все ответы ({0})",[ready.length]);button.disabled=decisions.sending;
+  for(const card of document.querySelectorAll("#decisions_body .dec-card:not(.sent)"))markDecisionCard(card,card.dataset.id);
+}
+function renderDecisions(){
+  const box=$("decisions_body"),all=decisionScope()==="all";box.replaceChildren(decisionScopeSwitch());
+  if(decisions.error&&!decisions.items){box.append(errorWithRetry(decisions.error,loadDecisions));return}
+  if(!decisions.items){box.append(listSkeleton());return}
+  const waiting=decisions.items.filter(item=>item.status==="open"),sent=decisions.items.filter(item=>item.status==="sent");
+  if(!decisions.items.length)box.append(el("p","files-empty",tr("Вопросов нет. Здесь собираются решения, которых агенты ждут от вас, например во время дежурства. Ответ можно напечатать или надиктовать.")));
+  for(const item of waiting)box.append(decisionCard(item,all));
+  if(sent.length){box.append(el("h3","dec-heading",tr("Отправленные")));for(const item of sent)box.append(decisionCard(item,all))}
+  const sendAll=el("button","dec-send",tr("Отправить все ответы"));sendAll.type="button";
+  sendAll.onclick=()=>sendDecisions(answeredDecisions().map(item=>item.id));
+  box.append(el("div","dec-footer",sendAll));
+  renderDecisionFooter();renderDecisionMics();
+}
+function decisionBadge(count){
+  const badge=el("span","dec-count",String(count));badge.title=tr("Вопросов ждут ответа: {0}",[count]);
+  return badge;
+}
+// The count on the sidebar's tab and the bar button: decisions the open session waits for.
+function markDecisionCount(){
+  const count=cur()?.decisions||0,tab=$("project_tabs").querySelector('[data-tab="decisions"]');
+  if(tab)tab.dataset.count=count?String(count):"";
+  $("b_project").classList.toggle("has-decisions",Boolean(count));
 }
 function formatTime(at){
   return new Intl.DateTimeFormat(DATE_LOCALE,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(at*1000));
 }
-if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&gallery.session&&galleryShown())loadGallery()});
+if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&decisions.key&&decisionsShown())loadDecisions()});
 // Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
 // message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that the
 // server keeps sorting in the background from commit subjects and file names, each with a combined diff.
@@ -4835,10 +4983,10 @@ async function saveQuickPrompts(){
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&later.session)loadLater()});
 
 if(typeof module!=="undefined")module.exports={quickChips,quickRows,laterWhen,defaultLaterTime,laterCount,compactCommand};
-// Changes, commits, feature groups, files and pictures of the open session in one panel: a right sidebar on wide screens that stays
+// Changes, commits, feature groups, files and the decisions agents wait for in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
-const PROJECT_TABS=["changes","commits","groups","files","gallery"];
+const PROJECT_TABS=["changes","commits","groups","files","decisions"];
 const project={tab:"changes",moving:false};
 const projectDocked=()=>!isMobile();
 function savedProjectTab(){try{const tab=localStore.getItem("cc.project");return PROJECT_TABS.includes(tab)?tab:""}catch(e){return ""}}
@@ -4863,7 +5011,7 @@ function openProject(tab){
 }
 function projectCurrent(){
   if(project.tab==="files")return files.session===active;
-  if(project.tab==="gallery")return gallery.key===sessionInfoKey()&&Boolean(gallery.items);
+  if(project.tab==="decisions")return decisions.key===decisionsKey()&&Boolean(decisions.items);
   return hist.session===active&&Boolean(hist.changes);
 }
 function quietProject(){
@@ -4874,7 +5022,7 @@ function quietProject(){
     const box=$("project_dlg");
     if(!box.open)return;
     if(box.style.transform){project.quiet=setTimeout(check,200);return}  // Still under the finger.
-    if(project.tab==="gallery")return loadGallery();
+    if(project.tab==="decisions")return loadDecisions();
     if(project.tab==="changes"||project.tab==="groups")pollChanges();
   },projectDrawer()?400:0);
 }
@@ -4898,7 +5046,7 @@ function projectTab(tab){
   if(projectDocked())rememberProject(tab);
   markProjectTab();
   if(tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(tab==="gallery")return loadGallery();
+  if(tab==="decisions")return loadDecisions();
   if(hist.session!==active)return startHistory(tab);
   historyTab(tab);
 }
@@ -4906,12 +5054,13 @@ function projectTab(tab){
 function refreshProject(){
   markProjectTab();
   if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(project.tab==="gallery"){if(gallery.key!==sessionInfoKey())loadGallery();return}
+  if(project.tab==="decisions"){if(decisions.key!==decisionsKey())loadDecisions();return}
   if(hist.session!==active)startHistory(project.tab);
 }
 function markProjectTab(){
   for(const b of $("project_tabs").querySelectorAll("[data-tab]")){const on=b.dataset.tab===project.tab;b.classList.toggle("on",on);b.setAttribute("aria-selected",String(on))}
-  $("git_body").hidden=["files","gallery"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("gallery_body").hidden=project.tab!=="gallery";
+  $("git_body").hidden=["files","decisions"].includes(project.tab);$("files_body").hidden=project.tab!=="files";$("decisions_body").hidden=project.tab!=="decisions";
+  markDecisionCount();
   const box=$("project_dlg");
   $("b_project").setAttribute("aria-pressed",String(box.open));
 }
@@ -4971,7 +5120,7 @@ function projectClosed(){
   hideClosedDrawer();
   document.body.classList.remove("project-drawer");
   if(project.moving)return;
-  clearTimeout(hist.timer);clearTimeout(gallery.timer);markProjectTab();
+  clearTimeout(hist.timer);clearTimeout(decisions.timer);markProjectTab();
   // The phone drawer comes back showing what it showed, so its open file stays too. Elsewhere the file is
   // let go and the folder drawn in its place; unsaved text is never dropped without the question.
   if(drawer||!files.file||filesDirty())return;
@@ -6661,7 +6810,7 @@ function forgetShown(storage){
   shownWritten.clear();
 }
 // The last answer per computer and session, in memory: a switch back shows it while the fresh one is on its way.
-const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map(),galleryKnown=new Map(),filesKnown=new Map(),logKnown=new Map(),groupsKnown=new Map(),diffsKnown=new Map();
+const KNOWN_ANSWERS=60,sessionInfoKnown=new Map(),laterKnown=new Map(),changesKnown=new Map(),filesKnown=new Map(),logKnown=new Map(),groupsKnown=new Map(),diffsKnown=new Map();
 const KNOWN_DIFFS=12;  // A commit or a group of commits never changes; diffs are large, so only a few stay.
 function knownAnswer(known,key){return key&&known.has(key)?known.get(key):null}
 function keepAnswer(known,key,value,limit=KNOWN_ANSWERS){
@@ -6676,11 +6825,10 @@ function skeletonRows(count,build){return Array.from({length:count},(_,index)=>b
 function sessionSkeleton(){
   return el("div","tab tab-skeleton",el("span","sk-line sk-dot"),el("span","sk-line sk-icon"),el("div","t",el("span","sk-line"),el("span","sk-line")));
 }
-// Stands in for a list of the project panel (commits, groups, a diff, a folder) or for the picture grid.
+// Stands in for a list of the project panel (commits, groups, a diff, a folder, decisions).
 function listSkeleton(kind="rows"){
   const box=el("div","list-skeleton "+kind);box.setAttribute("role","status");box.setAttribute("aria-label",tr("Загрузка…"));
-  if(kind==="gallery")box.append(...skeletonRows(6,()=>el("span","sk-line")));
-  else for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
+  for(const width of [70,45,82,38,64,52,76,41])box.append(el("span","sk-line"),el("span","sk-line")),box.lastChild.style.width=width+"%";
   return box;
 }
 // The last figures of this computer stand in until the next ones, a few seconds later.
@@ -7055,12 +7203,13 @@ function voiceEngine(force=false){
       .then(j=>settle(index,{id,...j.voice}),e=>settle(index,{id,unreachable:e.message})));
   });
 }
-async function toggleVoice(){
+// target: where the text goes instead of the message draft ({decision: id}: that answer field).
+async function toggleVoice(target=null){
   if(voice.held){voice.held=false;return}  // A long press opened the dialog instead.
   if(voice.rec)return stopVoice();
   if(voice.starting||!active)return;
   if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){toast(tr("Микрофон работает только по https: откройте панель по её https-адресу"));return}
-  const start={epoch:deckEpoch,session:active};voice.starting=start;
+  const start={epoch:deckEpoch,session:active,target};voice.starting=start;
   let context,stream,recording=false;
   const current=()=>voice.starting===start&&start.epoch===deckEpoch&&start.session===active;
   try{
@@ -7073,7 +7222,7 @@ async function toggleVoice(){
     if(!current())return;
     // Not awaited: WebKit settles it only once audio runs, which the recording itself starts.
     context.resume().catch(()=>{});
-    startRecording(context,stream);recording=true;
+    startRecording(context,stream,target);recording=true;
   }catch(e){if(current())toast(tr("Нет доступа к микрофону: разрешите его для этого сайта в настройках браузера"))}
   finally{
     if(voice.starting===start)voice.starting=null;
@@ -7083,9 +7232,9 @@ async function toggleVoice(){
     }
   }
 }
-function startRecording(context,stream){
+function startRecording(context,stream,target=null){
   const source=context.createMediaStreamSource(stream),node=context.createScriptProcessor(4096,1,1);
-  const rec={id:String(Date.now()),seq:0,deck:selectedDeck,session:active,context,stream,source,node,
+  const rec={id:String(Date.now()),seq:0,deck:selectedDeck,session:active,target,context,stream,source,node,
     chunks:[],length:0,rate:context.sampleRate,started:Date.now(),ticks:0,saving:Promise.resolve(),lock:null};
   node.onaudioprocess=e=>{const data=e.inputBuffer.getChannelData(0);rec.chunks.push(new Float32Array(data));rec.length+=data.length};
   source.connect(node);node.connect(context.destination);
@@ -7118,7 +7267,7 @@ function queueSave(rec,seq,samples,open){
   rec.saving=rec.saving.then(async()=>{
     const key=voicePieceKey(rec.id,seq);
     if(!hasSpeech(samples)){if(!open)await voiceRemove(key);return}
-    await voicePut({key,rec:rec.id,seq,deck:rec.deck,session:rec.session,open,wav:encodeWav(samples).buffer});
+    await voicePut({key,rec:rec.id,seq,deck:rec.deck,session:rec.session,target:rec.target,open,wav:encodeWav(samples).buffer});
   }).catch(()=>{voice.error=tr("Не удалось сохранить запись в браузере");renderVoice()});
 }
 function stopVoice(message){
@@ -7143,6 +7292,7 @@ async function transcribePiece(piece,engine){
 // The text goes to the end of the draft; the cursor and a selection in the field stay where they are.
 function deliverDictation(piece){
   if(!piece.text)return;
+  if(piece.target?.decision)return decisionDictation(piece.target.decision,piece.text);
   if(piece.session!==active){messageDrafts.set(piece.session,joinDictation(messageDrafts.get(piece.session)||"",piece.text));return}
   const box=$("msg"),end=box.value.length;
   box.setRangeText(joinDictation(box.value,piece.text).slice(end),end,end,"preserve");
@@ -7157,7 +7307,7 @@ async function voiceStep(){
   const ready=[...first.values()].find(p=>typeof p.text==="string"&&p.deck===selectedDeck);
   if(ready){
     deliverDictation(ready);
-    if(ready.text&&ready.session===active){voice.doneAt=Date.now();setTimeout(renderVoice,VOICE_DONE_MS+50)}
+    if(ready.text&&ready.session===active&&!ready.target){voice.doneAt=Date.now();setTimeout(renderVoice,VOICE_DONE_MS+50)}
     if(ready.text)await voiceKeep({rec:ready.rec,deck:ready.deck,session:ready.session},ready.text);
     await voiceRemove(ready.key);return true;
   }
@@ -7185,7 +7335,7 @@ function voiceStatus(){
   const rec=voice.rec;
   if(rec){
     const seconds=Math.floor((Date.now()-rec.started)/1000);
-    return ["rec",Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")+" · "+tr("текст появляется в конце поля по ходу записи")];
+    return ["rec",Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0")+" · "+(rec.target?tr("текст появится в поле ответа на вопрос"):tr("текст появляется в конце поля по ходу записи"))];
   }
   if(voice.pending&&voice.error)return ["error",tr("Запись сохранена, распознать пока не удалось: {0}",[voice.error])];
   if(voice.pending)return ["busy",tr("Распознаётся… текст встанет в конец поля")];
@@ -7196,6 +7346,7 @@ function renderVoice(){
   const button=$("b_mic"),state=$("voice_state"),[kind,text]=voiceStatus();
   button.classList.toggle("on",Boolean(voice.rec));button.classList.toggle("busy",kind==="busy");
   button.setAttribute("aria-pressed",voice.rec?"true":"false");
+  renderDecisionMics();
   state.hidden=!text;state.className="voice-state "+kind;state.querySelector("span").textContent=text;
 }
 function watchVoice(){
@@ -7500,7 +7651,7 @@ function drawer(on){document.body.classList.toggle("drawer",on);if(on)$("q").blu
 const drawerSwipe={panel:document.querySelector("aside"),isOpen:()=>document.body.classList.contains("drawer"),setOpen:on=>drawer(on),
   enabled:()=>isMobile()&&!document.querySelector("dialog[open]")&&$("viewer").hidden&&!$("sheet").classList.contains("on")};
 attachDrawerSwipe(document,drawerSwipe);
-// The project panel (changes, commits, files, gallery) slides in from the right edge on a phone.
+// The project panel (changes, commits, files, decisions) slides in from the right edge on a phone.
 const projectSwipe={panel:()=>$("project_dlg"),right:true,
   isOpen:()=>$("project_dlg").open&&!$("project_dlg").classList.contains("docked"),
   setOpen:on=>on?$("project_dlg").open||openProject(project.tab):closeProject(),reveal:()=>openProject(project.tab),
@@ -7594,7 +7745,7 @@ function renderCurrentSessions(box,list){
     // State is spelled out next to the path so it does not depend on the dot colour alone.
     const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
-    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
+    t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s),...(s.decisions?[decisionBadge(s.decisions)]:[])),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k",modKey()+i));
@@ -7615,6 +7766,7 @@ function finishTabs(view,box,focused){
     view.replaceChildren(...box.childNodes);
     if(focused)view.querySelector(focused)?.focus({preventScroll:true});
   }
+  markDecisionCount();
   const ready=renderInboxBadge();
   $("menuBadge").textContent=ready;$("menuBadge").classList.toggle("on",ready>0);
   document.title=(ready?`(${ready}) `:"")+"DeckAway";

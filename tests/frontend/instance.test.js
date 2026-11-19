@@ -759,41 +759,74 @@ test('a file that cannot be shown still offers a download in the file browser',a
   }finally{window.close()}
 });
 
-test('the gallery tab shows every kept picture, newest first, and walks through them in the viewer',async()=>{
-  const state={local:()=>({sessions:[session('alpha')]})};
-  const routes=routesFor(state),asked=[];
-  routes['/api/gallery']=url=>{asked.push(url.searchParams.get('name'));return {items:[
-    {id:'b'.repeat(24),name:'after.png',path:'/tmp/after.png',kind:'image/png',size:9,at:1800000000},
-    {id:'a'.repeat(24),name:'before.png',path:'/tmp/before.png',kind:'image/png',size:9,at:1799990000}]}};
+function decision(id,extra={}){
+  return {id,session:'alpha',key:'k-'+id,question:'Add the index?',context:'Queries take 4 s.',options:['Yes','Later'],status:'open',
+    answer:'',asked:1800000000,sent:null,folder:'/home/demo/p',live:true,title:'alpha',...extra};
+}
+
+test('the decisions tab lists what the open session waits for, keeps the answer as a draft and sends it',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{decisions:2})]})};
+  const routes=routesFor(state),asked=[],answers=[],sent=[];
+  routes['/api/decisions']=url=>{asked.push(url.searchParams.get('name'));return {decisions:[
+    decision('a',{question:'<b>Ship</b> tonight?'}),decision('b',{options:[]})]}};
+  routes['/api/decisions_answer']=(url,options)=>{answers.push(JSON.parse(options.body));return {ok:true}};
+  routes['/api/decisions_send']=(url,options)=>{sent.push(JSON.parse(options.body).ids);return {sent:1}};
   const window=boot(routes);
   try{
   await settle();await settle();
   const doc=window.document;
-  window.eval('openProject("gallery")');await settle();
+  // The count is on the session, on the sidebar's tab and on the bar button before the tab is opened.
+  expect(doc.querySelector('#tabs .dec-count').textContent).toBe('2');
+  expect(doc.querySelector('#project_tabs [data-tab="decisions"]').dataset.count).toBe('2');
+  window.eval('openProject("decisions")');await settle();
   expect(asked).toEqual(['alpha']);
   expect(doc.getElementById('git_body').hidden).toBe(true);
-  const cells=[...doc.querySelectorAll('#gallery_body .gallery-cell')];
-  expect(cells.map(c=>c.title)).toEqual(['after.png','before.png']);
-  expect(cells[0].querySelector('img').getAttribute('src')).toBe('/api/gallery_image?name=alpha&id='+'b'.repeat(24)+'&thumb=1');
-  cells[1].click();
-  expect(doc.getElementById('viewer').hidden).toBe(false);
-  expect(doc.getElementById('viewer_caption').textContent).toBe('2 / 2  ·  before.png');
-  window.eval('stepViewer(1)');
-  expect(doc.getElementById('viewer_img').getAttribute('src')).toBe('/api/gallery_image?name=alpha&id='+'b'.repeat(24));
+  const cards=[...doc.querySelectorAll('#decisions_body .dec-card')];
+  expect(cards).toHaveLength(2);
+  // The agent's text is data: shown as it is, never as markup.
+  expect(cards[0].querySelector('.dec-q').textContent).toBe('<b>Ship</b> tonight?');
+  expect(cards[0].querySelector('.dec-q b')).toBeNull();
+  const send=cards[0].querySelector('.dec-send');
+  expect(send.disabled).toBe(true);
+  cards[0].querySelector('.dec-option').click();
+  expect(cards[0].querySelector('textarea').value).toBe('Yes');
+  expect(cards[0].querySelector('.dec-option').getAttribute('aria-pressed')).toBe('true');
+  expect(send.disabled).toBe(false);
+  await new Promise(resolve=>setTimeout(resolve,800));
+  expect(answers).toEqual([{id:'a',answer:'Yes'}]);
+  const field=cards[1].querySelector('textarea');
+  // Dictation started from a card's microphone lands in that card's field, not in the message draft.
+  window.eval('deliverDictation({text:"Not",session:"alpha",target:{decision:"b"}})');
+  expect(field.value).toBe('Not');
+  expect(doc.getElementById('msg').value).toBe('');
+  field.value='Not now';field.dispatchEvent(new window.Event('input'));
+  // Two answers ready: one button sends them all; a draft not saved yet is saved first.
+  const footer=doc.querySelector('#decisions_body .dec-footer');
+  expect(footer.hidden).toBe(false);
+  footer.querySelector('button').click();await settle();await settle();
+  expect(answers.at(-1)).toEqual({id:'b',answer:'Not now'});
+  expect(sent).toEqual([['a','b']]);
   }finally{window.close()}
 });
 
-test('an empty gallery explains what will appear, and an older computer asks for an update',async()=>{
+test('all sessions of the computer in one list; a closed session cannot be answered; an empty list says what comes here',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
-  const routes=routesFor(state);let old=false;
-  routes['/api/gallery']=()=>old?{__status:404,error:'not found'}:{items:[]};
+  const routes=routesFor(state),asked=[];let items=[decision('a',{session:'beta',title:'Duty beta',live:false})];
+  routes['/api/decisions']=url=>{asked.push(url.searchParams.get('name'));return {decisions:items}};
   const window=boot(routes);
   try{
   await settle();await settle();
-  window.eval('openProject("gallery")');await settle();
-  expect(window.document.getElementById('gallery_body').textContent).toMatch(/Здесь появятся картинки|Pictures the agents/);
-  old=true;window.eval('gallery.key=null;loadGallery()');await settle();
-  expect(window.document.getElementById('gallery_body').textContent).toMatch(/обновите DeckAway|update DeckAway/i);
+  const doc=window.document;
+  window.eval('openProject("decisions")');await settle();
+  [...doc.querySelectorAll('#decisions_body .dec-scope button')][1].click();await settle();
+  expect(asked).toEqual(['alpha','']);
+  const card=doc.querySelector('#decisions_body .dec-card');
+  expect(card.querySelector('.dec-session').textContent).toBe('Duty beta');
+  card.querySelector('textarea').value='ok';card.querySelector('textarea').dispatchEvent(new window.Event('input'));
+  expect(card.querySelector('.dec-send').disabled).toBe(true);
+  expect(card.querySelector('.dec-closed')).not.toBeNull();
+  items=[];window.eval('decisions.raw="x";loadDecisions()');await settle();
+  expect(doc.getElementById('decisions_body').textContent).toMatch(/Вопросов нет|No questions/);
   }finally{window.close()}
 });
 
@@ -1169,27 +1202,25 @@ test('with the keyboard up the open summary gives its room to the terminal and t
   expect(css).not.toMatch(/body\.keyboard-open (#session_hint|\.session-hint|#hint_line|#hint_toggle)[,{]/);
 });
 
-test('the gallery belongs to a computer and a session: the same name elsewhere loads its own pictures and keeps checking',async()=>{
-  const picture=name=>({id:'c'.repeat(24),name,path:'/tmp/'+name,kind:'image/png',size:9,at:1800000000});
+test('decisions belong to a computer: the same session name elsewhere loads its own and keeps checking',async()=>{
   const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})})),asked=[];
   routes['/deck/'+DECK+'/api/sessions']=()=>({sessions:[session('alpha')]});
-  routes['/api/gallery']=()=>({items:[picture('here.png')]});
-  routes['/deck/'+DECK+'/api/gallery']=()=>{asked.push(1);return {items:[picture('there.png')]}};
+  routes['/api/decisions']=()=>({decisions:[decision('a',{question:'Here?'})]});
+  routes['/deck/'+DECK+'/api/decisions']=()=>{asked.push(1);return {decisions:[decision('b',{question:'There?'})]}};
   const window=boot(routes,null,w=>{
     // As in a browser: the close event comes after the code that closed the dialog has finished.
     w.HTMLDialogElement.prototype.close=function(){this.open=false;w.setTimeout(()=>this.dispatchEvent(new w.Event('close')),0)};
-    const timeout=w.setTimeout;w.setTimeout=(fn,ms,...args)=>timeout(fn,ms===15000?40:ms,...args);  // The gallery poll, quickly.
+    const timeout=w.setTimeout;w.setTimeout=(fn,ms,...args)=>timeout(fn,ms===15000?40:ms,...args);  // The poll, quickly.
   });
   try{
   await settle();await settle();
-  const doc=window.document,titles=()=>[...doc.querySelectorAll('#gallery_body .gallery-cell')].map(c=>c.title);
-  window.eval('openProject("gallery")');await settle();
-  expect(titles()).toEqual(['here.png']);
+  const doc=window.document,questions=()=>[...doc.querySelectorAll('#decisions_body .dec-q')].map(c=>c.textContent);
+  window.eval('openProject("decisions")');await settle();
+  expect(questions()).toEqual(['Here?']);
   window.openDeckSession(DECK,'alpha');
   await settle();await settle();await settle();
-  expect(doc.querySelector('#title b').textContent).toBe('alpha');
   expect(doc.getElementById('project_dlg').open).toBe(true);
-  expect(titles()).toEqual(['there.png']);
+  expect(questions()).toEqual(['There?']);
   const before=asked.length;
   await new Promise(resolve=>setTimeout(resolve,200));
   expect(asked.length).toBeGreaterThan(before);

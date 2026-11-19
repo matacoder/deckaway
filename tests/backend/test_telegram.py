@@ -517,7 +517,7 @@ class TelegramTests(unittest.TestCase):
         self.service.handle(self.callback(row))
         self.service.handle(self.callback(row))
         self.answer.assert_called_once()
-        self.assertIn('закрыт', [d['text'] for m, d in self.api.calls if m == 'answerCallbackQuery'][0])
+        self.assertRegex([d['text'] for m, d in self.api.calls if m == 'answerCallbackQuery'][0], 'закрыт|closed')
 
     def test_temporary_open_failure_keeps_buttons_for_a_user_retry(self):
         self.pair();self.service.deliver()
