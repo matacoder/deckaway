@@ -1241,3 +1241,4 @@ body.board-dragging .tile-grip{cursor:grabbing}
   .tile.size-l{grid-column:auto}
   .tile.has-now .tile-tail{display:none}
 }
+#leftover_list .card-meta{font-family:var(--mono);font-size:12px;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}

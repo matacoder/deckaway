@@ -388,6 +388,11 @@ __PANEL_STYLE__</style></head><body>
     </section>
     <section id="hub_computers" role="tabpanel" aria-labelledby="tab_computers" hidden>
       <header class="hub-section-head"><h3>Компьютеры</h3><p>Другие компьютеры с DeckAway: их сессии видны в списке, а уведомления и бэкапы работают для всех.</p></header>
+      <div class="hub-card" data-card="leftovers">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Фоновые процессы агентов</h4><p id="leftover_status" class="card-status" role="status"></p></div></div>
+        <p class="hint">Что агенты оставили работать на этом компьютере: серверы, эмуляторы, тесты. Процессы закрытых сессий больше никому не нужны. Закрытие сессии в панели останавливает и то, что она запустила.</p>
+        <div id="leftover_list"></div>
+      </div>
       <div class="hub-card" data-card="decks">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Другие компьютеры</h4><p id="deck_summary" class="card-status"></p></div></div>
         <div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>

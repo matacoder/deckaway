@@ -16,6 +16,7 @@ SCRIPTS = (
     "notifications.js",
     "images.js",
     "fleet.js",
+    "leftovers.js",
     "inbox.js",
     "screen.js",
     "theme.js",

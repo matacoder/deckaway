@@ -168,6 +168,13 @@ const test = base.extend({
         case '/api/push': return json({ available: true, error: '', public_key: null, devices: [], events: { questions: true, finished: true } });
         case '/api/backups': return json({ configured: false, key_id: null, instance: 'c'.repeat(24), name: 'demo-server', last: null, stored: [], report: null });
         case '/api/inbox': return json({ questions: [] });
+        case '/api/leftovers': return json({ processes: app.leftovers || [] });
+        case '/api/leftovers_stop': {
+          const body = route.request().postDataJSON();
+          app.leftoverStops = [...(app.leftoverStops || []), body];
+          app.leftovers = (app.leftovers || []).filter(p => !body.pids.includes(p.pid));
+          return json({ ok: true, stopped: body.pids.length });
+        }
         case '/api/quiet': {
           const { name } = route.request().postDataJSON(), quiet = Math.floor(Date.now() / 1000);
           app.quiets.push(name);app.board[name] = { ...(app.board[name] || {}), quiet };

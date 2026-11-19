@@ -1032,7 +1032,10 @@ def action_kill(d):
     name = d.get("name", "")
     if session_exists(name):
         source = saved_source(name)
+        panes = set(tmux("list-panes", "-s", "-t", f"={PREFIX}{name}:", "-F", "#{pane_id}", check=False).split())
         tmux("kill-session", "-t", f"={PREFIX}{name}:")
+        # What the session sent to the background (servers, emulators, test runs) goes with it.
+        threading.Thread(target=stop_session_leftovers, args=(panes,), daemon=True).start()
         if source and source.get("kind") == "lmstudio":
             model_service()
             _model_relay.bindings.remove(source.get("binding"))
@@ -1042,6 +1045,32 @@ def action_kill(d):
             from integrations.windows import uploads_root
             shutil.rmtree(os.path.join(uploads_root(windows_service().home()), name), ignore_errors=True)
         schedule_service().forget(name)  # A new session with this name must not inherit waiting prompts.
+
+
+_leftovers = None
+
+
+def leftovers_service():
+    global _leftovers
+    if _leftovers is None:
+        from integrations.leftovers import Leftovers
+        _leftovers = Leftovers(lambda *args: tmux(*args, check=False))
+    return _leftovers
+
+
+def stop_session_leftovers(panes):
+    time.sleep(1.5)  # The pane's own processes get their hangup first.
+    try:
+        leftovers_service().stop_panes(panes)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"leftovers of a closed session: {type(error).__name__}", flush=True)
+
+
+def leftovers_payload():
+    data = leftovers_service().payload()
+    for item in data['processes']:
+        item['session'] = item['session'].removeprefix(PREFIX)
+    return data
 
 
 def attachment_dir(name):
@@ -2704,6 +2733,7 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                answer=action_answer, fetch_picture=pictures.action,
                direct_link=lambda d: {'token': direct_links.create()},
                decks_direct=lambda d: {'url': remote_decks.direct(d.get('id'))},
+               leftovers_stop=lambda d: leftovers_service().stop(d.get('pids')),
                backup_setup=lambda d: backup_service().setup(d.get('code') or None),
                backup_now=action_backup_now,
                backup_run=lambda d: {'report': run_backups()},
@@ -3239,6 +3269,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path in ("/api/version", "/api/version?fresh=1"):
             # Settings → Network asks for a fresh release check, at most once a minute (GitHub rate limits).
             return self.send_json(200, version_info(fresh=self.path.endswith("fresh=1")))
+        if self.path == "/api/leftovers":
+            return self.send_json(200, leftovers_payload())
         if self.path == "/api/server-metrics":
             return self.send_json(200, server_metrics())
         if self.path == "/api/server":

@@ -760,6 +760,29 @@ class WebQuestionTests(PanelCase):
             answer.assert_called_once_with(question, 1, None)
 
 
+class LeftoverTests(PanelCase):
+    def test_closing_a_session_stops_what_its_panes_left_running(self):
+        calls = []
+        def tmux(*args, check=True):
+            calls.append(args)
+            return '%3\n%4\n' if args[0] == 'list-panes' else ''
+        service = Mock()
+        with patch.object(self.panel, 'session_exists', return_value=True), patch.object(self.panel, 'saved_source', return_value=None), \
+             patch.object(self.panel, 'tmux', side_effect=tmux), patch.object(self.panel, 'leftovers_service', return_value=service), \
+             patch.object(self.panel.time, 'sleep'), \
+             patch.object(self.panel.threading, 'Thread', side_effect=lambda target, args, daemon: Mock(start=lambda: target(*args))):
+            self.panel.action_kill({'name': 'demo'})
+        self.assertEqual([c[0] for c in calls], ['list-panes', 'kill-session'])
+        service.stop_panes.assert_called_once_with({'%3', '%4'})
+
+    def test_listed_sessions_carry_their_own_names(self):
+        service = Mock()
+        service.payload.return_value = {'processes': [{'session': self.panel.PREFIX + 'api', 'closed': False},
+                                                      {'session': '', 'closed': True}]}
+        with patch.object(self.panel, 'leftovers_service', return_value=service):
+            self.assertEqual([p['session'] for p in self.panel.leftovers_payload()['processes']], ['api', ''])
+
+
 class RemoteQuestionTests(PanelCase):
     REMOTE = 'a' * 24
     ITEM = {'id': 'remote-fp', 'session': 'api', 'agent': 'claude', 'title': 'Proceed?', 'selected': 0, 'progress': '',

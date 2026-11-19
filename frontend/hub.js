@@ -80,7 +80,7 @@ function settingsSection(section){
   const open=$("settings_dlg").open;
   if(section==="backups"&&open)loadBackups();
   if(section==="notifications"&&open)loadPush();
-  if(section==="computers"&&open)loadFleet(true);
+  if(section==="computers"&&open){loadFleet(true);loadLeftovers()}
   if(section==="models"&&open)refreshLMModels();
   for(const b of document.querySelectorAll(".hub-nav button")){
     const on=b.dataset.section===section;
