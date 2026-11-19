@@ -126,9 +126,13 @@ def session_agent(pane):
 
 
 def integrations_on_path():
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if os.path.isdir(os.path.join(here, 'integrations')) and here not in sys.path:
-        sys.path.insert(0, here)
+    # Installed, integrations/ sits next to this file (/opt/cc-panel); in the source tree, next to panel/.
+    here = os.path.dirname(os.path.abspath(__file__))
+    for root in (here, os.path.dirname(here)):
+        if os.path.isdir(os.path.join(root, 'integrations')):
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            return
 
 
 def other_agents_note(host=""):

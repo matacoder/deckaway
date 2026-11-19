@@ -125,6 +125,30 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(output.startswith('decisions: '))
         self.assertEqual(self.run_command(['nonsense'])[0], 2)
 
+    def test_the_installed_hook_finds_the_notes_next_to_itself(self):
+        # Installed, session_hook.py and integrations/ share one folder (/opt/cc-panel), unlike the source tree.
+        import runpy
+        import shutil
+        import sys
+        root = Path(__file__).resolve().parents[2]
+        runtime = Path(self.dir.name, 'cc-panel')
+        shutil.copytree(root / 'integrations', runtime / 'integrations', ignore=shutil.ignore_patterns('__pycache__'))
+        shutil.copy(root / 'panel/session_hook.py', runtime)
+        saved = {name: module for name, module in sys.modules.items() if name == 'integrations' or name.startswith('integrations.')}
+        path = sys.path[:]
+        for name in saved:
+            del sys.modules[name]
+        sys.path[:] = [p for p in sys.path if not Path(p or '.').resolve() == root]
+        try:
+            hook = runpy.run_path(str(runtime / 'session_hook.py'))
+            note = hook['decisions_note']()
+        finally:
+            sys.path[:] = path
+            for name in [n for n in sys.modules if n == 'integrations' or n.startswith('integrations.')]:
+                del sys.modules[name]
+            sys.modules.update(saved)
+        self.assertIn(str(runtime / 'integrations/decisions.py'), note)
+
     def test_the_agent_note_names_this_install(self):
         note = decisions.agent_note()
         self.assertIn(str(Path(decisions.__file__).resolve()), note)

@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.87.1
+
+- Agents now really get DeckAway's notes when a conversation starts: an installed panel keeps its helpers next to the session hook, and the hook looked for them one folder up, so the note on filing questions for the owner (and, before it, the note on other agents ready for a task) never reached them. The note also says plainly to file decisions during duty, loop and scheduled runs instead of asking with a question tool.
+
 ## 1.87.0
 
 - Questions from agents get a tab of their own in the side panel, in place of Gallery. An agent that needs your decision and can carry on without it, a duty run every half hour above all, files it there instead of asking in the chat, where it scrolled away between runs. The tab lists the open session's questions or every session's on this computer; the count is on the session, the tab and the sidebar button. Tap an offered answer, type your own or dictate it with the card's microphone; drafts are kept on the computer, so a phone and a desktop see the same. "Send" or "Send all answers" types one message per session once it is free, and the agent can read its answers itself until it marks them done. Agents learn this when a conversation starts, resumes or is compacted.

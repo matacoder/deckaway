@@ -27,14 +27,14 @@ PROMPT_LIMIT = 19000
 KEEP_CLOSED = 30 * 86400
 SENT_SHOWN = 3 * 86400
 
-NOTE = """Owner's decisions: when you need the owner to decide something and can go on without it or wait for a later run (duty and loop runs above all), do not ask in the chat, where it scrolls away: file it, and the owner answers from any device.
+NOTE = """Owner's decisions: during duty, loop or scheduled runs, and whenever you can go on without the answer, do not ask the owner in the chat or with a question tool (it scrolls away or stops the run): file the decision, finish what you can, and the owner answers from any device.
 {cmd} ask <<'EOF'
 {{"key": "short-stable-id", "question": "...", "context": "what you found, what each choice means, what you recommend", "options": ["...", "..."]}}
 EOF
 - The same key is the same decision: filing it again updates it and, once answered, prints the answer. Options are optional; the owner may answer in their own words.
 - At the start of every run: `{cmd} list` shows what still waits and the answers that came; act on an answer, then `{cmd} done <key>`. `done` also withdraws a decision that no longer matters.
 - Answers also arrive in this chat as a message starting with "Owner's decisions". Say briefly in the chat what you filed; do not repeat the question there.
-- A question that blocks you right now still goes to the chat."""
+- Ask in the chat only when the owner is talking to you right now and nothing can move until they answer."""
 
 
 def command():
