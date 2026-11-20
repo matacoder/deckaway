@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.88.0
+
+- Agents no longer pile up on old versions. Once a day an agent that has run for a day is restarted with the same conversation after three hours without activity, and so runs the installed Claude Code or Codex. An agent idle for three days is stopped: the session stays in the list as asleep, and "Wake" under the message field, or simply sending a message, continues the conversation (the message goes once the agent is ready). Neither happens to a session with an open question, a held message, a limit it waits for or text typed in its input box. Settings → Computers sets the days (0 = never) and turns the daily restart off, per computer.
+
 ## 1.87.3
 
 - "Waiting for you" lists only agents' questions. A session that has just finished work waits for nothing; it stays marked in the session list and on the board.

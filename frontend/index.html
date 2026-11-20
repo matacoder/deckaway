@@ -393,6 +393,12 @@ __PANEL_STYLE__</style></head><body>
         <p class="hint">Что агенты оставили работать на этом компьютере: серверы, эмуляторы, тесты. Процессы закрытых сессий больше никому не нужны. Закрытие сессии в панели останавливает и то, что она запустила.</p>
         <div id="leftover_list"></div>
       </div>
+      <div class="hub-card" data-card="upkeep">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-restart"/></svg></span><div class="card-main"><h4>Сон и перезапуск агентов</h4><p id="upkeep_status" class="card-status" role="status"></p></div></div>
+        <p class="hint">Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.</p>
+        <label class="integration-toggle"><span>Перезапускать агентов раз в сутки</span><input type="checkbox" role="switch" id="upkeep_daily" onchange="saveUpkeep()"></label>
+        <label for="upkeep_days">Останавливать после дней без работы (0 — никогда)</label><input id="upkeep_days" type="number" min="0" max="90" step="1" inputmode="numeric" onchange="saveUpkeep()">
+      </div>
       <div class="hub-card" data-card="decks">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Другие компьютеры</h4><p id="deck_summary" class="card-status"></p></div></div>
         <div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>

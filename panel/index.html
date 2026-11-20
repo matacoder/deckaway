@@ -423,6 +423,8 @@ body.is-codex .question-key{display:inline-flex!important;align-items:center;jus
 #send_state .session-status.open{flex-wrap:wrap}.quota-more{flex:none;min-width:28px;height:20px;padding:0 6px;border-radius:var(--r-sm);color:var(--mut);background:var(--side2)}.quota-more[aria-expanded=true]{color:var(--fg)}
 #send_state .session-status{display:inline-flex;align-items:center;gap:2px 14px;font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 #send_state .session-status .composer-model{margin-right:0;overflow:hidden;text-overflow:ellipsis}
+#send_state .sleep-line{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 8px;white-space:normal}
+#send_state .wake-btn{min-height:28px;padding:2px 12px;border:0;border-radius:var(--r-btn);background:var(--acc);color:var(--on-acc);font-size:12.5px;font-weight:600}
 .server-metrics{display:flex;align-items:center;gap:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .server-metric{display:inline-flex;align-items:center;gap:3px}
 .server-metric svg{width:var(--icon-sm);height:var(--icon-sm);flex:none}
@@ -1733,6 +1735,12 @@ body.board-dragging .tile-grip{cursor:grabbing}
         <p class="hint">Что агенты оставили работать на этом компьютере: серверы, эмуляторы, тесты. Процессы закрытых сессий больше никому не нужны. Закрытие сессии в панели останавливает и то, что она запустила.</p>
         <div id="leftover_list"></div>
       </div>
+      <div class="hub-card" data-card="upkeep">
+        <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-restart"/></svg></span><div class="card-main"><h4>Сон и перезапуск агентов</h4><p id="upkeep_status" class="card-status" role="status"></p></div></div>
+        <p class="hint">Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.</p>
+        <label class="integration-toggle"><span>Перезапускать агентов раз в сутки</span><input type="checkbox" role="switch" id="upkeep_daily" onchange="saveUpkeep()"></label>
+        <label for="upkeep_days">Останавливать после дней без работы (0 — никогда)</label><input id="upkeep_days" type="number" min="0" max="90" step="1" inputmode="numeric" onchange="saveUpkeep()">
+      </div>
       <div class="hub-card" data-card="decks">
         <div class="card-top"><span class="card-icon" aria-hidden="true"><svg class="ui-icon"><use href="#i-monitor"/></svg></span><div class="card-main"><h4>Другие компьютеры</h4><p id="deck_summary" class="card-status"></p></div></div>
         <div id="fleet_bar" class="fleet-bar"></div><div id="deck_connections"></div>
@@ -2761,6 +2769,17 @@ async function stopLeftovers(items){
   }catch(e){toast(e.message)}
   // Stopping takes up to a few seconds (TERM, then KILL).
   setTimeout(loadLeftovers,1500);
+}
+// Sleep and the daily restart of agents on this computer (integrations/upkeep.py).
+async function loadUpkeep(){
+  try{const data=await api("/api/upkeep");$("upkeep_daily").checked=data.daily_restart!==false;syncField($("upkeep_days"),String(data.sleep_days));$("upkeep_status").textContent=""}
+  catch(e){if(e.message!==STALE)$("upkeep_status").textContent=e.message}
+}
+async function saveUpkeep(){
+  const days=Number($("upkeep_days").value);
+  if(!Number.isInteger(days)||days<0||days>90){toast(tr("Дней: целое число от 0 до 90"));return}
+  try{await api("/api/upkeep_save",{sleep_days:days,daily_restart:$("upkeep_daily").checked});toast(tr("Настройки сохранены"),"success")}
+  catch(e){toast(e.message);loadUpkeep()}
 }
 if(typeof module!=="undefined")module.exports={leftoverAge,leftoverMemory,leftoverGroups};
 // Agent questions on every computer, answerable here. Finished work is not listed: it waits for nothing (the session
@@ -5751,7 +5770,7 @@ function settingsSection(section){
   const open=$("settings_dlg").open;
   if(section==="backups"&&open)loadBackups();
   if(section==="notifications"&&open)loadPush();
-  if(section==="computers"&&open){loadFleet(true);loadLeftovers()}
+  if(section==="computers"&&open){loadFleet(true);loadLeftovers();loadUpkeep()}
   if(section==="models"&&open)refreshLMModels();
   for(const b of document.querySelectorAll(".hub-nav button")){
     const on=b.dataset.section===section;
@@ -5783,7 +5802,7 @@ async function openSettings(section="agents"){
   if(!$("settings_dlg").open){applyContextLimits();fillThemes();$("settings_dlg").showModal()}updateHubNavFade();
   renderHub();
   // Push and backup state feed the getting-started card and the section dots.
-  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),...(hubSection==="computers"?[loadLeftovers()]:[]),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
+  await Promise.allSettled([loadDeckSettings(),loadPush(),loadBackups(),...(hubSection==="computers"?[loadLeftovers(),loadUpkeep()]:[]),(async()=>{const data=await api("/api/project_directory");syncField($("project_directory"),data.directory)})(),refreshLMModels(),loadIntegrations(),checkGithubFoot(),(async()=>{const data=await api("/api/locales");$("ui_language").replaceChildren(...data.languages.map(x=>{const o=el("option","",x.name);o.value=x.code;return o}));$("ui_language").value=I18N.language})()]);
   if(!$("settings_dlg").open)return;  // Closed while loading (e.g. an agent sign-in started).
   renderHub();
   clearInterval(lmTimer);lmTimer=setInterval(()=>{if(!document.hidden&&$("settings_dlg").open){if(lmData.discovery?.phase==="running")loadLM(false);if(hubSection==="models"&&Date.now()-lmModelsChecked>30000)refreshLMModels()}},2000);
@@ -7635,6 +7654,7 @@ const state=s=>{
 function stateText(s){
   const a=agentLabel(s),st=state(s);
   if(agentOf(s)==="shell")return st==="busy"?tr("терминал · вывод…"):(s.running?tr("терминал · ")+s.command:tr("терминал"));
+  if(st==="off"&&s.slept)return tr("{0} остановлен после простоя",[a]);
   return {off:a+tr(" не запущен"),busy:a+tr(" работает…"),idle:a+tr(" ждёт")}[st];
 }
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
@@ -7737,7 +7757,7 @@ function renderCurrentSessions(box,list){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     // State is spelled out next to the path so it does not depend on the dot colour alone.
-    const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",s.slept?tr("спит"):tr("остановлен")]:null;
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
     t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s),...(s.decisions?[decisionBadge(s.decisions)]:[])),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
@@ -8087,6 +8107,10 @@ function renderSendState(){
   delete d.dataset.line;  // Set again only while the limits are what is shown.
   const session=cur(),settled=confirmationSeen(status);
   if(isLocal(session)&&!session.running){d.textContent=agentLabel(session)+tr(" не запущен")}
+  else if(session?.slept&&!session.running&&settled){
+    // Redrawn every second: the same button stays, or a tap on it would land on a node already gone.
+    const line=sleepLine(session);if(shown!==line.outerHTML)d.replaceChildren(line);d.dataset.line=line.outerHTML;
+  }
   else if(isLocal(session)&&settled){
     const profile=lmData.profiles.find(p=>p.id===session.source.profile);
     if(profile){
@@ -8103,6 +8127,17 @@ function renderSendState(){
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
   d.classList.toggle("success",Boolean(status&&status.phase==="success"&&!settled));
 }
+// Upkeep (integrations/upkeep.py) stopped this idle agent: one tap, or simply a message, continues the conversation.
+function sleepLine(s){
+  const days=Math.max(1,Math.round((now()-s.activity)/86400));
+  const wake=el("button","wake-btn",tr("Разбудить"));wake.type="button";wake.dataset.session=s.name;wake.onclick=()=>wakeSession(s.name);
+  return el("span","sleep-line",tr("{0} остановлен: {1} дн. без работы. Сообщение разбудит его",[agentLabel(s),days])," ",wake);
+}
+async function wakeSession(name){
+  sendStates.set(name,{text:tr("Продолжаю разговор…"),phase:"pending"});renderSendState();
+  await post("/api/restart",{name,mode:"continue"});
+  sendStates.delete(name);renderSendState();
+}
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
   if(isLocal(cur())&&!cur().running){sendStates.set(active,{text:agentLabel(cur())+tr(" не запущен"),error:true});renderSendState();return}
@@ -8112,13 +8147,14 @@ async function send(){
   sending=true;renderAttachments();
   sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
   try{
-    await api(instancePath(deck,"/api/send"),{name,text,attachments:[...sent]},true);
+    const result=await api(instancePath(deck,"/api/send"),{name,text,attachments:[...sent]},true);
     for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
     if(selectedDeck!==deck){forgetStashedSend(store,name,text,sent);return}
     imageAttachments.set(name,attachmentsFor(name).filter(x=>!sent.has(x.attachment)));
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
-    sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    sendStates.set(name,result?.woke?{text:tr("Агент просыпается: сообщение уйдёт, когда он будет готов"),phase:"success"}
+      :{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     // The pictures leave with the text, not a list request later.
     renderAttachments();renderSendState();
     await load();
@@ -8373,7 +8409,7 @@ function renderDeckSection(box,deck,q){
   for(const s of list){
     // Project headings as on this computer, so a session reads the same wherever you look from.
     if(s.group&&s.group!==grp){grp=s.group;box.append(groupHeader(deck.id,grp,list))}
-    const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",s.slept?tr("спит"):tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
     if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));

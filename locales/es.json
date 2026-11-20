@@ -1032,6 +1032,18 @@
     "Нет ответов для отправки": "No hay respuestas para enviar",
     "Слишком длинные ответы: отправьте их по частям": "Las respuestas son demasiado largas: envíalas por partes",
     "Не удалось прочитать вопросы": "No se pudieron leer las preguntas",
-    "Ответ длиннее 8000 символов: сократите его": "La respuesta supera los 8000 caracteres: acórtala"
+    "Ответ длиннее 8000 символов: сократите его": "La respuesta supera los 8000 caracteres: acórtala",
+    "Сон и перезапуск агентов": "Reposo y reinicio de agentes",
+    "Перезапускать агентов раз в сутки": "Reiniciar agentes una vez al día",
+    "Останавливать после дней без работы (0 — никогда)": "Detener tras días sin trabajo (0 = nunca)",
+    "{0} остановлен после простоя": "{0} detenido por inactividad",
+    "спит": "en reposo",
+    "Разбудить": "Despertar",
+    "{0} остановлен: {1} дн. без работы. Сообщение разбудит его": "{0} detenido: {1} d sin trabajo. Un mensaje lo despierta",
+    "Продолжаю разговор…": "Continuando la conversación…",
+    "Агент просыпается: сообщение уйдёт, когда он будет готов": "El agente se está despertando: el mensaje se enviará cuando esté listo",
+    "Дней: целое число от 0 до 90": "Días: un número entero de 0 a 90",
+    "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "El agente de esta sesión se detuvo tras mucho tiempo inactivo. Despiértalo y luego envía los adjuntos",
+    "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Cada agente usa la versión con la que se inició. Una vez al día, tras tres horas sin hacer nada, el agente se reinicia con la misma conversación y toma la versión instalada. Un agente inactivo más tiempo del indicado se detiene: la sesión se queda y «Despertar» o cualquier mensaje continúan la conversación. Las sesiones con una pregunta abierta, un mensaje en espera o texto escrito no se tocan."
   }
 }

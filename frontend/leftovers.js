@@ -38,4 +38,15 @@ async function stopLeftovers(items){
   // Stopping takes up to a few seconds (TERM, then KILL).
   setTimeout(loadLeftovers,1500);
 }
+// Sleep and the daily restart of agents on this computer (integrations/upkeep.py).
+async function loadUpkeep(){
+  try{const data=await api("/api/upkeep");$("upkeep_daily").checked=data.daily_restart!==false;syncField($("upkeep_days"),String(data.sleep_days));$("upkeep_status").textContent=""}
+  catch(e){if(e.message!==STALE)$("upkeep_status").textContent=e.message}
+}
+async function saveUpkeep(){
+  const days=Number($("upkeep_days").value);
+  if(!Number.isInteger(days)||days<0||days>90){toast(tr("Дней: целое число от 0 до 90"));return}
+  try{await api("/api/upkeep_save",{sleep_days:days,daily_restart:$("upkeep_daily").checked});toast(tr("Настройки сохранены"),"success")}
+  catch(e){toast(e.message);loadUpkeep()}
+}
 if(typeof module!=="undefined")module.exports={leftoverAge,leftoverMemory,leftoverGroups};

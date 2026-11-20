@@ -202,6 +202,7 @@ const state=s=>{
 function stateText(s){
   const a=agentLabel(s),st=state(s);
   if(agentOf(s)==="shell")return st==="busy"?tr("терминал · вывод…"):(s.running?tr("терминал · ")+s.command:tr("терминал"));
+  if(st==="off"&&s.slept)return tr("{0} остановлен после простоя",[a]);
   return {off:a+tr(" не запущен"),busy:a+tr(" работает…"),idle:a+tr(" ждёт")}[st];
 }
 function el(tag,cls,...kids){const e=document.createElement(tag);if(cls)e.className=cls;e.append(...kids);return e}
@@ -304,7 +305,7 @@ function renderCurrentSessions(box,list){
     const t=el("div","tab"+(s.name===active?" on":""));
     const dot=el("span","dot "+st);dot.title=stateText(s);
     // State is spelled out next to the path so it does not depend on the dot colour alone.
-    const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const word=waitingFor(selectedDeck,s.name)?["ask",tr("ждёт ответа")]:attention.has(s.name)?["ready",tr("готово")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",s.slept?tr("спит"):tr("остановлен")]:null;
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
     t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s),...(s.decisions?[decisionBadge(s.decisions)]:[])),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
@@ -654,6 +655,10 @@ function renderSendState(){
   delete d.dataset.line;  // Set again only while the limits are what is shown.
   const session=cur(),settled=confirmationSeen(status);
   if(isLocal(session)&&!session.running){d.textContent=agentLabel(session)+tr(" не запущен")}
+  else if(session?.slept&&!session.running&&settled){
+    // Redrawn every second: the same button stays, or a tap on it would land on a node already gone.
+    const line=sleepLine(session);if(shown!==line.outerHTML)d.replaceChildren(line);d.dataset.line=line.outerHTML;
+  }
   else if(isLocal(session)&&settled){
     const profile=lmData.profiles.find(p=>p.id===session.source.profile);
     if(profile){
@@ -670,6 +675,17 @@ function renderSendState(){
   d.classList.toggle("pending",Boolean(status&&status.phase==="pending"));
   d.classList.toggle("success",Boolean(status&&status.phase==="success"&&!settled));
 }
+// Upkeep (integrations/upkeep.py) stopped this idle agent: one tap, or simply a message, continues the conversation.
+function sleepLine(s){
+  const days=Math.max(1,Math.round((now()-s.activity)/86400));
+  const wake=el("button","wake-btn",tr("Разбудить"));wake.type="button";wake.dataset.session=s.name;wake.onclick=()=>wakeSession(s.name);
+  return el("span","sleep-line",tr("{0} остановлен: {1} дн. без работы. Сообщение разбудит его",[agentLabel(s),days])," ",wake);
+}
+async function wakeSession(name){
+  sendStates.set(name,{text:tr("Продолжаю разговор…"),phase:"pending"});renderSendState();
+  await post("/api/restart",{name,mode:"continue"});
+  sendStates.delete(name);renderSendState();
+}
 async function send(){
   const t=$("msg");if(sending||uploading||panelUpdating||!active||(!t.value.trim()&&!attachmentsFor(active).length))return;
   if(isLocal(cur())&&!cur().running){sendStates.set(active,{text:agentLabel(cur())+tr(" не запущен"),error:true});renderSendState();return}
@@ -679,13 +695,14 @@ async function send(){
   sending=true;renderAttachments();
   sendStates.set(name,{text:tr("Отправляю…"),phase:"pending"});renderSendState();
   try{
-    await api(instancePath(deck,"/api/send"),{name,text,attachments:[...sent]},true);
+    const result=await api(instancePath(deck,"/api/send"),{name,text,attachments:[...sent]},true);
     for(const image of images)if(image.preview)URL.revokeObjectURL(image.preview);
     if(selectedDeck!==deck){forgetStashedSend(store,name,text,sent);return}
     imageAttachments.set(name,attachmentsFor(name).filter(x=>!sent.has(x.attachment)));
     if(messageDrafts.get(name)===text)messageDrafts.delete(name);
     if(active===name&&t.value===text){t.value="";t.style.height=""}
-    sendStates.set(name,{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
+    sendStates.set(name,result?.woke?{text:tr("Агент просыпается: сообщение уйдёт, когда он будет готов"),phase:"success"}
+      :{text:tr("Отправлено в ")+agentLabel(sessions.find(s=>s.name===name))+" · "+new Date().toLocaleTimeString(DATE_LOCALE,{hour:"2-digit",minute:"2-digit"}),phase:"success"});
     // The pictures leave with the text, not a list request later.
     renderAttachments();renderSendState();
     await load();
@@ -940,7 +957,7 @@ function renderDeckSection(box,deck,q){
   for(const s of list){
     // Project headings as on this computer, so a session reads the same wherever you look from.
     if(s.group&&s.group!==grp){grp=s.group;box.append(groupHeader(deck.id,grp,list))}
-    const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",tr("остановлен")]:null;
+    const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",s.slept?tr("спит"):tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
       el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
     if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));

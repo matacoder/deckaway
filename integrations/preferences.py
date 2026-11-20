@@ -69,11 +69,16 @@ class ProjectDirectory:
             return directory
 
 
+def sleep_days_valid(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 90
+
+
 class NetworkSettings:
     def __init__(self, home):
         self.path = Path(home) / '.config/cc-panel/network.json'
         self.lock = threading.RLock()
-        self.data = {'name':'', 'public_url':'', 'isolate_terminals':False, 'show_results':True, 'lan':False, 'auto_titles':True, 'screen_digests':False}
+        self.data = {'name':'', 'public_url':'', 'isolate_terminals':False, 'show_results':True, 'lan':False, 'auto_titles':True, 'screen_digests':False,
+                     'sleep_days':3, 'daily_restart':True}
         if self.path.exists():
             try:
                 self.data.update(self.load())
@@ -90,7 +95,9 @@ class NetworkSettings:
                 or not isinstance(saved.get('show_results', True), bool)
                 or not isinstance(saved.get('lan', False), bool)
                 or not isinstance(saved.get('auto_titles', True), bool)
-                or not isinstance(saved.get('screen_digests', False), bool)):
+                or not isinstance(saved.get('screen_digests', False), bool)
+                or not isinstance(saved.get('daily_restart', True), bool)
+                or not sleep_days_valid(saved.get('sleep_days', 3))):
             raise TypeError('expected a JSON object with string name and public_url')
         return {key: saved[key] for key in self.data if key in saved}
 
@@ -116,6 +123,12 @@ class NetworkSettings:
         digests = data.get('screen_digests', self.get()['screen_digests'])
         if not isinstance(digests, bool):
             raise ValueError('Screen digests must be on or off')
+        days = data.get('sleep_days', self.get()['sleep_days'])
+        if not sleep_days_valid(days):
+            raise ValueError('Days before an idle agent is stopped: a whole number from 0 to 90')
+        daily = data.get('daily_restart', self.get()['daily_restart'])
+        if not isinstance(daily, bool):
+            raise ValueError('The daily restart must be on or off')
         if not isinstance(name,str) or not name.strip() or len(name)>100 or not name.isprintable():
             raise ValueError('Enter a DeckAway name')
         if not isinstance(raw,str) or len(raw)>2048 or any(c in raw for c in ('\r','\n')):
@@ -127,7 +140,8 @@ class NetworkSettings:
             try:parsed.port
             except ValueError:raise ValueError('Invalid public URL port') from None
         with self.lock:
-            value={'name':name.strip(),'public_url':raw.strip().rstrip('/'),'isolate_terminals':isolate,'show_results':show,'lan':lan,'auto_titles':titles,'screen_digests':digests}
+            value={'name':name.strip(),'public_url':raw.strip().rstrip('/'),'isolate_terminals':isolate,'show_results':show,'lan':lan,'auto_titles':titles,'screen_digests':digests,
+                   'sleep_days':days,'daily_restart':daily}
             private_write(self.path,value)
             self.data=value
             return dict(value)

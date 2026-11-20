@@ -817,6 +817,47 @@ class DecisionPanelTests(PanelCase):
         self.assertIn('Answer: Yes', text)
 
 
+class UpkeepPanelTests(PanelCase):
+    def test_a_message_to_a_sleeping_session_wakes_it_and_waits_for_the_agent(self):
+        options = {'@cc_slept': '1700000000', '@cc_agent': 'claude'}
+        schedule = Mock()
+        self.panel.tmux = Mock(return_value='zsh')
+        with patch.object(self.panel, 'session_exists', return_value=True), \
+                patch.object(self.panel, 'opt', side_effect=lambda name, key: options.get(key)), \
+                patch.object(self.panel, 'action_restart') as restart, \
+                patch.object(self.panel, 'schedule_service', return_value=schedule), \
+                patch.object(self.panel, 'send_input') as typed:
+            self.assertEqual(self.panel.action_send({'name': 'api', 'text': 'go on'}), {'woke': True})
+            restart.assert_called_once_with({'name': 'api'})
+            schedule.add.assert_called_once_with('api', 'go on', 'idle')
+            with self.assertRaises(ValueError):  # Files are attached to a running agent only.
+                self.panel.action_send({'name': 'api', 'text': 'x', 'attachments': ['a']})
+            typed.assert_not_called()  # Never typed into the shell left in the pane.
+            self.panel.tmux = Mock(return_value='claude')  # Started by hand since: an ordinary message.
+            self.panel.action_send({'name': 'api', 'text': 'go on'})
+            typed.assert_called_once()
+
+    def test_sleeping_stops_the_agent_and_marks_the_session_until_a_restart(self):
+        self.panel.tmux = Mock(return_value='10')
+        with patch.object(self.panel, 'stop_children') as stop:
+            self.panel.sleep_session('api')
+        stop.assert_called_once_with('api')
+        mark = [c.args for c in self.panel.tmux.call_args_list if '@cc_slept' in c.args]
+        self.assertEqual(mark[0][:4], ('set-option', '-t', '=cc-api:', '@cc_slept'))
+        row = 'cc-api\t10\t0\t/p\tzsh\t0\tclaude\t' + '\t' * 10 + '80x24\t1700000000\n'
+        self.panel.tmux = Mock(return_value=row)
+        with patch.object(self.panel, 'decision_counts', return_value={}):
+            self.assertEqual(self.panel.list_sessions()[0]['slept'], 1700000000)
+
+    def test_the_owner_sets_sleep_days_and_the_daily_restart_alone(self):
+        saved = self.panel.ACTIONS['upkeep_save']({'sleep_days': 7, 'daily_restart': False})
+        self.assertEqual(saved, {'sleep_days': 7, 'daily_restart': False})
+        self.assertEqual(self.panel.network_settings.get()['auto_titles'], True)
+        for bad in ({'sleep_days': -1}, {'sleep_days': 91}, {'sleep_days': True}, {'daily_restart': 'yes'}):
+            with self.subTest(data=bad), self.assertRaises(ValueError):
+                self.panel.ACTIONS['upkeep_save'](bad)
+
+
 class RemoteQuestionTests(PanelCase):
     REMOTE = 'a' * 24
     ITEM = {'id': 'remote-fp', 'session': 'api', 'agent': 'claude', 'title': 'Proceed?', 'selected': 0, 'progress': '',

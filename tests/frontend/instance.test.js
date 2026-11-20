@@ -1546,3 +1546,19 @@ test('copying from the screen puts the agent\'s own text on the clipboard, not i
   expect(event.defaultPrevented).toBe(true);
   }finally{window.close()}
 });
+
+test('a session upkeep put to sleep says so and one tap continues its conversation',async()=>{
+  let running=false;const restarts=[];
+  const state={local:()=>({sessions:[session('alpha',{agent:'claude',running,slept:running?undefined:1700000000,activity:1})]})};
+  const window=boot({...routesFor(state),'/api/restart':(url,options)=>{restarts.push(JSON.parse(options.body));running=true;return {}}});
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  expect(doc.querySelector('.tab .state').textContent).toBe('спит');
+  const wake=doc.querySelector('#send_state .wake-btn');
+  expect(doc.getElementById('send_state').textContent).toContain('Сообщение разбудит');
+  wake.click();await settle();await settle();
+  expect(restarts).toEqual([{name:'alpha',mode:'continue'}]);  // No confirmation: nothing is lost.
+  expect(doc.querySelector('#send_state .wake-btn')).toBe(null);
+  }finally{window.close()}
+});

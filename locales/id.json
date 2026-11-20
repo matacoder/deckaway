@@ -1032,6 +1032,18 @@
     "Нет ответов для отправки": "Tidak ada jawaban untuk dikirim",
     "Слишком длинные ответы: отправьте их по частям": "Jawaban terlalu panjang: kirim per bagian",
     "Не удалось прочитать вопросы": "Tidak dapat membaca pertanyaan",
-    "Ответ длиннее 8000 символов: сократите его": "Jawaban lebih dari 8000 karakter: persingkat"
+    "Ответ длиннее 8000 символов: сократите его": "Jawaban lebih dari 8000 karakter: persingkat",
+    "Сон и перезапуск агентов": "Tidur dan mulai ulang agen",
+    "Перезапускать агентов раз в сутки": "Mulai ulang agen sekali sehari",
+    "Останавливать после дней без работы (0 — никогда)": "Hentikan setelah beberapa hari tanpa kerja (0 = tidak pernah)",
+    "{0} остановлен после простоя": "{0} dihentikan karena menganggur",
+    "спит": "tidur",
+    "Разбудить": "Bangunkan",
+    "{0} остановлен: {1} дн. без работы. Сообщение разбудит его": "{0} dihentikan: {1} hari tanpa kerja. Pesan akan membangunkannya",
+    "Продолжаю разговор…": "Melanjutkan percakapan…",
+    "Агент просыпается: сообщение уйдёт, когда он будет готов": "Agen sedang bangun: pesan dikirim begitu ia siap",
+    "Дней: целое число от 0 до 90": "Hari: bilangan bulat dari 0 sampai 90",
+    "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "Agen sesi ini dihentikan setelah lama menganggur. Bangunkan dulu, lalu kirim lampirannya",
+    "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Setiap agen berjalan dengan versi saat ia dimulai. Sekali sehari, setelah tiga jam tidak melakukan apa pun, agen dimulai ulang dengan percakapan yang sama dan memakai versi yang terpasang. Agen yang menganggur lebih lama dari yang diatur akan dihentikan: sesinya tetap ada, dan «Bangunkan» atau pesan apa pun melanjutkan percakapan. Sesi dengan pertanyaan terbuka, pesan tertunda, atau teks yang sudah diketik tidak disentuh."
   }
 }

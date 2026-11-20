@@ -1032,6 +1032,18 @@
     "Нет ответов для отправки": "Gönderilecek yanıt yok",
     "Слишком длинные ответы: отправьте их по частям": "Yanıtlar çok uzun: parça parça gönderin",
     "Не удалось прочитать вопросы": "Sorular okunamadı",
-    "Ответ длиннее 8000 символов: сократите его": "Yanıt 8000 karakterden uzun: kısaltın"
+    "Ответ длиннее 8000 символов: сократите его": "Yanıt 8000 karakterden uzun: kısaltın",
+    "Сон и перезапуск агентов": "Ajanların uyku ve yeniden başlatılması",
+    "Перезапускать агентов раз в сутки": "Ajanları günde bir kez yeniden başlat",
+    "Останавливать после дней без работы (0 — никогда)": "İşsiz geçen günlerden sonra durdur (0 = asla)",
+    "{0} остановлен после простоя": "{0} boşta kaldığı için durduruldu",
+    "спит": "uykuda",
+    "Разбудить": "Uyandır",
+    "{0} остановлен: {1} дн. без работы. Сообщение разбудит его": "{0} durduruldu: {1} gün işsiz. Bir mesaj onu uyandırır",
+    "Продолжаю разговор…": "Konuşma sürdürülüyor…",
+    "Агент просыпается: сообщение уйдёт, когда он будет готов": "Ajan uyanıyor: mesaj hazır olduğunda gidecek",
+    "Дней: целое число от 0 до 90": "Gün: 0 ile 90 arasında bir tam sayı",
+    "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "Bu oturumun ajanı uzun süre boşta kaldıktan sonra durduruldu. Önce uyandırın, sonra ekleri gönderin",
+    "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Her ajan başlatıldığı sürümle çalışır. Günde bir kez, üç saat hiçbir şey yapmadığında ajan aynı konuşmayla yeniden başlatılır ve yüklü sürümü alır. Burada belirtilenden uzun süre boşta kalan ajan durdurulur: oturum kalır, «Uyandır» ya da herhangi bir mesaj konuşmayı sürdürür. Açık sorusu, bekleyen mesajı veya yazılmış metni olan oturumlara dokunulmaz."
   }
 }

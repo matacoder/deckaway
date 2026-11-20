@@ -3,6 +3,7 @@
 tmux counts any output as activity, and an agent redraws its whole screen when its window changes size,
 which happens whenever a terminal attaches somewhere (a phone, another tab, a page coming back). Pages
 read activity as "working", so every attach looked like a short burst of work that had just finished.
+A restart the panel makes by itself (integrations/upkeep.py) is held the same way.
 """
 import threading
 
@@ -27,6 +28,12 @@ class Activity:
             elif activity > seen['shown'] and activity > seen['until']:
                 seen['shown'] = activity
             return seen['shown']
+
+    def hold(self, key, until):
+        """Activity up to `until` is not shown: the redraw of an agent the panel itself restarts or stops."""
+        with self.lock:
+            if key in self.seen:
+                self.seen[key]['until'] = max(self.seen[key]['until'], until)
 
     def forget(self, live):
         with self.lock:

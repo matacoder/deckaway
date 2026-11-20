@@ -151,6 +151,14 @@ question on all connected computers (a session that only finished work is marked
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Tap a session name to open it, on the right computer.
 
+## Idle agents sleep, busy ones stay current
+
+Each agent keeps the version it was started with. Once a day an agent that has run for a day is restarted with
+the same conversation after three quiet hours, so it picks up the installed version. An agent idle for three days
+is stopped and its session marked *asleep*: tap **Wake** under the message field, or just send a message, to
+continue the conversation. Sessions with an open question, a held message or typed text are never touched.
+Settings → Computers sets the days (0 = never) and turns the daily restart off.
+
 ## Quick prompts and sending later
 
 The row of buttons above the message field sends a message with one tap: your own saved prompts

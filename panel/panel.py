@@ -520,13 +520,13 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
     fmt = ("#{session_name}\t#{session_created}\t#{session_attached}\t#{pane_current_path}\t"
            "#{pane_current_command}\t#{window_activity}\t#{@cc_agent}\t#{@cc_sid}\t#{@cc_skip}\t#{@cc_source}\t#{@cc_title}"
            "\t#{@cc_containers}\t#{@cc_docker}\t#{@cc_auto_title}\t#{@cc_runtime}\t#{pane_id}:#{pane_pid}:#{@cc_sid}\t#{@cc_quiet}"
-           "\t#{window_width}x#{window_height}")
+           "\t#{window_width}x#{window_height}\t#{@cc_slept}")
     out = tmux("list-sessions", "-F", fmt, check=False)
     result = []
     named = network_settings.get().get('auto_titles') is not False
     waiting = decision_counts() if out.strip() else {}
     for line in out.splitlines():
-        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance, quiet, size = (line.split("\t") + [""] * 18)[:18]
+        sname, created, attached, path, cmd, activity, agent, sid, skip, source, title, containers, docker, auto, runtime, instance, quiet, size, slept = (line.split("\t") + [""] * 19)[:19]
         if not sname.startswith(PREFIX):
             continue
         name = sname[len(PREFIX):]
@@ -548,6 +548,8 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
             item["decisions"] = waiting[(name, item["created"])]  # Waiting for the owner's answer (`decisions_payload`).
         if quiet.isdigit():
             item["quiet"] = int(quiet)  # When its owner said the waiting work needs no reply (`action_quiet`).
+        if slept.isdigit() and not item["running"]:
+            item["slept"] = int(slept)  # When upkeep stopped the idle agent (`sleep_session`); waking continues it.
         try:
             model_source = json.loads(source or 'null')
             if isinstance(model_source, dict):
@@ -1013,6 +1015,7 @@ def action_restart(d):
         cmd = windows_service().command(agent, path, sid, not new and agent != 'shell', skip)
     shell = tmux("show-options", "-gv", "default-shell").strip() or "/bin/sh"
     stop_children(name)
+    tmux("set-option", "-t", target, "-u", "@cc_slept", check=False)
     if new and agent != "shell":
         if sid:
             tmux("set-option", "-t", f"={PREFIX}{name}:", "@cc_sid", sid)
@@ -1049,6 +1052,71 @@ def action_kill(d):
             from integrations.windows import uploads_root
             shutil.rmtree(os.path.join(uploads_root(windows_service().home()), name), ignore_errors=True)
         schedule_service().forget(name)  # A new session with this name must not inherit waiting prompts.
+
+
+_upkeep = None
+_upkeep_lock = threading.Lock()
+RESTART_HOLD = 90  # A resumed conversation redraws for a while; that is no work to report as finished.
+
+
+def upkeep_service():
+    global _upkeep
+    from integrations.upkeep import Upkeep
+    with _upkeep_lock:
+        if _upkeep is None:
+            _upkeep = Upkeep(list_sessions, network_settings.get, agent_age,
+                             lambda name: tmux('capture-pane', '-p', '-e', '-t', f'={PREFIX}{name}:', check=False),
+                             session_held, resumable, upkeep_restart, sleep_session)
+        return _upkeep
+
+
+def agent_age(name):
+    """Seconds the oldest process under the session's pane has run: the agent, started from the pane's shell."""
+    from integrations.leftovers import processes
+    pane = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{pane_pid}', check=False).strip()
+    if not pane.isdigit():
+        return None
+    found = processes(lambda command: subprocess.run(command, capture_output=True, text=True, timeout=20, input='').stdout)
+    return max((p['age'] for p in found.values() if p['ppid'] == int(pane)), default=None)
+
+
+def session_held(name):
+    """A question on its screen, a prompt waiting for it, or a limit it is to continue after."""
+    status = schedule_service().status(name)
+    return bool(status['prompts'] or status['auto_resume'] or status['limit']
+                or pending_questions(name) or current_question(name))
+
+
+def resumable(session):
+    try:
+        return bool(agent_cmd(session['agent'], session.get('sid'), True, session.get('skip'), source=saved_source(session['name'])))
+    except (ValueError, KeyError):
+        return False
+
+
+def hold_activity(name):
+    created = tmux('display-message', '-p', '-t', f'={PREFIX}{name}:', '#{session_created}', check=False).strip()
+    session_activity().hold((name, created), time.time() + RESTART_HOLD)
+
+
+def upkeep_restart(name):
+    hold_activity(name)
+    action_restart({'name': name})
+
+
+def sleep_session(name):
+    """Stops the agent and leaves the session with its shell, marked so a tap continues the conversation."""
+    hold_activity(name)
+    stop_children(name)
+    tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_slept', str(int(time.time())))
+
+
+def action_upkeep_save(d):
+    """Only these two, so a gateway can set them on a connected computer without its other settings."""
+    current = network_settings.get()
+    saved = network_settings.save({**current, 'name': current['name'] or socket.gethostname(),
+                                   **{key: d[key] for key in ('sleep_days', 'daily_restart') if key in d}})
+    return {key: saved[key] for key in ('sleep_days', 'daily_restart')}
 
 
 _leftovers = None
@@ -1307,7 +1375,29 @@ def action_send(d):
     with input_locks_lock:
         lock = input_locks.setdefault(name, threading.Lock())
     with lock:
+        if d.get("key") is None and asleep(name):
+            return wake_and_send(name, d)
         return send_input(d)
+
+
+def asleep(name):
+    """The agent upkeep stopped and nothing started since: typing would go to the session's shell."""
+    if not (opt(name, "@cc_slept") or "").isdigit() or not session_exists(name):
+        return False
+    cmd = tmux("display-message", "-p", "-t", f"={PREFIX}{name}:", "#{pane_current_command}", check=False).strip()
+    return not is_running(opt(name, "@cc_agent") or "claude", cmd, opt(name, "@cc_runtime") or "")
+
+
+def wake_and_send(name, d):
+    """A message to a sleeping session wakes it and waits, like any held prompt, until the agent is ready."""
+    text = d.get("text", "")
+    if d.get("attachments"):
+        raise ValueError("Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения")
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("неверный текст сообщения")
+    action_restart({"name": name})
+    schedule_service().add(name, text, "idle")
+    return {"woke": True}
 
 
 def send_input(d):
@@ -2780,6 +2870,7 @@ ACTIONS.update(file_save=action_file_save, git_group=action_git_group, git_fetch
                direct_link=lambda d: {'token': direct_links.create()},
                decks_direct=lambda d: {'url': remote_decks.direct(d.get('id'))},
                leftovers_stop=lambda d: leftovers_service().stop(d.get('pids')),
+               upkeep_save=action_upkeep_save,
                decisions_answer=lambda d: decisions_service().answer(d.get('id'), d.get('answer')),
                decisions_dismiss=lambda d: decisions_service().dismiss(d.get('id')),
                decisions_send=send_decisions,
@@ -3325,6 +3416,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, version_info(fresh=self.path.endswith("fresh=1")))
         if self.path == "/api/leftovers":
             return self.send_json(200, leftovers_payload())
+        if self.path == "/api/upkeep":
+            settings = network_settings.get()
+            return self.send_json(200, {key: settings[key] for key in ('sleep_days', 'daily_restart')})
         if self.path == "/api/server-metrics":
             return self.send_json(200, server_metrics())
         if self.path == "/api/server":
@@ -3658,10 +3752,10 @@ def tmux_server_pid():
 
 def live_sessions():
     fmt = ("#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{@cc_sid}\t#{@cc_skip}\t"
-           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}\t#{@cc_auto_title}\t#{@cc_quiet}")
+           "#{session_created}\t#{@cc_agent}\t#{@cc_source}\t#{@cc_title}\t#{@cc_containers}\t#{@cc_runtime}\t#{@cc_auto_title}\t#{@cc_quiet}\t#{@cc_slept}")
     live = {}
     for line in tmux("list-sessions", "-F", fmt, check=False).splitlines():
-        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime, auto, quiet = (line.split("\t") + [""] * 13)[:13]
+        sname, path, cmd, sid, skip, created, agent, raw_source, title, containers, runtime, auto, quiet, slept = (line.split("\t") + [""] * 14)[:14]
         agent = agent or "claude"
         try:
             source = json.loads(raw_source or "null")
@@ -3674,6 +3768,7 @@ def live_sessions():
                                          **({"title": title} if owner_title(sname[len(PREFIX):], title) else {}),
                                          **({"auto_title": auto} if auto else {}),
                                          **({"quiet": int(quiet)} if quiet.isdigit() else {}),
+                                         **({"slept": int(slept)} if slept.isdigit() else {}),
                                          **({"containers": containers} if containers else {}),
                                          **({"runtime": runtime} if runtime else {})}
     return live
@@ -3746,6 +3841,8 @@ def restore_titles(name, info):
             tmux('set-option', '-t', f'={PREFIX}{name}:', option, value)
     if isinstance(quiet := info.get('quiet'), int) and quiet > 0:
         tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_quiet', str(quiet), check=False)
+    if isinstance(slept := info.get('slept'), int) and slept > 0 and not info.get('running'):
+        tmux('set-option', '-t', f'={PREFIX}{name}:', '@cc_slept', str(slept), check=False)
 
 
 def restore_windows_session(name, path, info):
@@ -3909,6 +4006,7 @@ def main():
     # Each on its own: one that cannot start must not keep the others from starting.
     for what, service in (('Notifications', push_service),          # Idles until a device subscribes.
                           ('Scheduled prompts', schedule_service),
+                          ('Agent upkeep', upkeep_service),
                           ('Containers', containers_service)):    # Sockets and Docker contexts.
         try:
             service().start()

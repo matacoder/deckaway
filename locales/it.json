@@ -1032,6 +1032,18 @@
     "Нет ответов для отправки": "Nessuna risposta da inviare",
     "Слишком длинные ответы: отправьте их по частям": "Le risposte sono troppo lunghe: inviale in più parti",
     "Не удалось прочитать вопросы": "Impossibile leggere le domande",
-    "Ответ длиннее 8000 символов: сократите его": "La risposta supera gli 8000 caratteri: accorciala"
+    "Ответ длиннее 8000 символов: сократите его": "La risposta supera gli 8000 caratteri: accorciala",
+    "Сон и перезапуск агентов": "Riposo e riavvio degli agenti",
+    "Перезапускать агентов раз в сутки": "Riavvia gli agenti una volta al giorno",
+    "Останавливать после дней без работы (0 — никогда)": "Ferma dopo giorni senza lavoro (0 = mai)",
+    "{0} остановлен после простоя": "{0} fermato per inattività",
+    "спит": "a riposo",
+    "Разбудить": "Risveglia",
+    "{0} остановлен: {1} дн. без работы. Сообщение разбудит его": "{0} fermato: {1} g senza lavoro. Un messaggio lo risveglia",
+    "Продолжаю разговор…": "Riprendo la conversazione…",
+    "Агент просыпается: сообщение уйдёт, когда он будет готов": "L'agente si sta risvegliando: il messaggio partirà quando sarà pronto",
+    "Дней: целое число от 0 до 90": "Giorni: un numero intero da 0 a 90",
+    "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "L'agente di questa sessione è stato fermato dopo una lunga inattività. Risveglialo, poi invia gli allegati",
+    "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Ogni agente usa la versione con cui è stato avviato. Una volta al giorno, dopo tre ore senza fare nulla, l'agente viene riavviato con la stessa conversazione e prende la versione installata. Un agente inattivo più a lungo del valore impostato viene fermato: la sessione resta, e «Risveglia» o qualsiasi messaggio riprendono la conversazione. Le sessioni con una domanda aperta, un messaggio in attesa o testo digitato non vengono toccate."
   }
 }

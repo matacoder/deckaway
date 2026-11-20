@@ -1032,6 +1032,18 @@
     "Нет ответов для отправки": "Brak odpowiedzi do wysłania",
     "Слишком длинные ответы: отправьте их по частям": "Odpowiedzi są za długie: wyślij je w częściach",
     "Не удалось прочитать вопросы": "Nie udało się odczytać pytań",
-    "Ответ длиннее 8000 символов: сократите его": "Odpowiedź ma ponad 8000 znaków: skróć ją"
+    "Ответ длиннее 8000 символов: сократите его": "Odpowiedź ma ponad 8000 znaków: skróć ją",
+    "Сон и перезапуск агентов": "Uśpienie i restart agentów",
+    "Перезапускать агентов раз в сутки": "Uruchamiaj agentów ponownie raz dziennie",
+    "Останавливать после дней без работы (0 — никогда)": "Zatrzymaj po dniach bez pracy (0 = nigdy)",
+    "{0} остановлен после простоя": "{0} zatrzymany po bezczynności",
+    "спит": "śpi",
+    "Разбудить": "Obudź",
+    "{0} остановлен: {1} дн. без работы. Сообщение разбудит его": "{0} zatrzymany: {1} dni bez pracy. Wiadomość go obudzi",
+    "Продолжаю разговор…": "Wznawiam rozmowę…",
+    "Агент просыпается: сообщение уйдёт, когда он будет готов": "Agent się budzi: wiadomość pójdzie, gdy będzie gotowy",
+    "Дней: целое число от 0 до 90": "Dni: liczba całkowita od 0 do 90",
+    "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "Agent tej sesji został zatrzymany po długiej bezczynności. Obudź go, a potem wyślij załączniki",
+    "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Każdy agent działa w wersji, z którą go uruchomiono. Raz dziennie, po trzech godzinach bezczynności, agent jest uruchamiany ponownie z tą samą rozmową i dostaje zainstalowaną wersję. Agent bezczynny dłużej niż ustawiono jest zatrzymywany: sesja zostaje, a „Obudź” lub dowolna wiadomość wznawia rozmowę. Sesje z otwartym pytaniem, odłożoną wiadomością lub wpisanym tekstem nie są ruszane."
   }
 }

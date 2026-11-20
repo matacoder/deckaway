@@ -1032,6 +1032,18 @@
     "Нет ответов для отправки": "Keine Antworten zum Senden",
     "Слишком длинные ответы: отправьте их по частям": "Die Antworten sind zu lang: sende sie in Teilen",
     "Не удалось прочитать вопросы": "Die Fragen konnten nicht gelesen werden",
-    "Ответ длиннее 8000 символов: сократите его": "Die Antwort ist länger als 8000 Zeichen: kürze sie"
+    "Ответ длиннее 8000 символов: сократите его": "Die Antwort ist länger als 8000 Zeichen: kürze sie",
+    "Сон и перезапуск агентов": "Ruhe und Neustart der Agenten",
+    "Перезапускать агентов раз в сутки": "Agenten einmal am Tag neu starten",
+    "Останавливать после дней без работы (0 — никогда)": "Nach Tagen ohne Arbeit stoppen (0 = nie)",
+    "{0} остановлен после простоя": "{0} nach Leerlauf gestoppt",
+    "спит": "ruht",
+    "Разбудить": "Aufwecken",
+    "{0} остановлен: {1} дн. без работы. Сообщение разбудит его": "{0} gestoppt: {1} T ohne Arbeit. Eine Nachricht weckt ihn",
+    "Продолжаю разговор…": "Gespräch wird fortgesetzt…",
+    "Агент просыпается: сообщение уйдёт, когда он будет готов": "Der Agent wacht auf: Die Nachricht geht raus, sobald er bereit ist",
+    "Дней: целое число от 0 до 90": "Tage: eine ganze Zahl von 0 bis 90",
+    "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "Der Agent dieser Sitzung wurde nach langem Leerlauf gestoppt. Wecken Sie ihn auf und senden Sie dann die Anhänge",
+    "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Jeder Agent läuft mit der Version, mit der er gestartet wurde. Einmal am Tag wird ein Agent nach drei Stunden ohne Tätigkeit mit demselben Gespräch neu gestartet und erhält die installierte Version. Ein Agent, der länger als hier eingestellt untätig war, wird gestoppt: Die Sitzung bleibt, „Aufwecken“ oder jede Nachricht setzt das Gespräch fort. Sitzungen mit offener Frage, zurückgehaltener Nachricht oder eingegebenem Text bleiben unberührt."
   }
 }
