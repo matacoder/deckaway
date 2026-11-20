@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.87.3
+
+- "Waiting for you" lists only agents' questions. A session that has just finished work waits for nothing; it stays marked in the session list and on the board.
+
 ## 1.87.2
 
 - Screen digests on the board ask Codex for gpt-6.1-sol. The model was picked from Codex's own model cache, which can list a Sol a ChatGPT sign-in is refused (gpt-6.2-sol), and then every digest failed.

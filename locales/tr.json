@@ -558,7 +558,7 @@
     "Сохраните ключ Kimi в настройках агентов": "Kimi anahtarını ajan ayarlarına kaydet",
     "Указать ключ": "Anahtar gir",
     "Путь": "Yol",
-    "Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.": "Bir ajan soru sorduğunda veya işini bitirdiğinde burada görünür — bağlı herhangi bir bilgisayardan.",
+    "Когда агент задаст вопрос, он появится здесь — на любом подключённом компьютере.": "Bir ajan soru sorduğunda burada görünür — bağlı herhangi bir bilgisayardan.",
     "PDF-документ · {0}": "PDF belgesi · {0}",
     "Быстрый переход: ⌥K, Ctrl+K или ⌘K": "Hızlı geçiş: ⌥K, Ctrl+K veya ⌘K",
     "Введите текст для поиска, до 200 символов": "Aranacak metni girin, en fazla 200 karakter",

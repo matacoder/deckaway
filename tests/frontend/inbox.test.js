@@ -2,9 +2,9 @@ const {inboxItems}=require('../../frontend/inbox');
 const {fleetTargets,versionLabel}=require('../../frontend/fleet');
 const t=(text,params=[])=>text.replace(/\{(\d+)\}/g,(_,n)=>String(params[n]));
 
-test('a session with a question is listed once, as the question',()=>{
- const items=inboxItems([{deck:'',session:'api'},{deck:'m',session:'ml'}],[{deck:'',session:'api',machine:'gw'},{deck:'',session:'web',machine:'gw'}]);
- expect(items.map(i=>[i.kind,i.key])).toEqual([['question','/api'],['question','m/ml'],['finished','/web']]);
+test('only questions wait for you: finished sessions are not listed',()=>{
+ const items=inboxItems([{deck:'',session:'api'},{deck:'m',session:'ml'}]);
+ expect(items.map(i=>[i.kind,i.key])).toEqual([['question','/api'],['question','m/ml']]);
 });
 
 test('only computers that can update now are targeted',()=>{

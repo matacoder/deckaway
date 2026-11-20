@@ -558,7 +558,7 @@
     "Сохраните ключ Kimi в настройках агентов": "Salve a chave do Kimi nas configurações de agentes",
     "Указать ключ": "Informar chave",
     "Путь": "Caminho",
-    "Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.": "Quando um agente fizer uma pergunta ou terminar, ele aparece aqui — de qualquer computador conectado.",
+    "Когда агент задаст вопрос, он появится здесь — на любом подключённом компьютере.": "Quando um agente fizer uma pergunta, ela aparece aqui — de qualquer computador conectado.",
     "PDF-документ · {0}": "Documento PDF · {0}",
     "Быстрый переход: ⌥K, Ctrl+K или ⌘K": "Troca rápida: ⌥K, Ctrl+K ou ⌘K",
     "Введите текст для поиска, до 200 символов": "Digite o texto a buscar, até 200 caracteres",

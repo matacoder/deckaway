@@ -558,7 +558,7 @@
     "Сохраните ключ Kimi в настройках агентов": "Save the Kimi key in the agent settings",
     "Указать ключ": "Add key",
     "Путь": "Path",
-    "Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.": "When an agent asks a question or finishes, it shows up here — from any connected computer.",
+    "Когда агент задаст вопрос, он появится здесь — на любом подключённом компьютере.": "When an agent asks a question, it shows up here — from any connected computer.",
     "PDF-документ · {0}": "PDF document · {0}",
     "Быстрый переход: ⌥K, Ctrl+K или ⌘K": "Quick switch: ⌥K, Ctrl+K or ⌘K",
     "Введите текст для поиска, до 200 символов": "Enter text to search for, up to 200 characters",

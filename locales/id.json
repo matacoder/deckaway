@@ -558,7 +558,7 @@
     "Сохраните ключ Kimi в настройках агентов": "Simpan kunci Kimi di pengaturan agen",
     "Указать ключ": "Isi kunci",
     "Путь": "Jalur",
-    "Когда агент задаст вопрос или закончит работу, он появится здесь — на любом подключённом компьютере.": "Saat agen bertanya atau selesai, agen akan muncul di sini — dari komputer mana pun yang terhubung.",
+    "Когда агент задаст вопрос, он появится здесь — на любом подключённом компьютере.": "Saat agen bertanya, pertanyaannya akan muncul di sini — dari komputer mana pun yang terhubung.",
     "PDF-документ · {0}": "Dokumen PDF · {0}",
     "Быстрый переход: ⌥K, Ctrl+K или ⌘K": "Pindah cepat: ⌥K, Ctrl+K, atau ⌘K",
     "Введите текст для поиска, до 200 символов": "Masukkan teks yang dicari, maksimal 200 karakter",

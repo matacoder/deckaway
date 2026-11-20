@@ -68,7 +68,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 
 **Staying in the loop**
 
-- **Waiting for you:** one list of every agent question and finished session on all computers, answerable in place.
+- **Waiting for you:** one list of every agent question on all computers, answerable in place.
 - Notifications on phone and desktop when an agent asks or finishes; a "finished" notification says what was done.
 - Telegram bot: questions with answer buttons and "finished" messages in your private chat; reply to send the next prompt.
 - A one-line summary of each conversation and how full its context is.
@@ -147,7 +147,7 @@ came before a compaction.
 <img src="screenshots/mobile-inbox.png" width="300" alt="Waiting for you: agent questions from two computers with answer buttons">
 
 The **Waiting for you** button in the sidebar lists every agent
-question and every session that finished work, on all connected computers. Answer a question with one
+question on all connected computers (a session that only finished work is marked in the session list, not here). Answer a question with one
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Tap a session name to open it, on the right computer.
 
