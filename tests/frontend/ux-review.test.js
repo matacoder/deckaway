@@ -106,7 +106,7 @@ test('Questions tab polls preserve option nodes, keyboard focus, and typed answe
   let questions=[question('alpha')];
   const w=await open({'/api/inbox':()=>({questions})});
   try{
-    w.openInbox();await settle();const d=w.document,list=d.getElementById('decisions_live'),row=list.firstChild;
+    w.openProject('decisions');await settle();const d=w.document,list=d.getElementById('decisions_live'),row=list.firstChild;
     const option=row.querySelector('.q-opt');expect(option).not.toBeNull();option.focus();
     await w.loadInbox();expect(list.firstChild).toBe(row);expect(d.activeElement).toBe(option);
     questions=[question('bravo','two'),question('alpha')];await w.loadInbox();

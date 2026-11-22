@@ -648,10 +648,6 @@ dialog:focus,dialog:focus-visible{outline:none}
 .deck-version.outdated{color:var(--acc-text)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
 /* Fixed slot beside the address: a waiting count shows as a number, nothing around it moves. */
-.inbox-btn{display:inline-flex;align-items:center;gap:4px;flex:none;width:auto;padding:0 6px;color:var(--dim)}
-.inbox-btn.on{color:var(--acc-text)}
-.inbox-btn b{min-width:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font:600 10.5px/16px var(--sans);text-align:center}
-.inbox-btn b:empty{display:none}
 #project_dlg{width:min(900px,calc(100vw - 32px))}
 /* How it works: a topology drawn in SVG (zone, computers, links named by protocol); phones scroll it sideways
    rather than shrinking the words. */
@@ -839,7 +835,7 @@ body.resizing iframe{pointer-events:none}
 .dec-count{display:inline-block;margin-left:6px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10.5px;font-weight:700;line-height:16px;text-align:center;vertical-align:1px}
 #project_tabs [data-tab]{position:relative}
 #project_tabs [data-count]:not([data-count=""])::after{content:attr(data-count);position:absolute;top:2px;right:2px;min-width:14px;height:14px;padding:0 3px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10px;font-weight:700;line-height:14px}
-#b_project{position:relative}#b_project.has-decisions::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--acc)}
+#b_project{position:relative}#b_project[data-count]:not([data-count=""])::after{content:attr(data-count);position:absolute;top:2px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
 .files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:var(--code-font,13px)/1.5 var(--mono);outline:none;white-space:pre-wrap;overflow-wrap:anywhere}
 .files-view{padding:8px 0;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);font:var(--code-font,13px)/1.5 var(--mono);-webkit-user-select:text;user-select:text}
 .files-view .fl{display:flex}
@@ -1400,7 +1396,7 @@ body.board-dragging .tile-grip{cursor:grabbing}
 <div id="app">
   <aside>
     <div class="resizer" id="side_resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Ширина боковой панели" title="Потяните, чтобы изменить ширину; двойной клик — ширина по умолчанию"></div>
-    <div class="srv-row" id="srv_row"><div id="srv"><span id="srv_flag"><span class="sk-line srv-skeleton"></span></span><span class="hn" id="srv_name"></span><span class="deck-count" id="srv_count"></span></div><div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" id="deck_direct" onclick="openDirect()" aria-label="Открыть этот компьютер напрямую" title="Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale" hidden><svg class="ui-icon"><use href="#i-external"/></svg></button></div><button type="button" class="iconbtn" id="b_find" onclick="toggleFind()" aria-expanded="false" aria-controls="side_find" title="Поиск…" aria-label="Поиск…"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button><button type="button" id="inbox_btn" class="iconbtn inbox-btn" onclick="openInbox()" title="Вопросы от агентов" aria-label="Вопросы от агентов"><svg class="ui-icon"><use href="#i-inbox"/></svg><b id="inbox_count"></b></button></div>
+    <div class="srv-row" id="srv_row"><div id="srv"><span id="srv_flag"><span class="sk-line srv-skeleton"></span></span><span class="hn" id="srv_name"></span><span class="deck-count" id="srv_count"></span></div><div class="deck-switch" id="deck_switch" hidden><label for="deck_select">DeckAway</label><select id="deck_select" onchange="switchDeck(this.value)"><option value="">Этот компьютер</option></select><button type="button" id="deck_direct" onclick="openDirect()" aria-label="Открыть этот компьютер напрямую" title="Открыть этот компьютер напрямую, без шлюза: нужен доступ к его адресу в Tailscale" hidden><svg class="ui-icon"><use href="#i-external"/></svg></button></div><button type="button" class="iconbtn" id="b_find" onclick="toggleFind()" aria-expanded="false" aria-controls="side_find" title="Поиск…" aria-label="Поиск…"><svg class="ui-icon"><use href="#i-search"/></svg></button><button class="iconbtn accent" title="Новая сессия (⌥T)" aria-label="Новая сессия" onclick="openNew()"><svg class="ui-icon"><use href="#i-plus"/></svg></button></div>
     <div class="side-top" id="side_find" hidden>
       <input id="q" class="search" placeholder="Поиск…" aria-label="Поиск…" title="Быстрый переход: ⌥K, Ctrl+K или ⌘K" autocomplete="off" autocapitalize="off" spellcheck="false">
     </div>
@@ -2796,19 +2792,14 @@ async function loadInbox(){
 // Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
 const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
 function inboxCount(){return inboxItems(openQuestions()).length+waitingDecisions()}
-function renderInboxBadge(){
-  const count=inboxCount();
-  // Always in place: a count appears or goes, the layout around it never moves.
-  const button=$("inbox_btn");button.classList.toggle("on",count>0);$("inbox_count").textContent=count||"";
-  button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Ждут ответа"));
-  return count;
-}
+// The count of what waits is on the bar's panel button and the Questions tab (decisions.js), the menu button on a phone.
+function renderInboxBadge(){markDecisionCount();return inboxCount()}
 function openQuestionSession(deck,session){
   if(!projectDocked())closeProject();
   if((deck||"")!==selectedDeck)openDeckSession(deck||"",session);else select(session);
 }
 function renderInbox(){
-  renderInboxBadge();markDecisionCount();
+  renderInboxBadge();
   if(!$("project_dlg").open||project.tab!=="decisions")return;
   const list=$("decisions_live"),items=inboxItems(openQuestions());
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
@@ -2871,13 +2862,6 @@ function answerCard(q,deck,answered){
     onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
     onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value;saveAnswerDraft(draftKey,{index:state.textIndex,text:value})},onSubmitText:answer});
   draw();return card;
-}
-// The button in the sidebar's header: the Questions tab, for whichever session is open.
-function openInbox(){
-  drawer(false);sheet(false);
-  if(!active&&sessions[0])select(sessions[0].name);
-  if($("project_dlg").open&&project.tab==="decisions")return loadInbox();
-  openProject("decisions");loadInbox();
 }
 
 if(typeof module!=="undefined")module.exports={inboxItems};
@@ -4090,11 +4074,12 @@ function waitingDecisions(){
   const count=list=>(list||[]).reduce((sum,s)=>sum+(s.decisions||0),0);
   return count(sessions)+otherDecks.filter(d=>d.id!==(selectedDeck||"")).reduce((sum,d)=>sum+count(d.sessions),0);
 }
-// The count on the sidebar's tab and the bar button: everything that waits for the owner, wherever it is.
+// The count on the panel's tab and the bar's panel button: everything that waits for the owner, wherever it is.
 function markDecisionCount(){
   const count=inboxCount(),tab=$("project_tabs").querySelector('[data-tab="decisions"]');
   if(tab)tab.dataset.count=count?String(count):"";
-  $("b_project").classList.toggle("has-decisions",Boolean(count));
+  const button=$("b_project");button.dataset.count=count?String(count):"";
+  button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Скрыть или показать панель проекта"));
 }
 function formatTime(at){
   return new Intl.DateTimeFormat(DATE_LOCALE,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(at*1000));

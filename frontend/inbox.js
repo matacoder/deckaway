@@ -20,19 +20,14 @@ async function loadInbox(){
 // Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
 const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
 function inboxCount(){return inboxItems(openQuestions()).length+waitingDecisions()}
-function renderInboxBadge(){
-  const count=inboxCount();
-  // Always in place: a count appears or goes, the layout around it never moves.
-  const button=$("inbox_btn");button.classList.toggle("on",count>0);$("inbox_count").textContent=count||"";
-  button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Ждут ответа"));
-  return count;
-}
+// The count of what waits is on the bar's panel button and the Questions tab (decisions.js), the menu button on a phone.
+function renderInboxBadge(){markDecisionCount();return inboxCount()}
 function openQuestionSession(deck,session){
   if(!projectDocked())closeProject();
   if((deck||"")!==selectedDeck)openDeckSession(deck||"",session);else select(session);
 }
 function renderInbox(){
-  renderInboxBadge();markDecisionCount();
+  renderInboxBadge();
   if(!$("project_dlg").open||project.tab!=="decisions")return;
   const list=$("decisions_live"),items=inboxItems(openQuestions());
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
@@ -95,13 +90,6 @@ function answerCard(q,deck,answered){
     onToggle:()=>{state.expanded=!state.expanded;draw()},onAnswer:index=>answer(index),
     onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value;saveAnswerDraft(draftKey,{index:state.textIndex,text:value})},onSubmitText:answer});
   draw();return card;
-}
-// The button in the sidebar's header: the Questions tab, for whichever session is open.
-function openInbox(){
-  drawer(false);sheet(false);
-  if(!active&&sessions[0])select(sessions[0].name);
-  if($("project_dlg").open&&project.tab==="decisions")return loadInbox();
-  openProject("decisions");loadInbox();
 }
 
 if(typeof module!=="undefined")module.exports={inboxItems};

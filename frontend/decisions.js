@@ -182,11 +182,12 @@ function waitingDecisions(){
   const count=list=>(list||[]).reduce((sum,s)=>sum+(s.decisions||0),0);
   return count(sessions)+otherDecks.filter(d=>d.id!==(selectedDeck||"")).reduce((sum,d)=>sum+count(d.sessions),0);
 }
-// The count on the sidebar's tab and the bar button: everything that waits for the owner, wherever it is.
+// The count on the panel's tab and the bar's panel button: everything that waits for the owner, wherever it is.
 function markDecisionCount(){
   const count=inboxCount(),tab=$("project_tabs").querySelector('[data-tab="decisions"]');
   if(tab)tab.dataset.count=count?String(count):"";
-  $("b_project").classList.toggle("has-decisions",Boolean(count));
+  const button=$("b_project");button.dataset.count=count?String(count):"";
+  button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Скрыть или показать панель проекта"));
 }
 function formatTime(at){
   return new Intl.DateTimeFormat(DATE_LOCALE,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(at*1000));

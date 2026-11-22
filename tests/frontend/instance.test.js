@@ -818,7 +818,8 @@ test('one stream: questions on screens above filed decisions, no scope switch; a
   try{
   await settle();await settle();
   const doc=window.document;
-  window.openInbox();await settle();await settle();
+  window.eval('openProject("decisions")');await settle();await settle();
+  expect(doc.getElementById('b_project').dataset.count).toBe('1');
   expect(doc.getElementById('project_dlg').open).toBe(true);
   expect(doc.querySelector('#decisions_body .dec-scope')).toBeNull();
   expect(asked).toEqual(['']);
@@ -935,11 +936,10 @@ test('switching computers keeps the computers in one order in the sidebar',async
   // The selected computer is named in the row above the list, the other one by its heading.
   const named=()=>window.document.getElementById('srv_name').textContent;
   expect([named(),...before]).toEqual(['gateway','Mac Studio']);
-  const inbox=window.document.getElementById('inbox_btn'),srv=window.document.getElementById('srv');
+  const srv=window.document.getElementById('srv');
   window.localStorage.setItem('deck.'+DECK+'.cc.server',JSON.stringify({ip:'203.0.113.7',hostname:'mac'}));
   window.openDeckSession(DECK,'beta');
   // Right after the switch, before the new computer answers, its last known address is already there.
-  expect(inbox.hidden).toBe(false);
   expect(srv.title).toContain('203.0.113.7');
   await settle();await settle();
   expect(named()).toBe('Mac Studio');

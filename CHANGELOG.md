@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.90.1
+
+- The inbox button in the sidebar's header is gone: the Questions tab is the one place. The panel button in the session's bar shows how many questions wait, as a number, on a desktop too.
+
 ## 1.90.0
 
 - The decisions agents file (the Questions tab) come to Telegram too: one message each, from every connected computer, with a button per offered answer; reply with text for your own. The answer goes to the decision's computer and its session, as "Send" in the panel does.

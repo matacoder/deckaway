@@ -634,10 +634,6 @@ dialog:focus,dialog:focus-visible{outline:none}
 .deck-version.outdated{color:var(--acc-text)}
 .deck-update{flex:none;color:var(--acc-text);font-weight:700}
 /* Fixed slot beside the address: a waiting count shows as a number, nothing around it moves. */
-.inbox-btn{display:inline-flex;align-items:center;gap:4px;flex:none;width:auto;padding:0 6px;color:var(--dim)}
-.inbox-btn.on{color:var(--acc-text)}
-.inbox-btn b{min-width:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font:600 10.5px/16px var(--sans);text-align:center}
-.inbox-btn b:empty{display:none}
 #project_dlg{width:min(900px,calc(100vw - 32px))}
 /* How it works: a topology drawn in SVG (zone, computers, links named by protocol); phones scroll it sideways
    rather than shrinking the words. */
@@ -825,7 +821,7 @@ body.resizing iframe{pointer-events:none}
 .dec-count{display:inline-block;margin-left:6px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10.5px;font-weight:700;line-height:16px;text-align:center;vertical-align:1px}
 #project_tabs [data-tab]{position:relative}
 #project_tabs [data-count]:not([data-count=""])::after{content:attr(data-count);position:absolute;top:2px;right:2px;min-width:14px;height:14px;padding:0 3px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10px;font-weight:700;line-height:14px}
-#b_project{position:relative}#b_project.has-decisions::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--acc)}
+#b_project{position:relative}#b_project[data-count]:not([data-count=""])::after{content:attr(data-count);position:absolute;top:2px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
 .files-text{width:100%;min-height:min(60vh,520px);resize:vertical;padding:12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--fg2);font:var(--code-font,13px)/1.5 var(--mono);outline:none;white-space:pre-wrap;overflow-wrap:anywhere}
 .files-view{padding:8px 0;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);font:var(--code-font,13px)/1.5 var(--mono);-webkit-user-select:text;user-select:text}
 .files-view .fl{display:flex}

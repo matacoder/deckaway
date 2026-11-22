@@ -146,8 +146,8 @@ came before a compaction.
 
 <img src="screenshots/mobile-inbox.png" width="300" alt="Waiting for you: agent questions from two computers with answer buttons">
 
-The button with the count in the sidebar opens the **Questions** tab of the project panel: everything agents
-wait for from you, on every session of every connected computer, in one list (a session that only finished
+The **Questions** tab of the project panel (the count on the panel button in the session's bar, and on the
+menu button on a phone) holds everything agents wait for from you, on every session of every connected computer, in one list (a session that only finished
 work is marked in the session list, not here). Questions on an agent's screen come first; answer with one
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
 Below them are the decisions agents filed (see [Questions from agents](#questions-from-agents)).
