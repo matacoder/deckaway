@@ -4102,19 +4102,19 @@ function spendTag(s){
     [compactTokens(total,DATE_LOCALE),part("input"),part("cache_write"),part("cache_read"),part("output"),compactTokens(s.spend.yesterday||0,DATE_LOCALE)]);
   return [tag];
 }
-// How long the session's current conversation has gone on (spend.started: a restart that continues it keeps
-// it, a /clear or a new session starts again), the same age as next to the context bar; red after three days.
+// How long the agent has run since it was last started (spend.running): a restart, a wake or the daily restart
+// (integrations/upkeep.py) puts it on the installed version. Red after three days: it runs an old version.
 const OLD_SESSION=3*86400;
 function sessionAge(seconds,locale){
   const [value,unit]=seconds<3600?[Math.max(1,Math.floor(seconds/60)),"minute"]:seconds<86400?[Math.floor(seconds/3600),"hour"]:[Math.floor(seconds/86400),"day"];
   return new Intl.NumberFormat(locale,{style:"unit",unit,unitDisplay:"narrow"}).format(value);
 }
 function ageTag(s,now=Date.now()/1000){
-  const started=s.spend?.started;
+  const started=s.spend?.running;
   if(!(started>0))return [];
   const age=Math.max(0,now-started);
   const tag=el("span","age"+(age>OLD_SESSION?" old":""),sessionAge(age,DATE_LOCALE));
-  tag.title=tr("Разговор начат {0}",[new Date(started*1000).toLocaleString(DATE_LOCALE,{dateStyle:"medium",timeStyle:"short"})]);
+  tag.title=tr("Агент запущен {0}",[new Date(started*1000).toLocaleString(DATE_LOCALE,{dateStyle:"medium",timeStyle:"short"})]);
   return [tag];
 }
 // Tokens above, age below, at the right of the row.

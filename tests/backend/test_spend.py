@@ -54,7 +54,7 @@ class SpendTests(unittest.TestCase):
         self.spend.check()
         self.assertEqual(self.spend.of('duty', 1), {
             'day': '2026-11-22', 'today': {'input': 2, 'cache_write': 20, 'cache_read': 1100, 'output': 10},
-            'yesterday': 116, 'started': int(datetime(2026, 11, 21, 12).timestamp())})
+            'yesterday': 116, 'running': None})
         # Only what was appended is read; a half-written line waits for the next pass.
         with main.open('a') as stream:
             stream.write(json.dumps(answer('m4', 22)) + '\n' + '{"type": "assist')
@@ -70,21 +70,19 @@ class SpendTests(unittest.TestCase):
         self.list = [{'name': 'duty', 'created': 1, 'agent': 'claude', 'sid': 'b'}]  # After a /clear.
         self.spend.check()
         self.assertEqual(sum(self.spend.of('duty', 1)['today'].values()), 232)
-        self.assertEqual(self.spend.of('duty', 1)['started'], int(datetime(2026, 11, 22, 12).timestamp()))
         self.list = [{'name': 'duty', 'created': 2, 'agent': 'claude', 'sid': None}]  # A new session of that name.
         self.spend.check()
         self.assertIsNone(self.spend.of('duty', 1))
         self.assertIsNone(self.spend.of('duty', 2))
 
-    def test_a_restart_that_continues_the_conversation_keeps_its_age(self):
-        # Claude Code's first lines carry no timestamp; the age is the first one that does.
-        self.write(self.root / 'a.jsonl', [{'type': 'summary'}, {'type': 'user', 'timestamp': stamp(1, 9)}])
-        self.files['a'] = self.root / 'a.jsonl'
-        self.list = [{'name': 'duty', 'created': 1, 'agent': 'claude', 'sid': 'a'}]
+    def test_a_session_carries_when_its_agent_was_last_started(self):
+        self.spend.starts = lambda: {'duty': 1700, 'other': 5}
+        self.list = [{'name': 'duty', 'created': 1, 'agent': 'shell', 'sid': None}]
         self.spend.check()
-        self.write(self.root / 'a.jsonl', [answer('m1', 22)], mode='a')  # Resumed: the same file grows.
+        self.assertEqual(self.spend.of('duty', 1)['running'], 1700)  # No tokens, still its start.
+        self.spend.starts = lambda: (_ for _ in ()).throw(OSError())
         self.spend.check()
-        self.assertEqual(self.spend.of('duty', 1)['started'], int(datetime(2026, 11, 1, 9).timestamp()))
+        self.assertIsNone(self.spend.of('duty', 1))  # The process list failed: nothing made up.
 
     def test_codex_counts_each_turn_from_its_running_total(self):
         self.write(self.root / 'r.jsonl', [codex(22, 100, 100), codex(22, 100, 100), codex(22, 150, 50)])

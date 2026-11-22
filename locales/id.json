@@ -1041,6 +1041,6 @@
     "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "Agen sesi ini dihentikan setelah lama menganggur. Bangunkan dulu, lalu kirim lampirannya",
     "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Setiap agen berjalan dengan versi saat ia dimulai. Sekali sehari, setelah tiga jam tidak melakukan apa pun, agen dimulai ulang dengan percakapan yang sama dan memakai versi yang terpasang. Agen yang menganggur lebih lama dari yang diatur akan dihentikan: sesinya tetap ada, dan «Bangunkan» atau pesan apa pun melanjutkan percakapan. Sesi dengan pertanyaan terbuka, pesan tertunda, atau teks yang sudah diketik tidak disentuh.",
     "Токенов сегодня: {0}. Ввод {1}, запись в кэш {2}, чтение из кэша {3}, ответы {4}. Вчера: {5}": "Token hari ini: {0}. Input {1}, tulis cache {2}, baca cache {3}, output {4}. Kemarin: {5}",
-    "Разговор начат {0}": "Percakapan dimulai {0}"
+    "Агент запущен {0}": "Agen dimulai {0}"
   }
 }

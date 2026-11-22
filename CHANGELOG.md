@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.91.1
+
+- The age in a session's row is how long its agent has run since it was last started (a restart, a wake, the daily restart), so it tells how old the running version may be. The conversation's age stays next to the context bar.
+
 ## 1.91.0
 
 - A session's row shows how long its conversation has gone on, under its tokens, red after three days. A restart that continues the conversation keeps its age; `/clear` or a new session starts again.

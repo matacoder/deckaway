@@ -1066,7 +1066,8 @@ def spend_service():
     with _spend_lock:
         if _spend is None:
             _spend = Spend(list_sessions, lambda agent, sid: (agent in (*CLAUDE_FAMILY, 'codex') and valid_sid(sid)
-                                                               and transcript_path(agent, sid)) or None)
+                                                               and transcript_path(agent, sid)) or None,
+                           agent_starts)
         return _spend
 
 
@@ -1094,6 +1095,22 @@ def agent_age(name):
         return None
     found = processes(lambda command: subprocess.run(command, capture_output=True, text=True, timeout=20, input='').stdout)
     return max((p['age'] for p in found.values() if p['ppid'] == int(pane)), default=None)
+
+
+def agent_starts():
+    """{session: when the oldest process under its pane started}: the agent, so a restart shows as a new time."""
+    from integrations.leftovers import processes
+    panes = {}
+    for line in tmux('list-panes', '-a', '-F', '#{session_name}\t#{pane_pid}', check=False).splitlines():
+        session, _, pid = line.partition('\t')
+        if session.startswith(PREFIX) and pid.isdigit():
+            panes.setdefault(int(pid), session[len(PREFIX):])
+    found = processes(lambda command: subprocess.run(command, capture_output=True, text=True, timeout=20, input='').stdout)
+    now, starts = time.time(), {}
+    for process in found.values():
+        if (name := panes.get(process['ppid'])) is not None:
+            starts[name] = min(starts.get(name, now), now - process['age'])
+    return {name: int(start) for name, start in starts.items()}
 
 
 def session_held(name):

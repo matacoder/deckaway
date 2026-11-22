@@ -161,9 +161,11 @@ whole context on every step, so a long conversation that wakes often (a duty run
 includes the agents a Claude Code session starts and every conversation the session has had since the panel
 started, and is updated every minute.
 
-Under it is how long the current conversation has gone on (minutes, hours, days; hover for its start), the
-same age as next to the context bar. A restart that continues the conversation keeps it; `/clear` or a new
-session starts again. It turns red after three days: an old conversation is the one worth starting afresh.
+Under it is how long the agent has run since it was last started (minutes, hours, days; hover for the
+moment). An agent keeps the version it started with, so this is how old its version may be. A restart, a wake
+or the daily restart of a quiet agent (see below) starts it again, with its conversation. It turns red after
+three days: the daily restart has not found three quiet hours, so restart it yourself when it pauses. The age
+of the conversation itself is next to the context bar.
 
 ## Idle agents sleep, busy ones stay current
 

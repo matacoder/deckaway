@@ -4,7 +4,8 @@ Claude Code writes the usage of every answer into its JSONL file (one answer can
 same message id: counted once), and the agents it starts into `<conversation>/subagents/*.jsonl`. Codex writes
 a running total after every turn. A file is read once from the start, then only what was appended. A session
 keeps every conversation it had since the panel started (a `/clear`, a restart), so its day adds them up.
-Days are this computer's local dates. The current conversation's first timestamp is its age.
+Days are this computer's local dates. The same pass notes when each session's agent was last started
+(a restart, a wake), which tells whether it runs the installed version.
 """
 from datetime import datetime
 import json
@@ -15,16 +16,11 @@ CHECK_EVERY = 60
 PARTS = ('input', 'cache_write', 'cache_read', 'output')
 
 
-def moment(stamp):
+def day_of(stamp):
     try:
-        return datetime.fromisoformat(str(stamp).replace('Z', '+00:00')).astimezone()
+        return datetime.fromisoformat(str(stamp).replace('Z', '+00:00')).astimezone().date().isoformat()
     except ValueError:
         return None
-
-
-def day_of(stamp):
-    when = moment(stamp)
-    return when and when.date().isoformat()
 
 
 class FileTally:
@@ -33,7 +29,6 @@ class FileTally:
     def __init__(self, kind):
         self.kind, self.offset, self.identity = kind, 0, None
         self.days, self.seen, self.total = {}, set(), 0
-        self.started = None  # The conversation's first timestamp: a restart that continues it keeps it.
 
     def update(self, path):
         stat = path.stat()
@@ -56,8 +51,6 @@ class FileTally:
                     self.add(record)
 
     def add(self, record):
-        if self.started is None and (when := moment(record.get('timestamp') or '')):
-            self.started = int(when.timestamp())
         parts = self.codex(record) if self.kind == 'codex' else self.claude(record)
         day = parts and day_of(record.get('timestamp'))
         if day:
@@ -94,9 +87,10 @@ class FileTally:
 
 
 class Spend:
-    def __init__(self, sessions, transcript, clock=time.time):
-        """sessions(): as list_sessions gives them; transcript(agent, sid): the conversation file or None."""
-        self.sessions, self.transcript, self.clock = sessions, transcript, clock
+    def __init__(self, sessions, transcript, starts=dict, clock=time.time):
+        """sessions(): as list_sessions gives them; transcript(agent, sid): the conversation file or None;
+        starts(): {session name: when its agent's process started}, one look at the processes for all."""
+        self.sessions, self.transcript, self.starts, self.clock = sessions, transcript, starts, clock
         self.lock = threading.Lock()
         self.tallies, self.files, self.shown = {}, {}, {}
         self.started = False
@@ -108,6 +102,11 @@ class Spend:
 
     def check(self):
         shown, live = {}, set()
+        try:
+            starts = self.starts()
+        except Exception as error:  # Without the process list the tokens are still worth showing.
+            print(f"spend: process list failed: {type(error).__name__}", flush=True)
+            starts = {}
         for s in self.sessions():
             key = (s['name'], s.get('created'))
             live.add(key)
@@ -115,7 +114,7 @@ class Spend:
             if path:
                 self.files.setdefault(key, set()).add(('codex' if s.get('agent') == 'codex' else 'claude', path))
             days = self.days_of(key)
-            started = path and self.tallies.get(path) and self.tallies[path].started
+            started = starts.get(s['name'])
             if days or started:
                 shown[key] = (days, started)
         self.forget(live)
@@ -142,8 +141,8 @@ class Spend:
                     self.tallies.pop(file, None)
 
     def of(self, name, created):
-        """{day, today: {input, cache_write, cache_read, output}, yesterday: total, started: when the current
-        conversation began or None} or None."""
+        """{day, today: {input, cache_write, cache_read, output}, yesterday: total, running: when its agent was
+        last started or None} or None."""
         with self.lock:
             days, started = self.shown.get((name, created), (None, None))
         if not days and not started:
@@ -153,7 +152,7 @@ class Spend:
         yesterday = datetime.fromtimestamp(self.clock() - 86400).date().isoformat()
         parts = days.get(today.isoformat(), [0, 0, 0, 0])
         return {'day': today.isoformat(), 'today': dict(zip(PARTS, parts)), 'yesterday': sum(days.get(yesterday, [])),
-                'started': started}
+                'running': started}
 
     def start(self):
         with self.lock:
