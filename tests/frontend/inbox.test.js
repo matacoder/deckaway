@@ -35,3 +35,12 @@ test('fleet summary distinguishes unknown, failed, manual, running, and verified
   expect(fleetUpdated(targets,new Map([['deck',value]]))).toBe(false);
  expect(fleetUpdated(targets,new Map([['deck',current]]))).toBe(true);
 });
+
+test('token counts are short and add every part of the day',()=>{
+ const {spendTotal,compactTokens}=require('../../frontend/spend');
+ expect(spendTotal({today:{input:1,cache_write:2,cache_read:3,output:4}})).toBe(10);
+ expect(spendTotal(null)).toBe(0);
+ expect(compactTokens(2430000,'en')).toBe('2.4M');
+ expect(compactTokens(18300000,'en')).toBe('18M');
+ expect(compactTokens(950,'en')).toBe('950');
+});

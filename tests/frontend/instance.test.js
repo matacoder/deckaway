@@ -1570,3 +1570,17 @@ test('a session upkeep put to sleep says so and one tap continues its conversati
   expect(doc.querySelector('#send_state .wake-btn')).toBe(null);
   }finally{window.close()}
 });
+
+test('a session row shows the tokens it spent today, with the parts in its tooltip; none, nothing',async()=>{
+  const spend={day:'2026-11-22',today:{input:1000,cache_write:20000,cache_read:2400000,output:9000},yesterday:500000};
+  const window=boot(routesFor({local:()=>({sessions:[session('alpha',{spend}),session('beta')]})}));
+  try{
+  await settle();await settle();
+  const tags=[...window.document.querySelectorAll('#tabs .tab .spend')];
+  expect(tags).toHaveLength(1);
+  expect(tags[0].closest('.tab').dataset.session).toBe('alpha');
+  expect(tags[0].textContent).toMatch(/2[.,]4/);
+  expect(tags[0].title).toMatch(/2[.,]4/);
+  expect(tags[0].title).toMatch(/500/);
+  }finally{window.close()}
+});

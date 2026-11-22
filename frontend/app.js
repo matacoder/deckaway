@@ -309,6 +309,7 @@ function renderCurrentSessions(box,list){
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
     t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s),...(s.decisions?[decisionBadge(s.decisions)]:[])),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
+    t.append(...spendTag(s));
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k",modKey()+i));
     // A click (not Enter) leaves the focus free, so the keys go straight to the agent's menu on the screen.
@@ -959,7 +960,7 @@ function renderDeckSection(box,deck,q){
     if(s.group&&s.group!==grp){grp=s.group;box.append(groupHeader(deck.id,grp,list))}
     const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",s.slept?tr("спит"):tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
-      el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))));
+      el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))),...spendTag(s));
     if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));
     t.title=deck.name+" · "+s.name;t.tabIndex=0;t.setAttribute("role","button");
     t.onclick=()=>openDeckSession(deck.id,s.name);

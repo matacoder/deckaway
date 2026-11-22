@@ -153,6 +153,14 @@ tap right there; options such as *Other* or *Type something* open a text field a
 Below them are the decisions agents filed (see [Questions from agents](#questions-from-agents)).
 Tap a session name to open it, on the right computer.
 
+## Tokens per session
+
+The number on the right of a session's row is the tokens it spent today on its computer; hover it for input,
+cache write, cache read and output, and yesterday's total. Most of it is cache reads: an agent rereads its
+whole context on every step, so a long conversation that wakes often (a duty run) costs the most. The count
+includes the agents a Claude Code session starts and every conversation the session has had since the panel
+started, and is updated every minute.
+
 ## Idle agents sleep, busy ones stay current
 
 Each agent keeps the version it was started with. Once a day an agent that has run for a day is restarted with

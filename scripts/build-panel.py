@@ -26,6 +26,7 @@ SCRIPTS = (
     "refs.js",
     "suggest.js",
     "decisions.js",
+    "spend.js",
     "git.js",
     "folders.js",
     "session-info.js",

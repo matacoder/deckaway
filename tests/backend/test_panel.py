@@ -849,6 +849,17 @@ class UpkeepPanelTests(PanelCase):
         with patch.object(self.panel, 'decision_counts', return_value={}):
             self.assertEqual(self.panel.list_sessions()[0]['slept'], 1700000000)
 
+    def test_the_session_list_carries_what_each_session_spent_today(self):
+        row = 'cc-api\t10\t0\t/p\tclaude\t0\tclaude\t' + '\t' * 10 + '80x24\t\n'
+        self.panel.tmux = Mock(return_value=row)
+        spent = {'day': '2026-11-22', 'today': {'input': 1, 'cache_write': 2, 'cache_read': 3, 'output': 4}, 'yesterday': 0}
+        spend = Mock()
+        spend.of.side_effect = lambda name, created: spent if (name, created) == ('api', 10) else None
+        with patch.object(self.panel, 'decision_counts', return_value={}), patch.object(self.panel, '_spend', spend):
+            self.assertEqual(self.panel.list_sessions()[0]['spend'], spent)
+        with patch.object(self.panel, 'decision_counts', return_value={}), patch.object(self.panel, '_spend', None):
+            self.assertNotIn('spend', self.panel.list_sessions()[0])
+
     def test_the_owner_sets_sleep_days_and_the_daily_restart_alone(self):
         saved = self.panel.ACTIONS['upkeep_save']({'sleep_days': 7, 'daily_restart': False})
         self.assertEqual(saved, {'sleep_days': 7, 'daily_restart': False})

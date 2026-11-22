@@ -5,6 +5,7 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
 ## 1.89.0
 
 - One place for everything agents wait for. The sidebar's "Waiting for you" dialog is gone: its button opens the Questions tab, which now lists questions on agents' screens first, then the decisions agents filed, from every session on every connected computer in one list (no "This session / All sessions" switch). Each answer goes to the computer it came from; the count on the button, the tab and the app icon covers both.
+- Each session in the list shows the tokens it spent today, on the right of its row; the tooltip splits them into input, cache write, cache read and output, and gives yesterday's total. Counted on each computer from the agent's own conversation files (Claude Code with the agents it starts, and Codex), every minute, across every conversation the session has had since the panel started.
 
 ## 1.88.0
 

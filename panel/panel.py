@@ -546,6 +546,8 @@ def list_sessions(preview_name=None, preview_revision=None, question_metadata=Fa
         }
         if waiting.get((name, item["created"])):
             item["decisions"] = waiting[(name, item["created"])]  # Waiting for the owner's answer (`decisions_payload`).
+        if _spend and (spent := _spend.of(name, item["created"])):
+            item["spend"] = spent  # Tokens of its conversations today (`integrations/spend.py`), as of the last minute.
         if quiet.isdigit():
             item["quiet"] = int(quiet)  # When its owner said the waiting work needs no reply (`action_quiet`).
         if slept.isdigit() and not item["running"]:
@@ -1052,6 +1054,20 @@ def action_kill(d):
             from integrations.windows import uploads_root
             shutil.rmtree(os.path.join(uploads_root(windows_service().home()), name), ignore_errors=True)
         schedule_service().forget(name)  # A new session with this name must not inherit waiting prompts.
+
+
+_spend = None
+_spend_lock = threading.Lock()
+
+
+def spend_service():
+    global _spend
+    from integrations.spend import Spend
+    with _spend_lock:
+        if _spend is None:
+            _spend = Spend(list_sessions, lambda agent, sid: (agent in (*CLAUDE_FAMILY, 'codex') and valid_sid(sid)
+                                                               and transcript_path(agent, sid)) or None)
+        return _spend
 
 
 _upkeep = None
@@ -4007,6 +4023,7 @@ def main():
     for what, service in (('Notifications', push_service),          # Idles until a device subscribes.
                           ('Scheduled prompts', schedule_service),
                           ('Agent upkeep', upkeep_service),
+                          ('Token count', spend_service),
                           ('Containers', containers_service)):    # Sockets and Docker contexts.
         try:
             service().start()
