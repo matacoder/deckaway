@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.90.0
+
+- The decisions agents file (the Questions tab) come to Telegram too: one message each, from every connected computer, with a button per offered answer; reply with text for your own. The answer goes to the decision's computer and its session, as "Send" in the panel does.
+- Telegram keeps only what still waits: a question answered, closed or dismissed anywhere is deleted from the chat, and so is a text reply once it went. A message older than two days, which Telegram no longer lets a bot delete, loses its buttons as before.
+
 ## 1.89.0
 
 - One place for everything agents wait for. The sidebar's "Waiting for you" dialog is gone: its button opens the Questions tab, which now lists questions on agents' screens first, then the decisions agents filed, from every session on every connected computer in one list (no "This session / All sessions" switch). Each answer goes to the computer it came from; the count on the button, the tab and the app icon covers both.

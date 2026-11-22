@@ -31,10 +31,15 @@ class Store:
                 CREATE TABLE IF NOT EXISTS notices (
                     message_id INTEGER PRIMARY KEY, deck TEXT NOT NULL, session TEXT NOT NULL,
                     session_created INTEGER NOT NULL, created REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS decision_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, ref TEXT NOT NULL UNIQUE, deck TEXT NOT NULL,
+                    decision TEXT NOT NULL, options TEXT NOT NULL, shown TEXT NOT NULL, message_id INTEGER,
+                    status TEXT NOT NULL, created REAL NOT NULL);
             ''')
             # Never replay an answer after a crash between terminal input and acknowledgement.
             db.execute("UPDATE questions SET status='uncertain' WHERE status IN ('answering','sending')")
             db.execute("UPDATE prompt_replies SET status='uncertain' WHERE status='answering'")
+            db.execute("UPDATE decision_messages SET status='uncertain' WHERE status IN ('answering','sending')")
 
     @contextmanager
     def connect(self):
@@ -135,8 +140,40 @@ class Store:
             row = db.execute("SELECT value FROM metadata WHERE key='telegram_offset'").fetchone()
             return int(row[0]) if row else 0
 
+    def decision_rows(self):
+        with self.connect() as db:
+            return [dict(row) for row in db.execute("SELECT * FROM decision_messages")]
+
+    def decision_row(self, key, value):
+        """A filed decision's message by `id`, `ref` (computer/decision) or `message_id`."""
+        assert key in ('id', 'ref', 'message_id')
+        with self.connect() as db:
+            row = db.execute(f"SELECT * FROM decision_messages WHERE {key}=?", (value,)).fetchone()
+            return dict(row) if row else None
+
+    def claim_decision(self, ref, deck, decision, options, shown):
+        """A row in 'sending' before the message goes, so a crash never sends it twice."""
+        with self.connect() as db:
+            return db.execute("INSERT OR IGNORE INTO decision_messages(ref,deck,decision,options,shown,status,created) "
+                              "VALUES(?,?,?,?,?,'sending',?)",
+                              (ref, deck, decision, json.dumps(options, ensure_ascii=False), shown, time.time())).rowcount == 1
+
+    def decision_status(self, ref, status, before=None, **fields):
+        """Moves a row to status (only from `before` when given) -> whether it moved."""
+        sets = ''.join(f', {name}=?' for name in fields if name in ('message_id', 'shown', 'options'))
+        args = [status, *(fields[name] for name in fields if name in ('message_id', 'shown', 'options')), ref]
+        where = 'ref=?' + (' AND status=?' if before else '')
+        with self.connect() as db:
+            return db.execute(f"UPDATE decision_messages SET status=?{sets} WHERE {where}",
+                              args + ([before] if before else [])).rowcount == 1
+
+    def forget_decision(self, ref):
+        with self.connect() as db:
+            db.execute("DELETE FROM decision_messages WHERE ref=?", (ref,))
+
     def reset(self):
         with self.connect() as db:
+            db.execute("DELETE FROM decision_messages")
             db.execute("UPDATE questions SET status='retired'")
             db.execute("DELETE FROM notices")
             db.execute("DELETE FROM metadata WHERE key='telegram_offset'")

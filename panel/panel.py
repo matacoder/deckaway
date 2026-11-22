@@ -2224,7 +2224,25 @@ def telegram_service():
         if telegram_integration is None:
             telegram_integration = Telegram(os.path.expanduser('~/.config/cc-panel/integrations'),
                                             shared_questions, answer_any_question, prompt=telegram_prompt)
+            from integrations.telegram_decisions import DecisionRelay
+            telegram_integration.decisions = DecisionRelay(telegram_integration, every_decision, answer_decision,
+                                                           lambda deck: next((d.get('name', '') for d in gateway.connected()
+                                                                              if d['id'] == deck), '') if deck else '')
         return telegram_integration
+
+
+def every_decision():
+    """{computer id ('' here): its decisions} for Telegram; a computer that did not answer is left out."""
+    found = gateway.decisions()
+    found[''] = decisions_payload('')['decisions']
+    return found
+
+
+def answer_decision(deck, identity, text):
+    if deck:
+        return gateway.answer_decision(deck, identity, text)
+    decisions_service().answer(identity, text)
+    send_decisions({'ids': [identity]})
 
 
 def telegram_prompt(deck, name, created, text):

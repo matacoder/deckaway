@@ -129,6 +129,21 @@ class Gateway:
         return [(deck['id'], deck.get('name', ''), state) for deck, state, error in each(self.connected(), fetch)
                 if not error and isinstance(state, dict)]
 
+    def decisions(self):
+        """{computer id: its decisions} for every connected computer that answered; one that did not is left out,
+        so its questions are not taken for answered."""
+        def fetch(deck):
+            status, data = get_json(self.decks(), deck['id'], '/api/decisions?name=', timeout=5)
+            if status != 200 or not isinstance(data.get('decisions'), list):
+                raise ValueError('no decisions')
+            return data['decisions']
+        return {deck['id']: items for deck, items, error in each(self.connected(), fetch) if not error}
+
+    def answer_decision(self, deck, identity, text):
+        """Keeps the answer on that computer, then has it typed into the session there."""
+        self.confirmed(deck, '/api/decisions_answer', {'id': identity, 'answer': text}, 'answer')
+        self.confirmed(deck, '/api/decisions_send', {'ids': [identity]}, 'answer')
+
     def answer(self, question, index, text=None):
         request = {'name': question.session, 'id': question.instance, 'index': index}
         if text is not None:

@@ -385,6 +385,13 @@ recognized active terminal menus. Custom text and multiple selections use the pa
 4. Answer a question using its buttons. The bot confirms when the answer reaches the agent. For a
    custom answer (*Other* / *Type something*), reply to the question message with your text.
 
+The decisions agents file for you (the Questions tab) come to the bot as well, one message each, from every
+connected computer: the question, its context, the session and computer, a button per offered answer; reply
+with text for your own words. The answer is kept on the decision's computer and typed into its session once
+it is free, as **Send** in the panel does. A question answered, closed or dismissed anywhere is deleted from
+the chat (Telegram lets a bot delete only for two days; an older one just loses its buttons), and so is your
+text reply once it went, so the chat holds only what still waits.
+
 The bot also says when an agent finishes working (the same event as the "finished" notification). With
 notifications on a device as well, each event is told once: Telegram gets the questions and the finished work
 that waits for your answer or approval, a notification the rest. Without subscribed devices, or when no

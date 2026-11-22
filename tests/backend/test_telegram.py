@@ -714,7 +714,8 @@ class TelegramTests(unittest.TestCase):
         original = self.api.call
 
         def call(token, method, **data):
-            if method == 'editMessageReplyMarkup':
+            # An answered question is deleted; too old to delete, it only loses its buttons.
+            if method in ('deleteMessage', 'editMessageReplyMarkup'):
                 raise TelegramError('Telegram: запрос не выполнен')
             return original(token, method, **data)
         self.api.call = call

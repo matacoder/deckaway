@@ -26,7 +26,6 @@ TOKEN = re.compile(r"\d{5,20}:[A-Za-z0-9_-]{20,100}")
 UPDATES = 25
 FREE_TEXT = re.compile(r'(?:Other\b|Type something|Другое\b|Свой ответ)', re.I)
 
-
 RESEND_AFTER = 30
 
 class TelegramError(RuntimeError):
@@ -101,6 +100,7 @@ class Telegram:
         self.started = False
         self.seen = {}
         self.sent = {}  # (computer, session) -> (when, options) of the last question sent from it
+        self.decisions = None  # DecisionRelay: the decisions agents filed, set by the panel.
 
     def language(self):
         language = self.config.get('language', os.environ.get('PANEL_LANGUAGE', 'en'))
@@ -236,6 +236,8 @@ class Telegram:
         while not self.stop.is_set():
             try:
                 self.deliver()
+                if self.decisions is not None:
+                    self.decisions.deliver()
             except TelegramError as error:
                 with self.lock:
                     self.error = str(error)
@@ -269,8 +271,7 @@ class Telegram:
             waiting = [(row['id'], q) for row, q in ((db.remember(q), q) for q in questions) if row['status'] == 'pending']
         # Sent outside the lock, like the scan: a slow Telegram must not hold button taps and status polls.
         for message_id in closed:
-            self.api.call(token, 'editMessageReplyMarkup', chat_id=chat, message_id=message_id,
-                          reply_markup={'inline_keyboard': []})
+            self.retire({'token': token, 'chat_id': chat}, message_id)
         for row_id, q in waiting:
             # A question whose text keeps changing (a countdown, a timer) is a new one on every scan: while the
             # session keeps asking, one message per menu at most every half minute, the rest waits.
@@ -370,6 +371,10 @@ class Telegram:
                    and msg.get('chat', {}).get('type') == 'private')
         result_text = 'Эта кнопка недоступна'
         problem = ''
+        decided = self.decisions.callback(c, callback.get('data'), msg.get('message_id')) if trusted and self.decisions else None
+        if decided is not None:
+            return self.notify(c['token'], 'answerCallbackQuery', callback_query_id=callback['id'],
+                               text=self.translate(decided or 'Ответ передан агенту')[:180], show_alert=bool(decided))
         match = re.fullmatch(r'q:([a-f0-9]{24}):([0-8])', callback.get('data', ''))
         if trusted and match:
             row = self.database().get(match[1])
@@ -392,7 +397,10 @@ class Telegram:
                     else:
                         self.database().set_status(row['id'], 'answered')
                         result_text = 'Ответ передан агенту'
-                    if self.database().get(row['id'])['status'] != 'sent':
+                    status = self.database().get(row['id'])['status']
+                    if status == 'answered':
+                        problem = self.retire(c, msg['message_id'])
+                    elif status != 'sent':
                         problem = self.notify(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'],
                                               message_id=msg['message_id'], reply_markup={'inline_keyboard': []})
         return self.notify(c['token'], 'answerCallbackQuery', callback_query_id=callback['id'],
@@ -404,7 +412,12 @@ class Telegram:
         if not (self.eligible(c) and chat.get('type') == 'private' and actor.get('id') == c.get('user_id')
                 and chat.get('id') == c.get('chat_id')) or text.startswith('/'):
             return
-        notice = self.database().notice_by_message(message['reply_to_message'].get('message_id'))
+        reply_to = message['reply_to_message'].get('message_id')
+        decided = self.decisions.reply(c, reply_to, text) if self.decisions else None
+        if decided is not None:  # Gone with its question when it went, else the reason it did not.
+            return (self.notify(c['token'], 'deleteMessage', chat_id=c['chat_id'], message_id=message.get('message_id')) if decided == ''
+                    else self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(decided), reply_to_message_id=message.get('message_id')))
+        notice = self.database().notice_by_message(reply_to)
         if notice:
             return self.notify(c['token'], 'sendMessage', chat_id=c['chat_id'], text=self.translate(self.send_prompt(notice, text, c, message)),
                                reply_to_message_id=message.get('message_id'))
@@ -420,6 +433,10 @@ class Telegram:
                 reply = 'Ответ длиннее 4000 символов'
             elif self.database().claim(row['id']):
                 reply = self.answer_claimed(row, q, index, text)
+                if self.database().get(row['id'])['status'] == 'answered' and row['message_id']:
+                    # Answered: the question and the reply leave the chat, so only what still waits is in it.
+                    self.retire(c, row['message_id'])
+                    return self.notify(c['token'], 'deleteMessage', chat_id=c['chat_id'], message_id=message.get('message_id'))
                 if self.database().get(row['id'])['status'] != 'sent' and row['message_id']:
                     self.notify(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'], message_id=row['message_id'],
                                 reply_markup={'inline_keyboard': []})
@@ -463,6 +480,14 @@ class Telegram:
             return 'Проверьте ответ в панели: повторная отправка отключена'
         self.database().set_status(row['id'], 'answered')
         return 'Ответ передан агенту'
+
+    def retire(self, c, message_id):  # Answered or closed: out of the chat, or (older than two days) buttons off.
+        try:
+            self.api.call(c['token'], 'deleteMessage', chat_id=c['chat_id'], message_id=message_id)
+            return ''
+        except TelegramError:
+            return self.notify(c['token'], 'editMessageReplyMarkup', chat_id=c['chat_id'], message_id=message_id,
+                               reply_markup={'inline_keyboard': []})
 
     def notify(self, token, method, **data):
         # Cosmetic UI calls: the answer state is already final, so a failure is reported, not raised.
