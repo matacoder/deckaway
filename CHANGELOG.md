@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.89.0
+
+- One place for everything agents wait for. The sidebar's "Waiting for you" dialog is gone: its button opens the Questions tab, which now lists questions on agents' screens first, then the decisions agents filed, from every session on every connected computer in one list (no "This session / All sessions" switch). Each answer goes to the computer it came from; the count on the button, the tab and the app icon covers both.
+
 ## 1.88.0
 
 - Agents no longer pile up on old versions. Once a day an agent that has run for a day is restarted with the same conversation after three hours without activity, and so runs the installed Claude Code or Codex. An agent idle for three days is stopped: the session stays in the list as asleep, and "Wake" under the message field, or simply sending a message, continues the conversation (the message goes once the agent is ready). Neither happens to a session with an open question, a held message, a limit it waits for or text typed in its input box. Settings → Computers sets the days (0 = never) and turns the daily restart off, per computer.

@@ -764,7 +764,7 @@ function decision(id,extra={}){
     answer:'',asked:1800000000,sent:null,folder:'/home/demo/p',live:true,title:'alpha',...extra};
 }
 
-test('the decisions tab lists what the open session waits for, keeps the answer as a draft and sends it',async()=>{
+test('the decisions tab lists what agents wait for, keeps the answer as a draft and sends it',async()=>{
   const state={local:()=>({sessions:[session('alpha',{decisions:2})]})};
   const routes=routesFor(state),asked=[],answers=[],sent=[];
   routes['/api/decisions']=url=>{asked.push(url.searchParams.get('name'));return {decisions:[
@@ -779,7 +779,7 @@ test('the decisions tab lists what the open session waits for, keeps the answer 
   expect(doc.querySelector('#tabs .dec-count').textContent).toBe('2');
   expect(doc.querySelector('#project_tabs [data-tab="decisions"]').dataset.count).toBe('2');
   window.eval('openProject("decisions")');await settle();
-  expect(asked).toEqual(['alpha']);
+  expect(asked).toEqual(['']);
   expect(doc.getElementById('git_body').hidden).toBe(true);
   const cards=[...doc.querySelectorAll('#decisions_body .dec-card')];
   expect(cards).toHaveLength(2);
@@ -796,7 +796,7 @@ test('the decisions tab lists what the open session waits for, keeps the answer 
   expect(answers).toEqual([{id:'a',answer:'Yes'}]);
   const field=cards[1].querySelector('textarea');
   // Dictation started from a card's microphone lands in that card's field, not in the message draft.
-  window.eval('deliverDictation({text:"Not",session:"alpha",target:{decision:"b"}})');
+  window.eval('deliverDictation({text:"Not",session:"alpha",target:{decision:"/b"}})');
   expect(field.value).toBe('Not');
   expect(doc.getElementById('msg').value).toBe('');
   field.value='Not now';field.dispatchEvent(new window.Event('input'));
@@ -809,24 +809,30 @@ test('the decisions tab lists what the open session waits for, keeps the answer 
   }finally{window.close()}
 });
 
-test('all sessions of the computer in one list; a closed session cannot be answered; an empty list says what comes here',async()=>{
+test('one stream: questions on screens above filed decisions, no scope switch; a closed session cannot be answered',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state),asked=[];let items=[decision('a',{session:'beta',title:'Duty beta',live:false})];
   routes['/api/decisions']=url=>{asked.push(url.searchParams.get('name'));return {decisions:items}};
+  routes['/api/inbox']=()=>({questions:[{session:'alpha',id:'q1',title:'Choose',question:'Pick one',options:[{label:'Yes'}]}]});
   const window=boot(routes);
   try{
   await settle();await settle();
   const doc=window.document;
-  window.eval('openProject("decisions")');await settle();
-  [...doc.querySelectorAll('#decisions_body .dec-scope button')][1].click();await settle();
-  expect(asked).toEqual(['alpha','']);
-  const card=doc.querySelector('#decisions_body .dec-card');
+  window.openInbox();await settle();await settle();
+  expect(doc.getElementById('project_dlg').open).toBe(true);
+  expect(doc.querySelector('#decisions_body .dec-scope')).toBeNull();
+  expect(asked).toEqual(['']);
+  expect(doc.querySelector('#decisions_live .inbox-item')).not.toBeNull();
+  expect(doc.querySelector('#project_tabs [data-tab="decisions"]').dataset.count).toBe('1');
+  const card=doc.querySelector('#decisions_list .dec-card');
   expect(card.querySelector('.dec-session').textContent).toBe('Duty beta');
   card.querySelector('textarea').value='ok';card.querySelector('textarea').dispatchEvent(new window.Event('input'));
   expect(card.querySelector('.dec-send').disabled).toBe(true);
   expect(card.querySelector('.dec-closed')).not.toBeNull();
+  expect(doc.querySelector('#decisions_list .dec-empty').hidden).toBe(true);
   items=[];window.eval('decisions.raw="x";loadDecisions()');await settle();
-  expect(doc.getElementById('decisions_body').textContent).toMatch(/Вопросов нет|No questions/);
+  // The question on the screen still waits: the list is not "empty".
+  expect(doc.querySelector('#decisions_list .dec-empty').hidden).toBe(true);
   }finally{window.close()}
 });
 
@@ -1202,25 +1208,27 @@ test('with the keyboard up the open summary gives its room to the terminal and t
   expect(css).not.toMatch(/body\.keyboard-open (#session_hint|\.session-hint|#hint_line|#hint_toggle)[,{]/);
 });
 
-test('decisions belong to a computer: the same session name elsewhere loads its own and keeps checking',async()=>{
-  const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})})),asked=[];
+test('decisions of every computer in one list, each answered on its own computer, and the list keeps checking',async()=>{
+  const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha')]})})),asked=[],sent=[];
   routes['/deck/'+DECK+'/api/sessions']=()=>({sessions:[session('alpha')]});
-  routes['/api/decisions']=()=>({decisions:[decision('a',{question:'Here?'})]});
-  routes['/deck/'+DECK+'/api/decisions']=()=>{asked.push(1);return {decisions:[decision('b',{question:'There?'})]}};
+  routes['/api/decisions']=()=>({decisions:[decision('a',{question:'Here?',asked:1800000000})]});
+  routes['/deck/'+DECK+'/api/decisions']=()=>{asked.push(1);return {decisions:[decision('a',{question:'There?',asked:1800000100})]}};
+  routes['/deck/'+DECK+'/api/decisions_answer']=()=>({ok:true});
+  routes['/deck/'+DECK+'/api/decisions_send']=(url,options)=>{sent.push(JSON.parse(options.body).ids);return {sent:1}};
   const window=boot(routes,null,w=>{
-    // As in a browser: the close event comes after the code that closed the dialog has finished.
-    w.HTMLDialogElement.prototype.close=function(){this.open=false;w.setTimeout(()=>this.dispatchEvent(new w.Event('close')),0)};
     const timeout=w.setTimeout;w.setTimeout=(fn,ms,...args)=>timeout(fn,ms===15000?40:ms,...args);  // The poll, quickly.
   });
   try{
   await settle();await settle();
   const doc=window.document,questions=()=>[...doc.querySelectorAll('#decisions_body .dec-q')].map(c=>c.textContent);
-  window.eval('openProject("decisions")');await settle();
-  expect(questions()).toEqual(['Here?']);
-  window.openDeckSession(DECK,'alpha');
-  await settle();await settle();await settle();
-  expect(doc.getElementById('project_dlg').open).toBe(true);
-  expect(questions()).toEqual(['There?']);
+  window.eval('openProject("decisions")');await settle();await settle();
+  // Newest first, whatever computer it is on; the same id on two computers is two decisions.
+  expect(questions()).toEqual(['There?','Here?']);
+  expect(doc.querySelector('#decisions_list .dec-meta').textContent).toContain('Mac Studio');
+  const card=doc.querySelector('#decisions_list .dec-card');
+  card.querySelector('.dec-option').click();card.querySelector('.dec-send').click();
+  await settle();await settle();
+  expect(sent).toEqual([['a']]);
   const before=asked.length;
   await new Promise(resolve=>setTimeout(resolve,200));
   expect(asked.length).toBeGreaterThan(before);

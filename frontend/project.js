@@ -1,4 +1,4 @@
-// Changes, commits, feature groups, files and the decisions agents wait for in one panel: a right sidebar on wide screens that stays
+// Changes, commits, feature groups, files and every question agents wait for in one panel: a right sidebar on wide screens that stays
 // open while sessions switch (remembered in this browser), a full-screen dialog on phones. Each tab keeps
 // its own state and scroll; a tab loads for the open session only when shown.
 const PROJECT_TABS=["changes","commits","groups","files","decisions"];
@@ -24,6 +24,7 @@ function openProject(tab){
   if(!shown&&tab===project.tab&&projectCurrent())return quietProject();
   projectTab(tab);
 }
+function showQuestions(){renderInbox();loadDecisions()}
 function projectCurrent(){
   if(project.tab==="files")return files.session===active;
   if(project.tab==="decisions")return decisions.key===decisionsKey()&&Boolean(decisions.items);
@@ -37,7 +38,7 @@ function quietProject(){
     const box=$("project_dlg");
     if(!box.open)return;
     if(box.style.transform){project.quiet=setTimeout(check,200);return}  // Still under the finger.
-    if(project.tab==="decisions")return loadDecisions();
+    if(project.tab==="decisions")return showQuestions();
     if(project.tab==="changes"||project.tab==="groups")pollChanges();
   },projectDrawer()?400:0);
 }
@@ -61,7 +62,7 @@ function projectTab(tab){
   if(projectDocked())rememberProject(tab);
   markProjectTab();
   if(tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(tab==="decisions")return loadDecisions();
+  if(tab==="decisions")return showQuestions();
   if(hist.session!==active)return startHistory(tab);
   historyTab(tab);
 }
@@ -69,7 +70,7 @@ function projectTab(tab){
 function refreshProject(){
   markProjectTab();
   if(project.tab==="files"){if(files.session!==active&&!filesDirty())startFiles();return}
-  if(project.tab==="decisions"){if(decisions.key!==decisionsKey())loadDecisions();return}
+  if(project.tab==="decisions"){if(decisions.key!==decisionsKey())showQuestions();return}
   if(hist.session!==active)startHistory(project.tab);
 }
 function markProjectTab(){

@@ -22,7 +22,7 @@ function voiceEngine(force=false){
       .then(j=>settle(index,{id,...j.voice}),e=>settle(index,{id,unreachable:e.message})));
   });
 }
-// target: where the text goes instead of the message draft ({decision: id}: that answer field).
+// target: where the text goes instead of the message draft ({decision: computer/id}: that answer field).
 async function toggleVoice(target=null){
   if(voice.held){voice.held=false;return}  // A long press opened the dialog instead.
   if(voice.rec)return stopVoice();

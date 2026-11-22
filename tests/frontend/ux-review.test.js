@@ -102,11 +102,11 @@ test('the Pi startup error has actionable localized copy in every locale',async(
 });
 
 const question=(name,id='one')=>({session:name,id,title:'Choose',question:'Pick one',options:[{label:'Yes'},{label:'Other',text:true}]});
-test('Inbox polls preserve option nodes, keyboard focus, and typed answers as other questions change',async()=>{
+test('Questions tab polls preserve option nodes, keyboard focus, and typed answers as other questions change',async()=>{
   let questions=[question('alpha')];
   const w=await open({'/api/inbox':()=>({questions})});
   try{
-    w.openInbox();await settle();const d=w.document,list=d.getElementById('inbox_list'),row=list.firstChild;
+    w.openInbox();await settle();const d=w.document,list=d.getElementById('decisions_live'),row=list.firstChild;
     const option=row.querySelector('.q-opt');expect(option).not.toBeNull();option.focus();
     await w.loadInbox();expect(list.firstChild).toBe(row);expect(d.activeElement).toBe(option);
     questions=[question('bravo','two'),question('alpha')];await w.loadInbox();

@@ -1,5 +1,6 @@
-// Agent questions on every computer, answerable here. Finished work is not listed: it waits for nothing (the session
-// list and the board mark it).
+// Agent questions on every computer, answerable here: on top of the Questions tab, above the decisions agents filed
+// (decisions.js), and on the board. Finished work is not listed: it waits for nothing (the session list and the
+// board mark it).
 const inbox={questions:[],cards:new Map(),nodes:new Map(),loading:false};
 
 // Pure for tests.
@@ -18,7 +19,7 @@ async function loadInbox(){
 }
 // Without the ones just answered, here or in the session's own card: the agent's screen still shows them.
 const openQuestions=()=>inbox.questions.filter(q=>!wasAnswered((q.deck||"")+"/"+q.session+"/"+q.id));
-function inboxCount(){return inboxItems(openQuestions()).length}
+function inboxCount(){return inboxItems(openQuestions()).length+waitingDecisions()}
 function renderInboxBadge(){
   const count=inboxCount();
   // Always in place: a count appears or goes, the layout around it never moves.
@@ -26,14 +27,14 @@ function renderInboxBadge(){
   button.setAttribute("aria-label",count?tr("Ждут ответа: {0}",[count]):tr("Ждут ответа"));
   return count;
 }
-function openInboxSession(deck,session){
-  $("inbox_dlg").close();
+function openQuestionSession(deck,session){
+  if(!projectDocked())closeProject();
   if((deck||"")!==selectedDeck)openDeckSession(deck||"",session);else select(session);
 }
 function renderInbox(){
-  renderInboxBadge();
-  if(!$("inbox_dlg").open)return;
-  const list=$("inbox_list"),items=inboxItems(openQuestions());
+  renderInboxBadge();markDecisionCount();
+  if(!$("project_dlg").open||project.tab!=="decisions")return;
+  const list=$("decisions_live"),items=inboxItems(openQuestions());
   const live=new Set(items.filter(i=>i.kind==="question").map(i=>i.key+"/"+i.question.id));
   for(const key of inbox.cards.keys())if(!live.has(key))inbox.cards.delete(key);
   const nodes=items.map(item=>{
@@ -45,8 +46,7 @@ function renderInbox(){
     inbox.nodes.set(key,{signature,node});return node;
   });
   for(const [key,entry] of inbox.nodes)if(!nodes.includes(entry.node))inbox.nodes.delete(key);
-  if(!nodes.length)nodes.push(list.querySelector(".inbox-empty")||el("div","inbox-empty",svgIcon("inbox"),el("strong","",tr("Сейчас никто не ждёт ответа")),el("span","",tr("Когда агент задаст вопрос, он появится здесь — на любом подключённом компьютере."))));
-  reconcileInbox(list,nodes);
+  reconcileInbox(list,nodes);markQuestionsEmpty();
 }
 // Moving an unchanged focused row also blurs it in browsers, so leave rows already in place alone.
 function reconcileInbox(list,nodes){
@@ -73,7 +73,7 @@ function renderInboxItem(item){
   const q=item.question,machine=q.origin||(q.deck?"":deckDirectory.name),deck=q.deck||"",session=q.session;
   const head=el("button","inbox-head",agentIcon({agent:q.agent}),el("span","inbox-session",inboxLabel(item,deck,session)),
     el("span","inbox-machine",machine||""));
-  head.type="button";head.onclick=()=>openInboxSession(deck,session);
+  head.type="button";head.onclick=()=>openQuestionSession(deck,session);
   const box=el("div","inbox-item",head);
   box.append(answerCard(q,deck,()=>{inbox.questions=inbox.questions.filter(x=>x!==q);renderInbox()}));
   return box;
@@ -96,10 +96,12 @@ function answerCard(q,deck,answered){
     onTextOption:index=>{state.textIndex=state.textIndex===index?null:index;draw();card.querySelector(".q-text textarea")?.focus()},onTextInput:value=>{state.draft=value;saveAnswerDraft(draftKey,{index:state.textIndex,text:value})},onSubmitText:answer});
   draw();return card;
 }
+// The button in the sidebar's header: the Questions tab, for whichever session is open.
 function openInbox(){
   drawer(false);sheet(false);
-  if(!$("inbox_dlg").open)$("inbox_dlg").showModal();
-  renderInbox();loadInbox();
+  if(!active&&sessions[0])select(sessions[0].name);
+  if($("project_dlg").open&&project.tab==="decisions")return loadInbox();
+  openProject("decisions");loadInbox();
 }
 
 if(typeof module!=="undefined")module.exports={inboxItems};

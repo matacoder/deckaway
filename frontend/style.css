@@ -637,7 +637,6 @@ dialog:focus,dialog:focus-visible{outline:none}
 .inbox-btn.on{color:var(--acc-text)}
 .inbox-btn b{min-width:16px;padding:0 4px;border-radius:var(--r-xs);background:var(--acc-strong);color:var(--on-acc);font:600 10.5px/16px var(--sans);text-align:center}
 .inbox-btn b:empty{display:none}
-#inbox_dlg{width:min(560px,calc(100vw - 32px))}
 #project_dlg{width:min(900px,calc(100vw - 32px))}
 /* How it works: a topology drawn in SVG (zone, computers, links named by protocol); phones scroll it sideways
    rather than shrinking the words. */
@@ -801,13 +800,10 @@ body.resizing iframe{pointer-events:none}
 .files-size{flex:none;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
 .files-empty{margin:0;padding:12px;color:var(--mut)}
 /* Decisions agents wait for: one card each, its answer field and buttons; the agent's text stays plain. */
-.dec-scope{display:flex;gap:4px;margin:8px 0 10px;padding:3px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2)}
-.dec-scope button{flex:1;min-height:36px;padding:6px 10px;border-radius:var(--r-sm);color:var(--mut);font-size:13.5px}
-.dec-scope button[aria-pressed=true]{background:var(--sel);color:var(--fg);font-weight:600}
 .dec-card{display:flex;flex-direction:column;gap:8px;margin:0 0 10px;padding:12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--side2)}
 .dec-card.sent{opacity:.7}
 .dec-meta{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--dim);font-size:12.5px}
-.dec-session{color:var(--acc-text);font-weight:600}.dec-state{color:var(--ok)}
+.dec-session{color:var(--acc-text);font-weight:600;text-align:left}.dec-state{color:var(--ok)}
 .dec-q{margin:0;color:var(--fg);font-weight:600;font-size:15px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere}
 .dec-ctx,.dec-answer{margin:0;color:var(--fg2);font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
 .dec-answer{padding-left:10px;border-left:3px solid var(--acc)}
@@ -865,14 +861,13 @@ body.resizing iframe{pointer-events:none}
 /* The conversation reuses the reader, inside its own turn: no frame, the dialog's size, words kept whole in tables. */
 .talk-text.md{padding:0;border:0;border-radius:0;background:none;white-space:normal}.talk-md>:first-child{margin-top:0}.talk-md>:last-child{margin-bottom:0}
 .talk-md p{font-size:inherit;line-height:inherit}.talk-md h1,.talk-md h2,.talk-md h3,.talk-md h4{font-size:1.1em;font-weight:600;margin:14px 0 6px}.talk-md th,.talk-md td{overflow-wrap:normal}
-#inbox_dlg .hub-heading{border-bottom:1px solid var(--bd)}
-#inbox_list{display:grid;gap:18px;align-content:start}
+#decisions_live{display:grid;gap:14px;margin:8px 0 10px}#decisions_live:empty{display:none}
+#decisions_list{margin-top:8px}
 .inbox-item{display:grid;gap:8px}
 .inbox-head{display:flex;align-items:center;gap:8px;min-width:0;text-align:left;color:var(--fg2);font-weight:600}
 .inbox-session{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .inbox-machine{margin-left:auto;flex:none;font-weight:400;font-size:12px;color:var(--mut)}
 .inbox-question{padding:12px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--bg)}
-.inbox-empty{color:var(--mut);text-align:center;padding:24px 0}
 .q-opt.q-free .q-num{color:var(--acc-text)}
 .q-num .ui-icon{width:14px;height:14px}
 .q-opt.active{border-color:var(--acc)}
@@ -1057,8 +1052,8 @@ body.resizing iframe{pointer-events:none}
   .later-remove{width:var(--tap);height:var(--tap)}
   .acts{padding:12px 16px calc(12px + var(--sab))}
   .acts button{flex:1;min-height:var(--tap);padding:12px;font-size:16px;border-radius:var(--r)}
-  #inbox_dlg,#project_dlg,#help_dlg,.palette{width:100vw}
-  #inbox_dlg .dlg,#project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
+  #project_dlg,#help_dlg,.palette{width:100vw}
+  #project_dlg .dlg,.palette .dlg{padding-top:var(--sat)}
   .palette{margin-top:0}.palette-list{max-height:none;flex:1}
   /* Phone: the search icon swaps the title and bar icons for the field; × puts them back. */
   .bar-search{display:none}
@@ -1154,9 +1149,9 @@ body.resizing iframe{pointer-events:none}
 /* 600–760 px (an unfolded iPhone Duo upright, half an iPad): phone layout, but dialogs and the menu as
    centred cards instead of stretched edge to edge. */
 @media (min-width:600px) and (max-width:760px){
-  dialog,#inbox_dlg{width:min(600px,calc(100vw - 48px));height:min(calc(var(--app-h) - 48px),860px);margin:auto;border-radius:var(--r-xl);border:1px solid var(--bd-soft)}
+  dialog{width:min(600px,calc(100vw - 48px));height:min(calc(var(--app-h) - 48px),860px);margin:auto;border-radius:var(--r-xl);border:1px solid var(--bd-soft)}
   #confirm_dlg,#rename_dlg,#draft_dlg{height:auto}
-  dialog .dlg,#inbox_dlg .dlg{padding-top:0}
+  dialog .dlg{padding-top:0}
   #sheet .panel,#sheet .sheet-cancel{left:auto;right:12px;width:420px}
 }
 @keyframes dlg-in{from{opacity:0;transform:translateY(4px)}}
@@ -1191,9 +1186,6 @@ body.resizing iframe{pointer-events:none}
 .files-crumbs button{padding:4px 6px;border-radius:6px;color:var(--acc-text)}
 .files-crumbs .here{padding:4px 6px;color:var(--fg2)}.files-crumbs .sep{color:var(--dim)}
 @media (pointer:coarse){.files-crumbs button{min-height:var(--tap)}}
-.inbox-empty{display:grid;justify-items:center;gap:8px;padding:40px 16px;text-align:center;color:var(--mut)}
-.inbox-empty svg{width:28px;height:28px;color:var(--dim)}
-.inbox-empty strong{color:var(--fg2);font-weight:600}
 .empty-list{display:grid;gap:10px;justify-items:start}
 .empty-new{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--acc-text)}
 .deck-new{margin:2px 8px 8px}

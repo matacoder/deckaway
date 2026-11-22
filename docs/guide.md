@@ -146,9 +146,11 @@ came before a compaction.
 
 <img src="screenshots/mobile-inbox.png" width="300" alt="Waiting for you: agent questions from two computers with answer buttons">
 
-The **Waiting for you** button in the sidebar lists every agent
-question on all connected computers (a session that only finished work is marked in the session list, not here). Answer a question with one
+The button with the count in the sidebar opens the **Questions** tab of the project panel: everything agents
+wait for from you, on every session of every connected computer, in one list (a session that only finished
+work is marked in the session list, not here). Questions on an agent's screen come first; answer with one
 tap right there; options such as *Other* or *Type something* open a text field and send your own answer.
+Below them are the decisions agents filed (see [Questions from agents](#questions-from-agents)).
 Tap a session name to open it, on the right computer.
 
 ## Idle agents sleep, busy ones stay current
@@ -320,8 +322,8 @@ An agent that needs your decision and can carry on without it, a duty run every 
 the question in the **Questions** tab of the project panel (the question mark) instead of the chat, where it
 would scroll away. Agents learn how from the panel when a conversation starts, resumes or is compacted; the
 command is `integrations/decisions.py` of this install (`ask` with the question as JSON, `list`, `done`).
-The tab shows the open session's questions, or every session's on this computer, with a count on the
-session, on the tab and on the sidebar button. Tap an offered answer, type your own or dictate it with the
+The tab shows them for every session on every connected computer, newest first, with a count on the
+session, on the tab and on the sidebar button; each answer goes to the computer its question came from. Tap an offered answer, type your own or dictate it with the
 card's microphone; the draft is kept on the computer, so another device shows it. **Send** (or **Send all
 answers**) types one message per session once that session is free; the agent also sees the answers in its
 `list` until it marks them done. **Not needed** closes a question without an answer. A question belongs to
