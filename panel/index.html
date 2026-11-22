@@ -113,7 +113,8 @@ aside{position:relative;width:min(var(--side-w,248px),40vw);flex:none;background
 .tab .s{font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tab .s .state{color:var(--fg)}.tab .s .state.ready{color:var(--acc-text)}.tab .s .state.off{color:var(--dim)}.tab .s .state.ask{color:var(--warn)}
 .tab .k{font:11px var(--mono);color:var(--dim)}
-.tab .spend{flex:none;font:11px var(--mono);color:var(--dim);font-variant-numeric:tabular-nums}
+.tab .meta{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:1px;font:11px var(--mono);color:var(--dim);font-variant-numeric:tabular-nums}
+.tab .age.old{color:var(--bad-text)}
 .session-source{color:var(--acc-text)!important}
 .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--dim)}
 .dot.idle{background:var(--ok)}
@@ -4085,7 +4086,7 @@ function formatTime(at){
   return new Intl.DateTimeFormat(DATE_LOCALE,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(at*1000));
 }
 if(typeof document!=="undefined")document.addEventListener("visibilitychange",()=>{if(!document.hidden&&decisions.key&&decisionsShown())loadDecisions()});
-// Tokens a session spent today on its computer (integrations/spend.py), at the right of its row in the list.
+// Tokens a session spent today, and how long it has lived, on its computer (integrations/spend.py), at the right of its row in the list.
 // Cache reads are most of it: an agent rereads its whole context on every step, so a long conversation that
 // works often costs the most.
 function spendTotal(spend){return spend?Object.values(spend.today||{}).reduce((sum,value)=>sum+(Number(value)||0),0):0}
@@ -4101,7 +4102,26 @@ function spendTag(s){
     [compactTokens(total,DATE_LOCALE),part("input"),part("cache_write"),part("cache_read"),part("output"),compactTokens(s.spend.yesterday||0,DATE_LOCALE)]);
   return [tag];
 }
-if(typeof module!=="undefined")module.exports={spendTotal,compactTokens};
+// How long the session's tmux session has lived (a daily restart of the agent keeps it), red after three days:
+// an old conversation rereads more context on every step.
+const OLD_SESSION=3*86400;
+function sessionAge(seconds,locale){
+  const [value,unit]=seconds<3600?[Math.max(1,Math.floor(seconds/60)),"minute"]:seconds<86400?[Math.floor(seconds/3600),"hour"]:[Math.floor(seconds/86400),"day"];
+  return new Intl.NumberFormat(locale,{style:"unit",unit,unitDisplay:"narrow"}).format(value);
+}
+function ageTag(s,now=Date.now()/1000){
+  if(!(s.created>0))return [];
+  const age=Math.max(0,now-s.created);
+  const tag=el("span","age"+(age>OLD_SESSION?" old":""),sessionAge(age,DATE_LOCALE));
+  tag.title=tr("Сессия запущена {0}",[new Date(s.created*1000).toLocaleString(DATE_LOCALE,{dateStyle:"medium",timeStyle:"short"})]);
+  return [tag];
+}
+// Tokens above, age below, at the right of the row.
+function rowMeta(s){
+  const parts=[...spendTag(s),...ageTag(s)];
+  return parts.length?[el("span","meta",...parts)]:[];
+}
+if(typeof module!=="undefined")module.exports={spendTotal,compactTokens,sessionAge};
 // Git history of the open session's repository: uncommitted changes (a tapped line becomes a comment in the
 // message draft; a clean tree shows the last commit), commits with their diffs, and feature groups that the
 // server keeps sorting in the background from commit subjects and file names, each with a combined diff.
@@ -7777,7 +7797,7 @@ function renderCurrentSessions(box,list){
     const sub=el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path));
     t.append(dot,agentIcon(s),el("div","t",el("div","n",sessionTitle(s),...(s.decisions?[decisionBadge(s.decisions)]:[])),...(isLocal(s)?[el("div","s session-source",agentLabel(s))]:[]),sub));
     t.title=isLocal(s)?s.source.model+" · "+localComputer(s):s.name;
-    t.append(...spendTag(s));
+    t.append(...rowMeta(s));
     if(attention.has(s.name))t.append(el("span","bell"));
     else if(i<10)t.append(el("span","k",modKey()+i));
     // A click (not Enter) leaves the focus free, so the keys go straight to the agent's menu on the screen.
@@ -8428,7 +8448,7 @@ function renderDeckSection(box,deck,q){
     if(s.group&&s.group!==grp){grp=s.group;box.append(groupHeader(deck.id,grp,list))}
     const st=state(s),word=waitingFor(deck.id,s.name)?["ask",tr("ждёт ответа")]:st==="busy"?["busy",tr("работает")]:st==="off"?["off",s.slept?tr("спит"):tr("остановлен")]:null;
     const t=el("div","tab remote",el("span","dot "+st),agentIcon(s),el("div","t",el("div","n",sessionTitle(s)),
-      el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))),...spendTag(s));
+      el("div","s",...(word?[el("span","state "+word[0],word[1])," · "]:[]),shortPath(s.path))),...rowMeta(s));
     if(otherAttention.has(deck.id+"/"+s.name))t.append(el("span","bell"));
     t.title=deck.name+" · "+s.name;t.tabIndex=0;t.setAttribute("role","button");
     t.onclick=()=>openDeckSession(deck.id,s.name);

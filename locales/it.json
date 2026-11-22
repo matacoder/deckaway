@@ -1040,6 +1040,7 @@
     "Дней: целое число от 0 до 90": "Giorni: un numero intero da 0 a 90",
     "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "L'agente di questa sessione è stato fermato dopo una lunga inattività. Risveglialo, poi invia gli allegati",
     "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Ogni agente usa la versione con cui è stato avviato. Una volta al giorno, dopo tre ore senza fare nulla, l'agente viene riavviato con la stessa conversazione e prende la versione installata. Un agente inattivo più a lungo del valore impostato viene fermato: la sessione resta, e «Risveglia» o qualsiasi messaggio riprendono la conversazione. Le sessioni con una domanda aperta, un messaggio in attesa o testo digitato non vengono toccate.",
-    "Токенов сегодня: {0}. Ввод {1}, запись в кэш {2}, чтение из кэша {3}, ответы {4}. Вчера: {5}": "Token oggi: {0}. Input {1}, scrittura cache {2}, lettura cache {3}, output {4}. Ieri: {5}"
+    "Токенов сегодня: {0}. Ввод {1}, запись в кэш {2}, чтение из кэша {3}, ответы {4}. Вчера: {5}": "Token oggi: {0}. Input {1}, scrittura cache {2}, lettura cache {3}, output {4}. Ieri: {5}",
+    "Сессия запущена {0}": "Sessione avviata: {0}"
   }
 }

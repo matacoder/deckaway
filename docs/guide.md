@@ -161,6 +161,9 @@ whole context on every step, so a long conversation that wakes often (a duty run
 includes the agents a Claude Code session starts and every conversation the session has had since the panel
 started, and is updated every minute.
 
+Under it is how long the session has lived (minutes, hours, days; hover for the start). It turns red after
+three days: an old conversation is the one worth closing or starting afresh.
+
 ## Idle agents sleep, busy ones stay current
 
 Each agent keeps the version it was started with. Once a day an agent that has run for a day is restarted with

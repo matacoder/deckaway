@@ -37,7 +37,10 @@ test('fleet summary distinguishes unknown, failed, manual, running, and verified
 });
 
 test('token counts are short and add every part of the day',()=>{
- const {spendTotal,compactTokens}=require('../../frontend/spend');
+ const {spendTotal,compactTokens,sessionAge}=require('../../frontend/spend');
+ expect(sessionAge(120,'en')).toBe('2m');
+ expect(sessionAge(5*3600,'en')).toBe('5h');
+ expect(sessionAge(3*86400+5,'en')).toBe('3d');
  expect(spendTotal({today:{input:1,cache_write:2,cache_read:3,output:4}})).toBe(10);
  expect(spendTotal(null)).toBe(0);
  expect(compactTokens(2430000,'en')).toBe('2.4M');

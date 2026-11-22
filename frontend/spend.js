@@ -1,4 +1,4 @@
-// Tokens a session spent today on its computer (integrations/spend.py), at the right of its row in the list.
+// Tokens a session spent today, and how long it has lived, on its computer (integrations/spend.py), at the right of its row in the list.
 // Cache reads are most of it: an agent rereads its whole context on every step, so a long conversation that
 // works often costs the most.
 function spendTotal(spend){return spend?Object.values(spend.today||{}).reduce((sum,value)=>sum+(Number(value)||0),0):0}
@@ -14,4 +14,23 @@ function spendTag(s){
     [compactTokens(total,DATE_LOCALE),part("input"),part("cache_write"),part("cache_read"),part("output"),compactTokens(s.spend.yesterday||0,DATE_LOCALE)]);
   return [tag];
 }
-if(typeof module!=="undefined")module.exports={spendTotal,compactTokens};
+// How long the session's tmux session has lived (a daily restart of the agent keeps it), red after three days:
+// an old conversation rereads more context on every step.
+const OLD_SESSION=3*86400;
+function sessionAge(seconds,locale){
+  const [value,unit]=seconds<3600?[Math.max(1,Math.floor(seconds/60)),"minute"]:seconds<86400?[Math.floor(seconds/3600),"hour"]:[Math.floor(seconds/86400),"day"];
+  return new Intl.NumberFormat(locale,{style:"unit",unit,unitDisplay:"narrow"}).format(value);
+}
+function ageTag(s,now=Date.now()/1000){
+  if(!(s.created>0))return [];
+  const age=Math.max(0,now-s.created);
+  const tag=el("span","age"+(age>OLD_SESSION?" old":""),sessionAge(age,DATE_LOCALE));
+  tag.title=tr("Сессия запущена {0}",[new Date(s.created*1000).toLocaleString(DATE_LOCALE,{dateStyle:"medium",timeStyle:"short"})]);
+  return [tag];
+}
+// Tokens above, age below, at the right of the row.
+function rowMeta(s){
+  const parts=[...spendTag(s),...ageTag(s)];
+  return parts.length?[el("span","meta",...parts)]:[];
+}
+if(typeof module!=="undefined")module.exports={spendTotal,compactTokens,sessionAge};

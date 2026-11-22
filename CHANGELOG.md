@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.91.0
+
+- A session's row shows how long the session has lived, under its tokens, red after three days.
+
 ## 1.90.1
 
 - The inbox button in the sidebar's header is gone: the Questions tab is the one place. The panel button in the session's bar shows how many questions wait, as a number, on a desktop too.

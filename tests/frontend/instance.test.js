@@ -1571,6 +1571,20 @@ test('a session upkeep put to sleep says so and one tap continues its conversati
   }finally{window.close()}
 });
 
+test('a session row shows how long the session has lived, red after three days',async()=>{
+  const now=Date.now()/1000;
+  const window=boot(routesFor({local:()=>({sessions:[session('fresh',{created:now-5*3600}),session('old',{created:now-4*86400})]})}));
+  try{
+  await settle();await settle();
+  const age=name=>window.document.querySelector(`#tabs .tab[data-session="${name}"] .meta .age`);
+  expect(age('fresh').textContent).toMatch(/5/);
+  expect(age('fresh').classList.contains('old')).toBe(false);
+  expect(age('old').textContent).toMatch(/4/);
+  expect(age('old').classList.contains('old')).toBe(true);
+  expect(age('old').title).toMatch(/Сессия запущена/);
+  }finally{window.close()}
+});
+
 test('a session row shows the tokens it spent today, with the parts in its tooltip; none, nothing',async()=>{
   const spend={day:'2026-11-22',today:{input:1000,cache_write:20000,cache_read:2400000,output:9000},yesterday:500000};
   const window=boot(routesFor({local:()=>({sessions:[session('alpha',{spend}),session('beta')]})}));
