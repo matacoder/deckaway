@@ -4,7 +4,7 @@ Claude Code writes the usage of every answer into its JSONL file (one answer can
 same message id: counted once), and the agents it starts into `<conversation>/subagents/*.jsonl`. Codex writes
 a running total after every turn. A file is read once from the start, then only what was appended. A session
 keeps every conversation it had since the panel started (a `/clear`, a restart), so its day adds them up.
-Days are this computer's local dates.
+Days are this computer's local dates. The current conversation's first timestamp is its age.
 """
 from datetime import datetime
 import json
@@ -15,11 +15,16 @@ CHECK_EVERY = 60
 PARTS = ('input', 'cache_write', 'cache_read', 'output')
 
 
-def day_of(stamp):
+def moment(stamp):
     try:
-        return datetime.fromisoformat(str(stamp).replace('Z', '+00:00')).astimezone().date().isoformat()
+        return datetime.fromisoformat(str(stamp).replace('Z', '+00:00')).astimezone()
     except ValueError:
         return None
+
+
+def day_of(stamp):
+    when = moment(stamp)
+    return when and when.date().isoformat()
 
 
 class FileTally:
@@ -28,6 +33,7 @@ class FileTally:
     def __init__(self, kind):
         self.kind, self.offset, self.identity = kind, 0, None
         self.days, self.seen, self.total = {}, set(), 0
+        self.started = None  # The conversation's first timestamp: a restart that continues it keeps it.
 
     def update(self, path):
         stat = path.stat()
@@ -50,6 +56,8 @@ class FileTally:
                     self.add(record)
 
     def add(self, record):
+        if self.started is None and (when := moment(record.get('timestamp') or '')):
+            self.started = int(when.timestamp())
         parts = self.codex(record) if self.kind == 'codex' else self.claude(record)
         day = parts and day_of(record.get('timestamp'))
         if day:
@@ -107,8 +115,9 @@ class Spend:
             if path:
                 self.files.setdefault(key, set()).add(('codex' if s.get('agent') == 'codex' else 'claude', path))
             days = self.days_of(key)
-            if days:
-                shown[key] = days
+            started = path and self.tallies.get(path) and self.tallies[path].started
+            if days or started:
+                shown[key] = (days, started)
         self.forget(live)
         with self.lock:
             self.shown = shown
@@ -133,15 +142,18 @@ class Spend:
                     self.tallies.pop(file, None)
 
     def of(self, name, created):
-        """{day, today: [input, cache_write, cache_read, output], yesterday: total} or None."""
+        """{day, today: {input, cache_write, cache_read, output}, yesterday: total, started: when the current
+        conversation began or None} or None."""
         with self.lock:
-            days = self.shown.get((name, created))
-        if not days:
+            days, started = self.shown.get((name, created), (None, None))
+        if not days and not started:
             return None
+        days = days or {}
         today = datetime.fromtimestamp(self.clock()).date()
         yesterday = datetime.fromtimestamp(self.clock() - 86400).date().isoformat()
         parts = days.get(today.isoformat(), [0, 0, 0, 0])
-        return {'day': today.isoformat(), 'today': dict(zip(PARTS, parts)), 'yesterday': sum(days.get(yesterday, []))}
+        return {'day': today.isoformat(), 'today': dict(zip(PARTS, parts)), 'yesterday': sum(days.get(yesterday, [])),
+                'started': started}
 
     def start(self):
         with self.lock:

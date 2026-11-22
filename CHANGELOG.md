@@ -4,7 +4,7 @@ Versions follow [semver](https://semver.org). Install a version with `sudo ./upd
 
 ## 1.91.0
 
-- A session's row shows how long the session has lived, under its tokens, red after three days.
+- A session's row shows how long its conversation has gone on, under its tokens, red after three days. A restart that continues the conversation keeps its age; `/clear` or a new session starts again.
 
 ## 1.90.1
 
