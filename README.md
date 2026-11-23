@@ -39,6 +39,7 @@ One command on a Linux server. [macOS, Windows, Docker, SteamOS](#install-anywhe
 - **Board:** every agent on every computer at a glance, as tiles by project or computer: what each is doing, questions answered in place, a short reply without opening the session, or "no reply needed" for work that only has to be seen.
 - **Models:** your subscriptions, any Anthropic-compatible service, or local models from LM Studio with no quota.
 - **Questions from agents in one place:** decisions an agent needs from you during a duty run or a long task wait in the side panel (one session or every session of a computer) instead of scrolling away in the chat; answer by tapping, typing or dictating, from any device, one by one or all at once.
+- **Skills for every agent:** support duty (chats, monitoring, logs, tasks in Dotasker or any tracker), the next task (parallel work trees, work given to other agents as the limits allow) and server setup (Dokploy, Uptime Kuma, Beszel, Bugsink, VictoriaLogs, backups), placed where Claude Code and Codex find them; each project keeps its own settings in `.deckaway/`.
 - **Cleans up after agents:** dev servers, emulators and test runs an agent left in the background are listed with their memory and stopped in a tap; closing a session stops what it started.
 - **Limits at a glance:** what is left of each subscription and whether you are ahead of plan.
 - **Send later:** hold a prompt until a set time, a free session or a limit reset.

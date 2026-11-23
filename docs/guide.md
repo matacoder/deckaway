@@ -167,6 +167,25 @@ or the daily restart of a quiet agent (see below) starts it again, with its conv
 three days: the daily restart has not found three quiet hours, so restart it yourself when it pauses. The age
 of the conversation itself is next to the context bar.
 
+## Skills for every agent: support, next task, servers
+
+DeckAway brings three skills of its own and puts them where each agent looks: `~/.claude/skills` (Claude Code,
+and Kimi and GLM through it) and `~/.codex/skills` (Codex). Each new conversation is also told they are there.
+They are copied when the panel starts, so an update brings the new version; a folder of the same name that is
+your own is never touched.
+
+- **deck-support**: tech-support duty. Reads the project's chats and monitoring (Uptime Kuma, Beszel, Bugsink,
+  logs), answers what facts can answer, files every request as a task (Dotasker by default, or any tracker with
+  an API or MCP) with the chat's files, and closes tasks with a result, a link and a screenshot.
+- **deck-next-task**: takes the next tasks and delivers them: judges the queue, takes up to five that do not
+  overlap, each in its own work tree, gives the work to other agents as the limits allow, checks it and lands it.
+- **deck-server**: puts a server under management: Dokploy, Uptime Kuma, Beszel, Bugsink, VictoriaLogs (logs
+  that survive redeploys), backups to S3 with a proven restore, and Dotasker when the client has no tracker.
+
+What is particular to a project (chats, tracker, servers, what the agent may do alone) is its profile,
+`.deckaway/` in the project's repo; the skill writes it with you on the first run. By default an agent asks
+before a push or a deploy; a project's profile can allow more.
+
 ## Idle agents sleep, busy ones stay current
 
 Each agent keeps the version it was started with. Once a day an agent that has run for a day is restarted with

@@ -4054,6 +4054,13 @@ def main():
         dependencies.ensure()  # Downloads pinned cryptography in the background when missing.
     except (ImportError, OSError, ValueError) as error:
         print(f'Notification components could not be checked: {error}', flush=True)
+    try:
+        from integrations import skills
+        placed = skills.install()  # DeckAway's skills into each agent's own folder (integrations/skills.py).
+        if 'foreign' in placed.values():
+            print('Skills: a folder of the same name is the owner\'s own and was left as it is', flush=True)
+    except (ImportError, OSError, ValueError) as error:
+        print(f'Skills could not be installed: {type(error).__name__}', flush=True)
     # Each on its own: one that cannot start must not keep the others from starting.
     for what, service in (('Notifications', push_service),          # Idles until a device subscribes.
                           ('Scheduled prompts', schedule_service),

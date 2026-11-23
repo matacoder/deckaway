@@ -155,6 +155,16 @@ def decisions_note():
         return None
 
 
+def skills_note(agent):
+    """Where DeckAway's own skills are (`integrations/skills.py`)."""
+    try:
+        integrations_on_path()
+        from integrations.skills import agent_note
+        return agent_note(agent)
+    except Exception:  # The hook must never prevent a conversation from starting.
+        return None
+
+
 def main():
     pane = os.environ.get("TMUX_PANE")
     if not pane:
@@ -163,7 +173,8 @@ def main():
         data = json.load(sys.stdin)
         # Kimi's own CLI is left out: what it does with hook output is not known.
         if remember(data, pane, os.getppid()) and data.get("client_type") != "kimi_code_cli":
-            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note(session_agent(pane)), decisions_note()) if note]
+            agent = session_agent(pane)
+            notes = [note for note in (results_note() if show_results() else None, containers_note(), other_agents_note(agent), decisions_note(), skills_note(agent)) if note]
             if notes:
                 print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
                                                          "additionalContext": "\n\n".join(notes)}}))
