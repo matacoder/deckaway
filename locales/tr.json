@@ -1041,6 +1041,7 @@
     "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "Bu oturumun ajanı uzun süre boşta kaldıktan sonra durduruldu. Önce uyandırın, sonra ekleri gönderin",
     "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Her ajan başlatıldığı sürümle çalışır. Günde bir kez, üç saat hiçbir şey yapmadığında ajan aynı konuşmayla yeniden başlatılır ve yüklü sürümü alır. Burada belirtilenden uzun süre boşta kalan ajan durdurulur: oturum kalır, «Uyandır» ya da herhangi bir mesaj konuşmayı sürdürür. Açık sorusu, bekleyen mesajı veya yazılmış metni olan oturumlara dokunulmaz.",
     "Токенов сегодня: {0}. Ввод {1}, запись в кэш {2}, чтение из кэша {3}, ответы {4}. Вчера: {5}": "Bugünkü token: {0}. Girdi {1}, önbelleğe yazma {2}, önbellekten okuma {3}, çıktı {4}. Dün: {5}",
-    "Агент запущен {0}": "Ajan başlatıldı: {0}"
+    "Агент запущен {0}": "Ajan başlatıldı: {0}",
+    "На этот вопрос уже ответили: с другого устройства или из Telegram": "Bu soru başka bir cihazdan veya Telegram'dan zaten yanıtlandı"
   }
 }

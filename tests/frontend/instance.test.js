@@ -809,6 +809,37 @@ test('the decisions tab lists what agents wait for, keeps the answer as a draft 
   }finally{window.close()}
 });
 
+test('a decision answered elsewhere closes its card even while its field has the cursor, and Send explains',async()=>{
+  const state={local:()=>({sessions:[session('alpha',{decisions:1})]})};
+  const routes=routesFor(state);
+  let status='open';
+  routes['/api/decisions']=()=>({decisions:[decision('a',{status,answer:status==='sent'?'Yes':''})]});
+  routes['/api/decisions_answer']=()=>{throw new Error('Этот вопрос уже закрыт')};
+  routes['/api/decisions_send']=()=>{throw new Error('Нет ответов для отправки')};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document;
+  window.eval('openProject("decisions")');await settle();
+  let card=doc.querySelector('#decisions_body .dec-card');
+  card.querySelector('.dec-option').click();
+  card.querySelector('textarea').focus();
+  // Answered from Telegram meanwhile: the next poll closes this very card, cursor or not.
+  status='sent';
+  window.eval('decisions.raw="";loadDecisions()');await settle();await settle();
+  card=doc.querySelector('#decisions_body .dec-card');
+  expect(card.classList.contains('sent')).toBe(true);
+  expect(card.querySelector('.dec-send')).toBeNull();
+  // A Send that still reaches a closed question says what happened instead of "nothing to send".
+  doc.activeElement.blur();status='open';window.eval('decisions.raw="";loadDecisions()');await settle();await settle();
+  doc.querySelector('#decisions_body .dec-card .dec-option').click();
+  status='sent';
+  doc.querySelector('#decisions_body .dec-card .dec-send').click();await settle();await settle();await settle();
+  expect(doc.body.textContent).toContain('На этот вопрос уже ответили');
+  expect(doc.body.textContent).not.toContain('Нет ответов для отправки');
+  }finally{window.close()}
+});
+
 test('one stream: questions on screens above filed decisions, no scope switch; a closed session cannot be answered',async()=>{
   const state={local:()=>({sessions:[session('alpha')]})};
   const routes=routesFor(state),asked=[];let items=[decision('a',{session:'beta',title:'Duty beta',live:false})];

@@ -1041,6 +1041,7 @@
     "Агент этой сессии остановлен после долгого простоя. Разбудите его, затем отправьте вложения": "L'agent de cette session a été arrêté après une longue inactivité. Réveillez-le, puis envoyez les pièces jointes",
     "Каждый агент работает на той версии, с которой запущен. Раз в сутки агент перезапускается с тем же разговором, когда три часа ничего не делает, и получает установленную версию. Агент, который простоял без работы дольше заданного, останавливается: сессия остаётся, кнопка «Разбудить» или любое сообщение продолжают разговор. Сессии с открытым вопросом, отложенным сообщением или набранным текстом не трогаются.": "Chaque agent tourne avec la version avec laquelle il a démarré. Une fois par jour, après trois heures sans rien faire, l'agent redémarre avec la même conversation et prend la version installée. Un agent inactif plus longtemps que la durée indiquée est arrêté : la session reste, et « Réveiller » ou n'importe quel message reprend la conversation. Les sessions avec une question ouverte, un message en attente ou du texte saisi ne sont pas touchées.",
     "Токенов сегодня: {0}. Ввод {1}, запись в кэш {2}, чтение из кэша {3}, ответы {4}. Вчера: {5}": "Jetons aujourd’hui : {0}. Entrée {1}, écriture en cache {2}, lecture du cache {3}, sortie {4}. Hier : {5}",
-    "Агент запущен {0}": "Agent démarré le {0}"
+    "Агент запущен {0}": "Agent démarré le {0}",
+    "На этот вопрос уже ответили: с другого устройства или из Telegram": "Cette question a déjà reçu une réponse, depuis un autre appareil ou Telegram"
   }
 }

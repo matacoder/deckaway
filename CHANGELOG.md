@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.92.1
+
+- Questions tab: a question answered elsewhere (Telegram, another device) closes its card at the next check even while its answer field has the cursor, so its Send no longer fails with "No answers to send". A Send or draft that reaches a closed question reloads the list and says it was already answered.
+
 ## 1.92.0
 
 - DeckAway brings three skills for every agent and puts them into Claude Code's and Codex's skills folders: `deck-support` (support duty: chats, monitoring, logs, tasks in Dotasker or any tracker), `deck-next-task` (take and deliver the next tasks in parallel work trees, delegating to other agents) and `deck-server` (Dokploy, Uptime Kuma, Beszel, Bugsink, VictoriaLogs, backups). A project's own settings live in its `.deckaway/` folder. A folder of the same name that is yours is never touched.

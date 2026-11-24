@@ -29,8 +29,9 @@ async function loadDecisions(){
     const raw=JSON.stringify(items);
     if(raw!==decisions.raw||decisions.error){
       Object.assign(decisions,{raw,items,error:""});
-      // Redrawn under a typing finger, the field would lose the cursor: the new list waits for the blur.
-      if(decisionFocused())decisions.stale=true;else renderDecisions();
+      // Redrawn under a typing finger, the field would lose the cursor: the new list waits for the blur. A card
+      // answered elsewhere meanwhile (Telegram, another device) is redrawn at once, or its Send would fail.
+      if(decisionFocused()){decisions.stale=true;closeAnsweredCards()}else renderDecisions();
     }
   }
   if(decisionsShown())decisions.timer=setTimeout(()=>{if(decisionsShown())loadDecisions()},DECISIONS_POLL);
@@ -42,7 +43,7 @@ function decisionDraft(item){const ref=decisionRef(item);return decisions.drafts
 function setDecisionDraft(ref,text){
   decisions.drafts.set(ref,text);
   clearTimeout(decisions.saves.get(ref));
-  decisions.saves.set(ref,setTimeout(()=>saveDecisionDraft(ref),DECISION_SAVE_MS));
+  decisions.saves.set(ref,setTimeout(()=>saveDecisionDraft(ref).catch(()=>{}),DECISION_SAVE_MS));
   const card=decisionCardFor(ref);
   if(card)markDecisionCard(card,ref);
   renderDecisionFooter();
@@ -56,7 +57,10 @@ async function saveDecisionDraft(ref){
     await gatewayApi(instancePath(item.deck,"/api/decisions_answer"),{id:item.id,answer:text});
     item.answer=text.trim();
     if(decisions.drafts.get(ref)===text)decisions.drafts.delete(ref);
-  }catch(e){if(e.message!==STALE)toast(e.message)}
+  }catch(e){
+    if(decisions.sending)throw e;  // Send reports it once.
+    await decisionRefused(e,[ref]);
+  }
 }
 // Dictation started from a card's microphone ends up here (voice.js).
 function decisionDictation(ref,text){
@@ -84,8 +88,22 @@ async function sendDecisions(refs){
     for(const [deck,ids] of byDeck)sent+=(await gatewayApi(instancePath(deck,"/api/decisions_send"),{ids})).sent||0;
     toast(tr("Отправлено ответов: {0}. Агент получит их, когда сессия освободится",[sent]),true);
     decisions.raw="";await loadDecisions();
-  }catch(e){if(e.message!==STALE)toast(e.message)}
+  }catch(e){await decisionRefused(e,refs)}
   finally{decisions.sending=false;renderDecisionFooter()}
+}
+function closeAnsweredCards(){
+  for(const card of document.querySelectorAll("#decisions_list .dec-card:not(.sent)")){
+    const item=findDecision(card.dataset.ref);
+    if(item?.status==="open")continue;
+    if(item)card.replaceWith(decisionCard(item));else card.remove();
+  }
+}
+// A refusal may mean the list is behind (answered from Telegram or another device): read it again and say so.
+async function decisionRefused(e,refs){
+  if(e.message===STALE)return;
+  decisions.raw="";await loadDecisions();
+  const closed=refs.some(ref=>findDecision(ref)?.status!=="open");
+  toast(closed?tr("На этот вопрос уже ответили: с другого устройства или из Telegram"):e.message);
 }
 async function dismissDecision(item){
   if(!await confirmAction(tr("Закрыть вопрос без ответа?"),{text:item.question,confirm:tr("Закрыть")}))return;
@@ -124,7 +142,7 @@ function decisionCard(item){
   const field=document.createElement("textarea");
   field.rows=2;field.value=decisionDraft(item);field.placeholder=tr("Ваш ответ");field.setAttribute("aria-label",tr("Ответ на вопрос"));
   field.oninput=()=>{fitDecisionField(field);setDecisionDraft(ref,field.value)};
-  field.onblur=()=>{if(decisions.saves.has(ref))saveDecisionDraft(ref);setTimeout(()=>{if(decisions.stale&&!decisionFocused()){decisions.stale=false;renderDecisions()}},0)};
+  field.onblur=()=>{if(decisions.saves.has(ref))saveDecisionDraft(ref).catch(()=>{});setTimeout(()=>{if(decisions.stale&&!decisionFocused()){decisions.stale=false;renderDecisions()}},0)};
   if(item.options.length){
     const options=el("div","dec-options");
     for(const option of item.options){
