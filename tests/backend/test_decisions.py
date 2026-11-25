@@ -78,6 +78,28 @@ class DecisionTests(unittest.TestCase):
             with self.subTest(ids=bad), self.assertRaises(ValueError):
                 self.send(bad)
 
+    def test_two_sends_at_once_deliver_an_answer_once(self):
+        import threading
+        a = self.service.ask('api', 10, '/p', ASK)
+        self.service.answer(a['id'], 'Yes')
+        inside, results = threading.Event(), []
+
+        def slow(name, text):
+            inside.set()
+            threading.Event().wait(0.2)  # The other caller arrives while this one is delivering.
+            self.delivered.append((name, text))
+
+        def panel():
+            results.append(self.service.send([a['id']], lambda *_: True, slow))
+
+        first = threading.Thread(target=panel)
+        first.start()
+        inside.wait(2)
+        with self.assertRaises(ValueError):
+            self.send([a['id']])  # Telegram's tap: already sent.
+        first.join()
+        self.assertEqual((results, len(self.delivered)), ([{'sent': 1}], 1))
+
     def test_input_is_checked_and_the_file_is_private(self):
         for bad in (None, {'key': 'a b', 'question': 'Q'}, {'key': 'k', 'question': ''}, {'key': 'k', 'question': 'x' * 601},
                     {'key': 'k', 'question': 'Q', 'options': 'Yes'}, {'key': 'k', 'question': 'Q', 'options': ['o'] * 9},

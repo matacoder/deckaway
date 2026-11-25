@@ -1247,7 +1247,7 @@ test('decisions of every computer in one list, each answered on its own computer
   routes['/deck/'+DECK+'/api/decisions_answer']=()=>({ok:true});
   routes['/deck/'+DECK+'/api/decisions_send']=(url,options)=>{sent.push(JSON.parse(options.body).ids);return {sent:1}};
   const window=boot(routes,null,w=>{
-    const timeout=w.setTimeout;w.setTimeout=(fn,ms,...args)=>timeout(fn,ms===15000?40:ms,...args);  // The poll, quickly.
+    const timeout=w.setTimeout;w.setTimeout=(fn,ms,...args)=>timeout(fn,ms===4000?40:ms,...args);  // The poll, quickly.
   });
   try{
   await settle();await settle();
@@ -1263,6 +1263,43 @@ test('decisions of every computer in one list, each answered on its own computer
   const before=asked.length;
   await new Promise(resolve=>setTimeout(resolve,200));
   expect(asked.length).toBeGreaterThan(before);
+  }finally{window.close()}
+});
+
+test('a silent computer never holds the list back, a pressed button is never redrawn away, and only the sent card waits',async()=>{
+  const routes=gitRoutes(routesFor({local:()=>({sessions:[session('alpha',{decisions:1})]})})),asked=[],sent=[];
+  let items=[decision('a',{question:'Here?',asked:1800000000})];
+  routes['/deck/'+DECK+'/api/sessions']=()=>({sessions:[session('alpha')]});
+  routes['/deck/'+DECK+'/api/decisions']=()=>new Promise(()=>{});  // Offline: never answers.
+  routes['/api/decisions']=()=>{asked.push(1);return {decisions:items}};
+  routes['/api/decisions_answer']=()=>({ok:true});
+  routes['/api/decisions_send']=(url,options)=>{sent.push(JSON.parse(options.body).ids);return new Promise(()=>{})};
+  const window=boot(routes);
+  try{
+  await settle();await settle();
+  const doc=window.document,questions=()=>[...doc.querySelectorAll('#decisions_body .dec-q')].map(c=>c.textContent);
+  window.eval('openProject("decisions")');await settle();await settle();
+  expect(questions()).toEqual(['Here?']);
+  // A finger is on the card when a new decision arrives: nothing moves until it is lifted, then the card is the same node.
+  const card=doc.querySelector('#decisions_list .dec-card'),option=card.querySelector('.dec-option');
+  option.dispatchEvent(new window.Event('pointerdown',{bubbles:true}));
+  items=[decision('b',{question:'New?',asked:1800000500}),...items];
+  window.eval('decisions.raw="";loadDecisions()');await settle();
+  expect(questions()).toEqual(['Here?']);
+  option.dispatchEvent(new window.Event('pointerup',{bubbles:true}));option.click();await settle();
+  expect(questions()).toEqual(['New?','Here?']);
+  expect(doc.querySelector('#decisions_list .dec-card[data-ref="/a"]')).toBe(card);
+  // A count that changes in the session list asks that computer at once, not at the next check.
+  const before=asked.length;
+  window.eval('sessions[0].decisions=2;markDecisionCount()');await settle();
+  expect(asked.length).toBe(before+1);
+  // Sending one answer leaves the other card free.
+  card.querySelector('.dec-send').click();await settle();
+  expect(sent).toEqual([['a']]);
+  expect(card.querySelector('.dec-send').textContent).toBe('Отправляю…');
+  const other=doc.querySelector('#decisions_list .dec-card[data-ref="/b"]');
+  other.querySelector('.dec-option').click();
+  expect(other.querySelector('.dec-send').disabled).toBe(false);
   }finally{window.close()}
 });
 

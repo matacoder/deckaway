@@ -14,6 +14,7 @@ import shlex
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -54,6 +55,8 @@ def text(value, limit, name):
 class Decisions:
     def __init__(self, path=PATH, clock=time.time):
         self.path, self.clock = Path(os.path.expanduser(path)), clock
+        # The panel and Telegram may send the same answer at once: one of them finds it already sent.
+        self.sending = threading.Lock()
         self.path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
         if self.path.is_symlink():
             raise ValueError('The decisions database must not be a symlink')
@@ -159,14 +162,14 @@ class Decisions:
         if not isinstance(answer, str) or len(answer.strip()) > ANSWER:
             raise ValueError(f'Ответ длиннее {ANSWER} символов: сократите его')
         answer = answer.strip()
-        with self.connect() as db:
+        with self.sending, self.connect() as db:  # Never between a send's reading and its marking.
             changed = db.execute("UPDATE decisions SET answer=?, updated=? WHERE id=? AND status='open'",
                                  (answer, self.clock(), identity)).rowcount
         if not changed:
             raise ValueError('Этот вопрос уже закрыт')
 
     def dismiss(self, identity):
-        with self.connect() as db:
+        with self.sending, self.connect() as db:
             changed = db.execute("UPDATE decisions SET status='dismissed', updated=? WHERE id=? AND status='open'",
                                  (self.clock(), identity)).rowcount
         if not changed:
@@ -175,6 +178,10 @@ class Decisions:
     def send(self, ids, live, deliver):
         """Hands the answered ones among ids to their sessions, one prompt per session; live(session, created)
         says whether that very session still runs, deliver(session, prompt) queues the prompt."""
+        with self.sending:
+            return self.send_now(ids, live, deliver)
+
+    def send_now(self, ids, live, deliver):
         if not isinstance(ids, list) or not ids or len(ids) > 200 or not all(isinstance(i, str) for i in ids):
             raise ValueError('неверный запрос')
         with self.connect() as db:

@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.92.2
+
+- Questions tab reacts at once: each computer's decisions are drawn as soon as it answers, so an offline computer (which took 25-35 s to fail) no longer holds back the list; healthy computers are asked every 4 s while the tab is open, and at once when a session list shows a changed count.
+- Taps are never lost: cards are updated in place instead of redrawn, and nothing changes under a pressed finger or mouse (Safari does not focus a pressed button, so a redraw could swallow Send or an option).
+- Sending one answer no longer disables every other card or waits for all computers to be read again; the card shows "Sending…" and becomes "Sent" at once. Draft saves of one question run one at a time, and the server sends an answer once even when the panel and Telegram send it together.
+
 ## 1.92.1
 
 - Questions tab: a question answered elsewhere (Telegram, another device) closes its card at the next check even while its answer field has the cursor, so its Send no longer fails with "No answers to send". A Send or draft that reaches a closed question reloads the list and says it was already answered.
