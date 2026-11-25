@@ -51,7 +51,7 @@ class Network:
     def __init__(self):
         self.hosts, self.calls, self.connects = {}, [], []
 
-    def __call__(self, url, method, path, body=None, headers=None, timeout=30, limit=0, connect=None):
+    def __call__(self, url, method, path, body=None, headers=None, timeout=30, limit=0, connect=None, deadline=None):
         self.calls.append((url, method, path, body or b'', headers or {}))
         self.connects.append(connect)
         if url not in self.hosts:

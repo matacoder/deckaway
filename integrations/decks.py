@@ -35,6 +35,7 @@ MAX_ADDRESSES = 4
 # computer for many things at once through the gateway, so the gateway keeps only a few in flight.
 PER_DECK = 4
 CONNECT_TIMEOUT = 4   # With another address to try, a sleeping one must not hold the request for the whole timeout.
+SLOW = 'Remote DeckAway did not respond in time; retry'
 RETRY_AFTER = 60      # An address that did not answer is left alone this long while another one works.
 PROOF_TTL = 60        # A local address is asked for the pair key again this often, and after every failure.
 
@@ -281,12 +282,15 @@ class RemoteDecks(Discovery):
             self.proven.pop(identity, None)
             self.routes.pop(identity, None)
 
-    def authentication(self, identity, language='en', stale=None):
-        """Pass the rejected cookie as `stale` to force a new login unless another request already did."""
+    def authentication(self, identity, language='en', stale=None, deadline=None):
+        """Pass the rejected cookie as `stale` to force a new login unless another request already did.
+        deadline (monotonic): give up waiting for another request's login by then."""
         profile = self.get(identity)
         with self.lock:
             gate = self.login_locks.setdefault(identity, threading.Lock())
-        with gate:
+        if not gate.acquire(timeout=-1 if deadline is None else max(0, deadline - time.monotonic())):
+            raise ValueError(SLOW)
+        try:
             cookie, error = None, None
             for url in self.candidates(profile):
                 try:
@@ -307,6 +311,8 @@ class RemoteDecks(Discovery):
                     raise ValueError('DeckAway connection changed; retry the request')
                 self.cookies[identity] = cookie
                 self.routes[identity] = url
+        finally:
+            gate.release()
         if re.fullmatch(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*', language):
             cookie += '; cc_lang=' + language
         # Callers talk to `url`: here it is the address that answered, not always the saved one.
@@ -353,19 +359,29 @@ class RemoteDecks(Discovery):
 
     def request(self, identity, method, path, body=None, language='en', timeout=30, content_type='application/json',
                 limit=PROXY_LIMIT, compressed=False):
-        """compressed: the deck may send gzip (ttyd's page is 730 KB, 190 KB packed); the body comes back plain."""
+        """compressed: the deck may send gzip (ttyd's page is 730 KB, 190 KB packed); the body comes back plain.
+        timeout: until the answer begins, waiting for a free slot and for another request's login included, so
+        requests queued for a computer that went quiet do not add up their waits (a sign-in of its own still
+        takes up to its own 10 s)."""
+        deadline = time.monotonic() + timeout
         path = remote_path(path)
         if method not in ('GET','POST'):
             raise ValueError('Unsupported remote method')
         stale, rejected = None, 0
         for _ in range(2 + MAX_ADDRESSES):
-            profile, cookie = self.authentication(identity, language, stale)
+            profile, cookie = self.authentication(identity, language, stale, deadline)
+            slot = self.slot(identity)
+            if not slot.acquire(timeout=max(0, deadline - time.monotonic())):
+                raise ValueError(SLOW)
             try:
-                with self.slot(identity):
+                try:
                     result = transport.http_request(profile['url'], method, path, body,
                         {'Cookie': cookie, 'Origin': profile['url'], 'Content-Type': content_type,
                          'Accept-Encoding': 'gzip' if compressed else 'identity'},
-                        timeout=timeout, limit=limit, connect=CONNECT_TIMEOUT if profile.get('urls') else None)
+                        timeout=timeout, limit=limit, connect=CONNECT_TIMEOUT if profile.get('urls') else None,
+                        deadline=deadline)
+                finally:
+                    slot.release()
                 result = unpacked(result, limit)
             except Unreachable:
                 # Nothing was sent, so the request may go to the computer's other address.

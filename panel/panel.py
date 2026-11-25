@@ -1215,10 +1215,21 @@ def decisions_payload(name):
     return {"decisions": items}
 
 
+def deliver_decisions(name, text, identity):
+    """The answers' prompt, queued under the delivery's own name: handed over twice, it is typed once."""
+    schedule_service().add(name, text, "idle", identity=identity)
+
+
 def send_decisions(d):
     sessions = {s["name"]: s["created"] for s in list_sessions()}
-    return decisions_service().send(d.get("ids"), lambda name, created: sessions.get(name) == created,
-                                    lambda name, text: schedule_service().add(name, text, "idle"))
+    return decisions_service().send(d.get("ids"), lambda name, created: sessions.get(name) == created, deliver_decisions)
+
+
+def redeliver_decisions():
+    """Answers whose prompt was claimed but not confirmed queued when the panel stopped."""
+    sessions = {s["name"]: s["created"] for s in list_sessions()}
+    if decisions_service().redeliver(lambda name, created: sessions.get(name) == created, deliver_decisions):
+        print("decisions: answers from before the restart were queued", flush=True)
 
 
 def attachment_dir(name):
@@ -3609,6 +3620,8 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 # Recognising a long piece of speech on a computer without a GPU takes longer than a page answer.
                 slow = {'timeout': 120} if urlsplit(path).path == '/api/transcribe' else {}
+                # The Questions tab asks every few seconds; a computer that went quiet answers "no" soon.
+                slow = {'timeout': 8} if urlsplit(path).path == '/api/decisions' else slow
                 status, headers, payload = remote_decks.request(identity,self.command,path,body,self.language(),
                     content_type='application/json', compressed=path.startswith('/t'), **slow)
             ctype = next((v for k,v in headers.items() if k.lower()=='content-type'), 'application/octet-stream')
@@ -4071,6 +4084,10 @@ def main():
             service().start()
         except (ImportError, OSError, ValueError) as error:
             print(f'{what} could not start: {error}', flush=True)
+    try:
+        redeliver_decisions()
+    except (OSError, ValueError, sqlite3.Error) as error:
+        print(f'decisions: {type(error).__name__}', flush=True)
     if Telegram:
         try:
             telegram_service().start()

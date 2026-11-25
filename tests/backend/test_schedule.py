@@ -103,6 +103,19 @@ class ScheduleTests(unittest.TestCase):
         self.tick(5)
         self.assertEqual(self.sent, [('api', 'first'), ('api', 'second')])
 
+    def test_a_named_prompt_handed_over_again_is_typed_once_even_after_a_restart(self):
+        self.schedule.add('api', 'answers', 'idle', identity='decision-0123abcd')
+        self.schedule.add('api', 'answers', 'idle', identity='decision-0123abcd')  # Queued: not added again.
+        self.assertEqual(len(self.schedule.status('api')['prompts']), 1)
+        self.tick(); self.tick(10)
+        self.assertEqual(self.sent, [('api', 'answers')])
+        self.schedule = self.make()
+        self.schedule.add('api', 'answers', 'idle', identity='decision-0123abcd')  # Typed before: not again.
+        self.tick(10); self.tick(10)
+        self.assertEqual(self.sent, [('api', 'answers')])
+        with self.assertRaises(ValueError):
+            self.schedule.add('api', 'x', 'idle', identity='../bad')
+
     def test_nothing_is_typed_into_an_open_question_or_a_stopped_agent(self):
         self.schedule.add('api', 'later', 'time', self.now)
         self.questions.add('api')

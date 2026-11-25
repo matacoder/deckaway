@@ -71,9 +71,13 @@ class Decisions:
                     answer TEXT NOT NULL DEFAULT '', asked REAL NOT NULL, updated REAL NOT NULL, sent REAL);
                 CREATE UNIQUE INDEX IF NOT EXISTS decisions_key ON decisions(session, created, key)
                     WHERE status != 'done';
-                CREATE INDEX IF NOT EXISTS decisions_status ON decisions(status, session);''')
+                CREATE INDEX IF NOT EXISTS decisions_status ON decisions(status, session);
+                CREATE TABLE IF NOT EXISTS deliveries (
+                    token TEXT PRIMARY KEY, session TEXT NOT NULL, created INTEGER NOT NULL, prompt TEXT NOT NULL,
+                    claimed REAL NOT NULL, delivered REAL);''')
             db.execute("DELETE FROM decisions WHERE status IN ('done', 'dismissed') AND updated < ?",
                        (self.clock() - KEEP_CLOSED,))
+            db.execute('DELETE FROM deliveries WHERE delivered IS NOT NULL AND delivered < ?', (self.clock() - KEEP_CLOSED,))
 
     @contextmanager
     def connect(self):
@@ -184,30 +188,68 @@ class Decisions:
     def send_now(self, ids, live, deliver):
         if not isinstance(ids, list) or not ids or len(ids) > 200 or not all(isinstance(i, str) for i in ids):
             raise ValueError('неверный запрос')
+        claimed, sent = self.claim(ids, live), 0
+        for index, (token, session, message, found) in enumerate(claimed):
+            try:
+                deliver(session, message, f'decision-{token}')
+            except Exception:
+                self.unclaim(claimed[index:])
+                raise
+            self.delivered(token)
+            sent += len(found)
+        return {'sent': sent}
+
+    def unclaim(self, claimed):
+        """Queuing failed outright (nothing was typed): these answers wait again and their claims go."""
+        with self.connect() as db:
+            for token, _, _, found in claimed:
+                db.execute(f"UPDATE decisions SET status='open', sent=NULL, updated=? WHERE id IN "
+                           f"({','.join('?' * len(found))}) AND status='sent'", (self.clock(), *found))
+                db.execute('DELETE FROM deliveries WHERE token=?', (token,))
+
+    def claim(self, ids, live):
+        """In one transaction: the answers become sent and each session's prompt is written down as a delivery,
+        before anything is queued. A crash after this leaves the delivery for `redeliver`, never a lost answer."""
         with self.connect() as db:
             marks = ','.join('?' * len(ids))
             rows = db.execute(f"SELECT * FROM decisions WHERE id IN ({marks}) AND status='open' AND answer!='' "
                               'ORDER BY asked', ids).fetchall()
-        if not rows:
-            raise ValueError('Нет ответов для отправки')
-        groups = {}
-        for row in rows:
-            groups.setdefault((row['session'], row['created']), []).append(row)
-        if not all(live(*group) for group in groups):
-            raise ValueError('Сессия этого вопроса закрыта: ответ некуда отправить')
-        prompts = {group: prompt(found) for group, found in groups.items()}
-        if any(len(message) > PROMPT_LIMIT for message in prompts.values()):
-            raise ValueError('Слишком длинные ответы: отправьте их по частям')
-        sent = 0
-        for (session, created), message in prompts.items():
-            deliver(session, message)
-            ids = [row['id'] for row in groups[(session, created)]]
-            now = self.clock()
+            if not rows:
+                raise ValueError('Нет ответов для отправки')
+            groups = {}
+            for row in rows:
+                groups.setdefault((row['session'], row['created']), []).append(row)
+            if not all(live(*group) for group in groups):
+                raise ValueError('Сессия этого вопроса закрыта: ответ некуда отправить')
+            prompts = {group: prompt(found) for group, found in groups.items()}
+            if any(len(message) > PROMPT_LIMIT for message in prompts.values()):
+                raise ValueError('Слишком длинные ответы: отправьте их по частям')
+            now, claimed = self.clock(), []
+            for (session, created), message in prompts.items():
+                found, token = [row['id'] for row in groups[(session, created)]], secrets.token_hex(8)
+                db.execute(f"UPDATE decisions SET status='sent', sent=?, updated=? WHERE id IN ({','.join('?' * len(found))})",
+                           (now, now, *found))
+                db.execute('INSERT INTO deliveries VALUES (?,?,?,?,?,NULL)', (token, session, created, message, now))
+                claimed.append((token, session, message, found))
+        return claimed
+
+    def delivered(self, token):
+        with self.connect() as db:
+            db.execute('UPDATE deliveries SET delivered=? WHERE token=?', (self.clock(), token))
+
+    def redeliver(self, live, deliver):
+        """At start: prompts claimed but not confirmed queued (the panel stopped in between) are handed over
+        again under the same name, which the queue recognises, so each reaches its session once."""
+        with self.sending:
             with self.connect() as db:
-                db.execute(f"UPDATE decisions SET status='sent', sent=?, updated=? WHERE id IN ({','.join('?' * len(ids))}) "
-                           "AND status='open'", (now, now, *ids))
-            sent += len(ids)
-        return {'sent': sent}
+                rows = db.execute('SELECT * FROM deliveries WHERE delivered IS NULL ORDER BY claimed').fetchall()
+            done = 0
+            for row in rows:
+                if live(row['session'], row['created']):
+                    deliver(row['session'], row['prompt'], f"decision-{row['token']}")
+                    done += 1
+                self.delivered(row['token'])  # A closed session has no one to tell.
+            return done
 
 
 def prompt(rows):

@@ -22,7 +22,7 @@ class DecisionTests(unittest.TestCase):
         self.delivered = []
 
     def send(self, ids, live=lambda name, created: True):
-        return self.service.send(ids, live, lambda name, text: self.delivered.append((name, text)))
+        return self.service.send(ids, live, lambda name, text, key: self.delivered.append((name, text)))
 
     def test_the_same_key_is_one_decision_and_a_repeated_ask_after_the_answer_returns_it(self):
         first = self.service.ask('api', 10, '/p', ASK)
@@ -84,7 +84,7 @@ class DecisionTests(unittest.TestCase):
         self.service.answer(a['id'], 'Yes')
         inside, results = threading.Event(), []
 
-        def slow(name, text):
+        def slow(name, text, key):
             inside.set()
             threading.Event().wait(0.2)  # The other caller arrives while this one is delivering.
             self.delivered.append((name, text))
@@ -99,6 +99,41 @@ class DecisionTests(unittest.TestCase):
             self.send([a['id']])  # Telegram's tap: already sent.
         first.join()
         self.assertEqual((results, len(self.delivered)), ([{'sent': 1}], 1))
+
+    def test_an_answer_claimed_before_a_crash_is_delivered_once_after_the_restart(self):
+        a = self.service.ask('api', 10, '/p', ASK)
+        self.service.answer(a['id'], 'Yes')
+
+        def crash(name, text, key):
+            raise SystemExit  # The panel stops between writing the claim and queuing the prompt.
+
+        with self.assertRaises(SystemExit):
+            self.service.send([a['id']], lambda *_: True, crash)
+        self.assertEqual(self.service.items()[0]['status'], 'sent')  # Claimed: no second send from a page.
+        with self.assertRaises(ValueError):
+            self.send([a['id']])
+        queued = []
+        again = Decisions(self.service.path, clock=lambda: self.now[0])
+        self.assertEqual(again.redeliver(lambda *_: True, lambda *call: queued.append(call)), 1)
+        self.assertEqual(again.redeliver(lambda *_: True, lambda *call: queued.append(call)), 0)
+        self.assertEqual(len(queued), 1)
+        self.assertIn('Answer: Yes', queued[0][1])
+        self.assertTrue(queued[0][2].startswith('decision-'))
+
+    def test_a_queue_that_refuses_leaves_the_answers_waiting(self):
+        a = self.service.ask('api', 10, '/p', ASK)
+        b = self.service.ask('web', 20, '/w', {'key': 'b', 'question': 'B?'})
+        for item in (a, b):
+            self.service.answer(item['id'], 'ok')
+
+        def refuse(name, text, key):
+            raise ValueError('Слишком много отложенных сообщений')
+
+        with self.assertRaises(ValueError):
+            self.service.send([a['id'], b['id']], lambda *_: True, refuse)
+        self.assertEqual([i['status'] for i in self.service.items()], ['open', 'open'])
+        self.assertEqual(self.service.redeliver(lambda *_: True, refuse), 0)
+        self.assertEqual(self.send([a['id'], b['id']]), {'sent': 2})
 
     def test_input_is_checked_and_the_file_is_private(self):
         for bad in (None, {'key': 'a b', 'question': 'Q'}, {'key': 'k', 'question': ''}, {'key': 'k', 'question': 'x' * 601},

@@ -63,18 +63,25 @@ PROXY_LIMIT = 48 * 1024 * 1024
 POLL_LIMIT = 8 * 1024 * 1024
 
 
-def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024, connect=None):
-    """No redirects, environment proxies, DNS targets or credential-bearing exceptions."""
+def http_request(url, method, path, body=None, headers=None, timeout=30, limit=300*1024*1024, connect=None, deadline=None):
+    """No redirects, environment proxies, DNS targets or credential-bearing exceptions. deadline (monotonic): the
+    answer has begun by then, connecting included; its body then has the usual time (a big file is slow)."""
+    wait = timeout if deadline is None else deadline - time.monotonic()
+    if wait <= 0:
+        raise TimeoutError('no time left')  # Not Unreachable: the address did nothing wrong.
+    wait = min(wait, timeout)
     parsed = urlsplit(url)
-    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=min(timeout, connect or timeout))
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=min(wait, connect or wait))
     try:
         try:
             connection.connect()
         except OSError as error:
             raise Unreachable(str(error)) from None
-        connection.sock.settimeout(timeout)
+        sock = connection.sock  # The answer may take it over from the connection: kept to set its body's timeout.
+        sock.settimeout(timeout if deadline is None else max(0.1, deadline - time.monotonic()))
         connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
+        sock.settimeout(timeout)
         # The socket timeout is per read: a deck trickling bytes would hold the caller (and the
         # parallel poll of every deck) for ever, so the whole body also has a deadline.
         deadline, chunks, size = time.monotonic() + timeout * 4, [], 0

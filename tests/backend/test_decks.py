@@ -242,6 +242,27 @@ class RemoteDeckTests(PanelCase):
                 self.assertRaisesRegex(ValueError, 'damaged'):
             self.decks.request(ID, 'GET', '/t/', compressed=True)
 
+    def test_requests_queued_for_a_silent_computer_give_up_by_their_own_deadline(self):
+        hold = threading.Event()
+        self.addCleanup(hold.set)
+
+        def silent(url, method, path, body=None, headers=None, deadline=None, **kwargs):
+            hold.wait(5)  # Connected, but the answer does not come.
+            raise TimeoutError()
+        self.transport.side_effect = silent
+        with patch.object(self.decks, 'authentication', return_value=(dict(PROFILE), 'cc_auth=signed.cookie')):
+            stuck = [threading.Thread(target=lambda: self.assertRaises(ValueError, self.decks.request, ID, 'GET', '/api/sessions'),
+                                      daemon=True) for _ in range(4)]
+            [t.start() for t in stuck]
+            threading.Event().wait(.1)  # Every slot of this computer is taken.
+            started = time.monotonic()
+            with self.assertRaisesRegex(ValueError, 'in time'):
+                self.decks.request(ID, 'GET', '/api/decisions?name=', timeout=.3)
+            self.assertLess(time.monotonic() - started, 1.5)
+        # The deadline reaches the exchange itself, and a request with none left fails without dialling.
+        with self.assertRaises(TimeoutError):
+            http_request('http://100.64.0.2:8790', 'GET', '/api/version', deadline=time.monotonic() - 1)
+
     def test_streamed_upload_refreshes_the_login_first_and_never_replays(self):
         from integrations import deck_transport as module
         service=RemoteDecks(self.home,'http://100.64.0.1:8790')

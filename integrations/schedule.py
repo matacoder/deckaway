@@ -2,10 +2,13 @@
 
 A prompt is sent at a time, when the session is free, or when the limit that stopped the session resets.
 Every prompt is removed from the file before it is typed: a crash in between loses it, never sends it twice.
+A caller that may hand the same prompt over again after a crash (decisions.py) names it: a name queued or typed
+before is not added again.
 """
 from contextlib import nullcontext
 import json
 from pathlib import Path
+import re
 import secrets
 import threading
 import time
@@ -19,6 +22,8 @@ IDLE = 8            # Seconds without screen activity before a session counts as
 AFTER_RESET = 60    # The limit lifts a little after the minute the agent names.
 GONE_AFTER = 600    # A restart closes the session for a moment; a session gone this long is closed.
 CONTINUE = "continue"
+TYPED_KEPT = 300    # Names of typed prompts remembered, so a repeated hand-over is recognised.
+NAMED = re.compile(r"[a-z0-9-]{8,64}")
 
 
 class Schedule:
@@ -45,6 +50,8 @@ class Schedule:
         self.auto = {name for name in saved.get("auto_resume", []) if isinstance(name, str)}
         resumed = saved.get("resumed", {})
         self.resumed = {k: v for k, v in (resumed if isinstance(resumed, dict) else {}).items() if isinstance(v, str)}
+        typed = saved.get("typed", [])
+        self.typed = [i for i in (typed if isinstance(typed, list) else []) if isinstance(i, str)][-TYPED_KEPT:]
 
     @staticmethod
     def valid(prompt):
@@ -57,7 +64,7 @@ class Schedule:
         auto = self.auto if auto is None else auto
         resumed = self.resumed if resumed is None else resumed
         write_private(self.path, json.dumps({"prompts": prompts, "auto_resume": sorted(auto),
-                                             "resumed": resumed}, ensure_ascii=False).encode())
+                                             "resumed": resumed, "typed": self.typed}, ensure_ascii=False).encode())
         self.prompts, self.auto, self.resumed = prompts, auto, resumed
 
     def status(self, name):
@@ -72,7 +79,10 @@ class Schedule:
             raise ValueError("нет такой сессии")
         return found
 
-    def add(self, name, text, trigger, at=None):
+    def add(self, name, text, trigger, at=None, identity=None):
+        """identity: the caller's own name for this prompt; one queued or typed before is not added again."""
+        if identity is not None and not (isinstance(identity, str) and NAMED.fullmatch(identity)):
+            raise ValueError("invalid prompt identity")
         session = self.session(name)
         if not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT:
             raise ValueError("Введите сообщение (до 20000 символов)")
@@ -85,9 +95,11 @@ class Schedule:
             if isinstance(at, bool) or not isinstance(at, (int, float)) or not now - 60 <= at <= now + MAX_AHEAD:
                 raise ValueError("Укажите время в ближайшие 30 дней")
         with self.lock:
+            if identity and (identity in self.typed or any(p["id"] == identity for p in self.prompts)):
+                return self.status(name)
             if sum(p["session"] == name for p in self.prompts) >= MAX_PER_SESSION:
                 raise ValueError("Слишком много отложенных сообщений в этой сессии; удалите лишние")
-            prompt = {"id": secrets.token_hex(8), "session": name, "text": text, "trigger": trigger,
+            prompt = {"id": identity or secrets.token_hex(8), "session": name, "text": text, "trigger": trigger,
                       "at": int(at) if trigger == "time" else 0, "created": int(now)}
             self.save(prompts=[*self.prompts, prompt])
             self.errors.pop(name, None)
@@ -185,6 +197,8 @@ class Schedule:
             if lifted and (chosen is None or chosen["trigger"] == "limit"):
                 resumed[name] = lifted
             kept = [p for p in self.prompts if chosen is None or p["id"] != chosen["id"]]
+            if chosen:
+                self.typed = [*self.typed, chosen["id"]][-TYPED_KEPT:]
             self.save(prompts=kept, resumed=resumed)
         return [chosen["text"] if chosen else CONTINUE]
 

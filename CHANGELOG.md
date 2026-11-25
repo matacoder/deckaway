@@ -2,6 +2,11 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.92.3
+
+- An answer to a decision reaches its agent exactly once. Sending first writes the answers down as sent together with the prompt to deliver, in one transaction, then queues the prompt under that delivery's own name; a panel that stopped in between delivers it at its next start, and the queue (Schedule) never adds or types a named prompt twice. A queue that refuses leaves the answers waiting.
+- The gateway gives up on a quiet computer in time: a request's timeout now covers waiting for a free slot and for another request's sign-in, not only the connection, so requests queued for an offline computer no longer add up their waits. The Questions tab's reads give up after 8 s.
+
 ## 1.92.2
 
 - Questions tab reacts at once: each computer's decisions are drawn as soon as it answers, so an offline computer (which took 25-35 s to fail) no longer holds back the list; healthy computers are asked every 4 s while the tab is open, and at once when a session list shows a changed count.
