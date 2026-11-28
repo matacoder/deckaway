@@ -1546,8 +1546,9 @@ test('paths and agent links are clickable in the terminal itself',async()=>{
   window.eval("activate('alpha')");await settle();
   const rows=['Saved in /home/demo/reports/ and ~/notes.md','see https://ya.ru'];
   let provider;
+  // The first provider links paths; the second, cut addresses (wrapped-urls.test.js).
   const term={buffer:{active:{getLine:i=>rows[i]===undefined?undefined:{translateToString:()=>rows[i]}}},options:{},
-    registerLinkProvider:p=>{provider=p}};
+    registerLinkProvider:p=>{provider??=p}};
   window.open=(url,target,features)=>{opened.push([url,target,features])};
   window.hookTerminalLinks({term},'alpha');
   let links;provider.provideLinks(1,found=>{links=found});
@@ -1561,7 +1562,8 @@ test('paths and agent links are clickable in the terminal itself',async()=>{
   asked.length=0;term.options.linkHandler.activate(null,'file:///home/demo/app/');await settle();await settle();
   expect(asked).toContain('/home/demo/app');
   // A terminal of another session opens nothing.
-  const other={buffer:term.buffer,options:{},registerLinkProvider:p=>{provider=p}};
+  provider=undefined;
+  const other={buffer:term.buffer,options:{},registerLinkProvider:p=>{provider??=p}};
   window.hookTerminalLinks({term:other},'beta');await settle();await settle();asked.length=0;
   provider.provideLinks(1,found=>{links=found});links[0].activate();await settle();
   expect(asked).toEqual([]);

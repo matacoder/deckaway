@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org). Install a version with `sudo ./update.sh vX.Y.Z` (older than the installed one: `sudo FORCE_DOWNGRADE=1 ./update.sh vX.Y.Z`).
 
+## 1.93.1
+
+- A long address an agent cuts into lines is one link again, in the live terminal and in the screen view: indented pieces and pieces with empty lines between them (Antigravity's sign-in link) are joined, and a tap on any piece opens the whole address. A piece is joined only after a line that filled the terminal's width, or after an empty line when it is clearly part of an address, so text under a short link stays apart.
+
 ## 1.93.0
 
 - Antigravity CLI (`agy`), Google's successor to Gemini CLI, is an agent: installed and updated from Settings → Agents, signed in with a Google account (Google AI Pro/Ultra included) by opening the link it prints and pasting the code back, started without questions by `--dangerously-skip-permissions`, continuing the folder's last conversation after a restart. Gemini CLI stays for a paid API key; its card says that Google accounts now need Antigravity.

@@ -8,15 +8,40 @@ function screenSkeleton(){
 }
 const URL_RE=/https?:\/\/[^\s"'<>│]+/g;
 /* Claude hard-wraps long URLs: glue a URL at line end with following space-free lines */
-function unwrapUrls(text){
-  const L=text.split("\n"),out=[];
-  for(let i=0;i<L.length;i++){
-    let line=L[i];
-    if(/https?:\/\/\S+$/.test(line.trimEnd()))
-      while(i+1<L.length&&/^\S{2,}$/.test(L[i+1])&&!/^https?:/.test(L[i+1])){line=line.trimEnd()+L[++i]}
-    out.push(line);
+// Agents cut a long address into lines themselves (the terminal never sees one wrapped line), some indent the
+// pieces and Antigravity even leaves empty lines between them. A piece goes on only after a line that filled
+// the width, or after an empty line when it is unmistakably part of an address (`%`, `&` or `=` in a long
+// run), so ordinary output under a short link stays apart. `width` is the terminal's; the screen view does
+// not know it and joins any piece right under an address, as it always did.
+// Returns each joined address with the place of every piece. Pure for tests.
+const URL_PIECE=/^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
+function wrappedUrls(texts,width=0){
+  const found=[];
+  for(let i=0;i<texts.length;i++){
+    const head=texts[i].trimEnd(),m=head.match(/https?:\/\/\S+$/);
+    if(!m)continue;
+    const parts=[{line:i,start:m.index,end:head.length}];
+    let url=m[0],last=head,gap=0;
+    for(let j=i+1;j<texts.length&&gap<=2;j++){
+      const piece=texts[j].trim();
+      if(!piece){gap++;continue}
+      const next=URL_PIECE.test(piece)&&!/^https?:/.test(piece)&&(gap?piece.length>=12&&/[%&=]/.test(piece):last.length>=width-2||!width&&piece.length>=2);
+      if(!next)break;
+      const start=texts[j].indexOf(piece);
+      url+=piece;parts.push({line:j,start,end:start+piece.length});last=texts[j].trimEnd();gap=0;i=j;
+    }
+    if(parts.length>1)found.push({url,parts});
   }
-  return out.join("\n");
+  return found;
+}
+function unwrapUrls(text){
+  const lines=text.split("\n"),drop=new Set();
+  for(const {url,parts} of wrappedUrls(lines)){
+    const first=parts[0];
+    lines[first.line]=lines[first.line].slice(0,first.start)+url;
+    for(let k=first.line+1;k<=parts.at(-1).line;k++)drop.add(k);
+  }
+  return lines.filter((_,k)=>!drop.has(k)).join("\n");
 }
 let panelOrigins=[location.origin];
 const resolvePanelLink=u=>panelLinkTarget(u,{browserOrigin:location.origin,panelOrigins,identity:selectedDeck});
@@ -141,21 +166,23 @@ function appendStyledRange(node,runs,from,to){
 }
 const BOX_CHARS=/[─━═╌┄┈╍▔▁]/g;
 const BOX_LINE=/^[\s─━═╌┄┈╍▔▁-]*$/;
+// The same joining on coloured runs: the pieces keep their colours, the lines between them go.
+function trimRuns(runs,edge){
+  const out=runs.map(r=>({...r}));
+  if(edge==="start")for(const r of out){r.text=r.text.trimStart();if(r.text)break}
+  else for(let j=out.length-1;j>=0;j--){out[j].text=out[j].text.trimEnd();if(out[j].text)break}
+  return out.filter(r=>r.text);
+}
 function joinUrlLines(lines){
-  const out=[];
-  for(let i=0;i<lines.length;i++){
-    const runs=lines[i].slice(),plain=runs.map(r=>r.text).join("");
-    if(/https?:\/\/\S+$/.test(plain.trimEnd())){
-      while(i+1<lines.length){
-        const next=lines[i+1].map(r=>r.text).join("");
-        if(!/^\S{2,}$/.test(next)||/^https?:/.test(next))break;
-        for(let j=runs.length-1;j>=0&&/\s$/.test(runs[j].text);j--)runs[j]={...runs[j],text:runs[j].text.trimEnd()};
-        runs.push(...lines[++i]);
-      }
-    }
-    out.push(runs);
+  const groups=wrappedUrls(lines.map(runs=>runs.map(r=>r.text).join("")));
+  if(!groups.length)return lines;
+  const out=lines.slice(),drop=new Set();
+  for(const {parts} of groups){
+    const first=parts[0].line;
+    out[first]=[...trimRuns(out[first],"end"),...parts.slice(1).flatMap(p=>trimRuns(trimRuns(lines[p.line],"start"),"end"))];
+    for(let k=first+1;k<=parts.at(-1).line;k++)drop.add(k);
   }
-  return out;
+  return out.filter((_,k)=>!drop.has(k));
 }
 // The panel sends the last 2000 lines; the newest are drawn, since every change rebuilds them and a phone
 // would stall on thousands. Scrolling to the top draws more of the same answer, the reading place kept.
@@ -284,3 +311,5 @@ function updateScreen(s,force){
   if(stick)p.scrollTop=p.scrollHeight;
   updateJump(changed&&!stick);
 }
+
+if(typeof module!=="undefined")module.exports={wrappedUrls,unwrapUrls,joinUrlLines};

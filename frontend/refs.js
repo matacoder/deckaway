@@ -102,7 +102,25 @@ function hookTerminalLinks(w,name,tries=0){
     callback(fileMatches(text).map(m=>({range:{start:{x:m.index+1,y},end:{x:m.index+m.file.length,y}},text:m.file,
       decorations:{pointerCursor:true,underline:true},activate:()=>open(m.file,m.folder)})));
   }});
+  t.registerLinkProvider({provideLinks(y,callback){callback(cutLinks(t,y))}});
+  firstLinkProvider(t);
   try{t.options.linkHandler={allowNonHttpProtocols:true,activate:(event,uri)=>terminalLink(uri,open)}}catch(e){}
+}
+// An address an agent cut into lines (wrappedUrls): every piece opens the whole address.
+function cutLinks(t,y){
+  const buffer=t.buffer.active,from=Math.max(0,y-1-40),texts=[];
+  for(let k=from;k<Math.min(buffer.length,y+40);k++)texts.push(buffer.getLine(k)?.translateToString(true)||"");
+  return wrappedUrls(texts,t.cols).flatMap(({url,parts})=>parts.filter(p=>p.line+from===y-1).map(p=>({
+    range:{start:{x:p.start+1,y},end:{x:p.end,y}},text:url,decorations:{pointerCursor:true,underline:true},
+    activate:()=>{if(safeHyperlink(url))window.open(url,"_blank","noopener")}})));
+}
+// xterm asks its link providers in order and the first answer wins; ttyd's own web links come first and would
+// open only the piece under the pointer. The list is private, so an xterm without it keeps ttyd's order.
+function firstLinkProvider(t){
+  try{
+    const list=(t._core?.linkifier2||t._core?._linkifier2)?._linkProviders;
+    if(Array.isArray(list)&&list.length>1)list.unshift(list.pop());
+  }catch(e){}
 }
 // An address behind an OSC 8 link. Pure apart from what it calls.
 function terminalLink(uri,open){
@@ -127,4 +145,4 @@ async function runInTerminal(command){
   }catch(e){toast(e.message)}
 }
 
-if(typeof module!=="undefined")module.exports={answerRefs,lastAnswer};
+if(typeof module!=="undefined")module.exports={answerRefs,lastAnswer,cutLinks,firstLinkProvider};
