@@ -61,7 +61,7 @@ The **?** next to the search field in the session bar shows the same picture ins
 
 **Agents and sessions**
 
-- Claude Code, Codex, Kimi Code, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal — one per tab, grouped by project, with "working / waiting / done" at a glance.
+- Claude Code, Codex, Kimi Code, Cursor, Antigravity CLI, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal — one per tab, grouped by project, with "working / waiting / done" at a glance.
 - Claude Code on other models: Kimi, GLM or any Anthropic-compatible service, and local models from LM Studio with speed measurements and no subscription quota.
 - A **+** on each computer and project starts a session there; pick a GitHub repository and go, optionally with a git worktree per session (one branch per agent).
 - The **⋯** menu restarts an agent with a new or the same conversation, duplicates, renames or closes a session. Sessions come back after a reboot.

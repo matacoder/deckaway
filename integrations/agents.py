@@ -41,6 +41,10 @@ def mentions(name, word):
     return check
 
 
+def found(*patterns):
+    return lambda home: any(next(home.glob(pattern), None) for pattern in patterns)
+
+
 def either(*checks):
     return lambda home: any(check(home) for check in checks)
 
@@ -77,6 +81,18 @@ CLI = {
         signed_in=either(has_file('.gemini/oauth_creds.json'), chose_provider('.gemini')),
         recorded=files('.gemini/tmp/*/chats/session-*-{short}.jsonl'),
         headless='gemini -p'),
+    # Google's successor to Gemini CLI for Google accounts (AI Pro/Ultra included); it makes its own ids.
+    # The sign-in is in the system keyring where there is one, else a file of its folder; a conversation on
+    # disk also proves it, since nothing is answered without one.
+    'antigravity': dict(
+        label='Antigravity CLI', binary='agy', processes=('agy', 'antigravity'), skip=' --dangerously-skip-permissions',
+        # The vendor script stops at an installed binary; `agy update` is how that one is brought up to date.
+        install='curl -fsSL https://antigravity.google/cli/install.sh | bash && "$HOME/.local/bin/agy" update',
+        login='agy', start='', resume=' --continue',
+        signed_in=either(found('.gemini/antigravity-cli/*token*', '.gemini/antigravity-cli/*oauth*',
+                               '.gemini/antigravity-cli/conversations/*'),
+                         mentions('.gemini/antigravity-cli/settings.json', '"modelProvider"')),
+        recorded=None, headless='agy -p'),
     'opencode': dict(
         label='OpenCode', binary='opencode', places=('.opencode/bin',), processes=('opencode',), skip=' --auto',
         install='curl -fsSL https://opencode.ai/install | bash',

@@ -64,6 +64,9 @@ class RegistryTests(PanelCase):
             self.assertEqual(path, str(Path(home) / '.opencode/bin/opencode'))
             self.assertEqual(agents.command('opencode', None, True, True, home), f'{path} --continue --auto')
             self.assertFalse(agents.keeps_id('opencode'))
+            agy = install(home, 'antigravity')
+            self.assertEqual(agents.command('antigravity', None, False, True, home), f'{agy} --dangerously-skip-permissions')
+            self.assertEqual(agents.command('antigravity', None, True, False, home), f'{agy} --continue')
             self.assertTrue(agents.keeps_id('qwen'))
             self.assertFalse(agents.keeps_id('claude'))
 
@@ -79,6 +82,20 @@ class RegistryTests(PanelCase):
             (root / '.gemini').mkdir()
             (root / '.gemini/oauth_creds.json').write_text('{}')
             self.assertTrue(agents.signed_in('gemini', home))
+            self.assertFalse(agents.signed_in('antigravity', home))
+            folder = root / '.gemini/antigravity-cli'
+            folder.mkdir(parents=True)
+            (folder / 'settings.json').write_text('{"altScreenMode": "never"}')
+            self.assertFalse(agents.signed_in('antigravity', home))  # Settings alone are not a sign-in.
+            (folder / 'settings.json').write_text('{"modelProvider": "gemini"}')
+            self.assertTrue(agents.signed_in('antigravity', home))  # A Gemini API key from the environment.
+            (folder / 'settings.json').unlink()
+            (folder / 'antigravity-oauth-token').write_text('{}')  # Where there is no keyring.
+            self.assertTrue(agents.signed_in('antigravity', home))
+            (folder / 'antigravity-oauth-token').unlink()
+            (folder / 'conversations').mkdir()
+            (folder / 'conversations/one').write_text('')  # The keyring held it: a conversation took place.
+            self.assertTrue(agents.signed_in('antigravity', home))
             (root / '.config/gh').mkdir(parents=True)
             (root / '.config/gh/hosts.yml').write_text('github.com:\n')
             self.assertTrue(agents.signed_in('copilot', home))

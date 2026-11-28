@@ -35,7 +35,7 @@ One command on a Linux server. [macOS, Windows, Docker, SteamOS](#install-anywhe
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/mobile-inbox.png" width="260" alt="Phone: every session that waits for an answer, in one list"> | <img src="docs/screenshots/mobile-commit.png" width="260" alt="Phone: a commit's diff with a comment for the agent"> | <img src="docs/screenshots/mobile-new.png" width="260" alt="Phone: starting a new session with a choice of agent and repository"> |
 
-- **Agents:** Claude Code, Codex, Kimi Code, Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal, one per tab, grouped by project.
+- **Agents:** Claude Code, Codex, Kimi Code, Cursor, Antigravity CLI, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code or a plain terminal, one per tab, grouped by project.
 - **Board:** every agent on every computer at a glance, as tiles by project or computer: what each is doing, questions answered in place, a short reply without opening the session, or "no reply needed" for work that only has to be seen.
 - **Models:** your subscriptions, any Anthropic-compatible service, or local models from LM Studio with no quota.
 - **Questions from agents in one place:** decisions an agent needs from you during a duty run or a long task wait in the side panel (one session or every session of a computer) instead of scrolling away in the chat; answer by tapping, typing or dictating, from any device, one by one or all at once.

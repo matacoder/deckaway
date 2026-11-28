@@ -110,19 +110,20 @@ is configured using the installer's `PUBLIC_DOMAIN` and proxy options.
 New installs use `~/dev`. Existing explicit project directories are retained;
 older default `~/projects` settings pick up `~/dev` when that directory exists.
 
-## Cursor, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code
+## Cursor, Antigravity CLI, Gemini CLI, GitHub Copilot, OpenCode, Qwen Code
 
 Each is installed from **Settings → Agents** with its vendor's own command and, once installed, appears in
 the new session dialog. **Sign in** opens the program's own sign-in in a terminal; the panel never reads
-its key. A restart continues the session's conversation (OpenCode makes its own ids, so it continues the
-last conversation of the folder). `/compact` (or the program's name for it) and "new conversation" sit
+its key. A restart continues the session's conversation (OpenCode and Antigravity make their own ids, so they
+continue the last conversation of the folder). `/compact` (or the program's name for it) and "new conversation" sit
 behind the **…** chip. Context size, summaries and subscription limits are not shown for these agents yet,
 so their sessions have no bottom status line.
 
 | Agent | Without questions | Sign-in |
 | --- | --- | --- |
 | Cursor (`cursor-agent`) | `--force` | Cursor account, in a browser |
-| Gemini CLI | `--yolo` | Google account or API key, inside the program |
+| Antigravity CLI (`agy`) | `--dangerously-skip-permissions` | Google account (Google AI Pro/Ultra included): open the link it prints, paste the code back |
+| Gemini CLI | `--yolo` | a paid Gemini API key only: since June 2026 Google accounts go to Antigravity CLI |
 | GitHub Copilot CLI | `--allow-all` | the GitHub CLI sign-in, or `copilot login` |
 | OpenCode | `--auto` | optional: `opencode auth login` |
 | Qwen Code | `--yolo` | `/auth` and `/model` inside the program |
